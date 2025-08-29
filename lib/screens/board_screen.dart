@@ -204,11 +204,12 @@ void initState() {
                         ),
                       ),
                     // Always show players and ball on top
-                    _buildPlayer(frameToShow.p1, frameToShow.p1Rotation, Colors.blue, "P1"),
-                    _buildPlayer(frameToShow.p2, frameToShow.p2Rotation, Colors.blue, "P2"),
-                    _buildPlayer(frameToShow.p3, frameToShow.p3Rotation, Colors.red, "P3"),
-                    _buildPlayer(frameToShow.p4, frameToShow.p4Rotation, Colors.red, "P4"),
-                    _buildBall(frameToShow.ball),
+                    _buildPlayer("P1", Colors.blue),
+                    _buildPlayer("P2", Colors.blue),
+                    _buildPlayer("P3", Colors.red),
+                    _buildPlayer("P4", Colors.red),
+                    _buildBall(),
+
                     // Show control points only in editing mode
                     if (!isPlayback) ...[
                       ..._buildPathControlPoints(currentFrame.p1PathPoints),
@@ -229,6 +230,32 @@ void initState() {
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(
               children: [
+                // Playback speed slider only during playback
+                if (_isPlaying)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      children: [
+                        const Text("Speed", style: TextStyle(fontSize: 12)),
+                        Expanded(
+                          child: Slider(
+                            value: _playbackSpeed,
+                            min: 0.1,
+                            max: 3.0,
+                            divisions: 29,
+                            label: "${_playbackSpeed.toStringAsFixed(1)}x",
+                            onChanged: (value) {
+                              setState(() {
+                                _playbackSpeed = value;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // Timeline frames
                 Expanded(
                   child: AbsorbPointer(
                     absorbing: _isPlaying, // Disable timeline tap during playback
@@ -246,24 +273,48 @@ void initState() {
                               });
                             }
                           },
-                          child: Container(
-                            width: 60,
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              color: isSelected ? Colors.blueAccent : Colors.grey[400],
-                              borderRadius: BorderRadius.circular(8),
-                              border: isSelected
-                                  ? Border.all(color: Colors.yellow, width: 3)
-                                  : null,
-                            ),
-                            child: Center(child: Text("${index + 1}")),
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: 60,
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? Colors.blueAccent : Colors.grey[400],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: isSelected
+                                      ? Border.all(color: Colors.yellow, width: 3)
+                                      : null,
+                                ),
+                                child: Center(child: Text("${index + 1}")),
+                              ),
+                              // Optional delete button on top-right
+                              if (isSelected)
+                                Positioned(
+                                  top: 2,
+                                  right: 2,
+                                  child: GestureDetector(
+                                    onTap: () => _confirmDeleteFrame(frame),
+                                    child: Container(
+                                      width: 18,
+                                      height: 18,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.remove, size: 12, color: Colors.white),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         );
                       },
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 4),
+                // Play/Pause + Insert buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -276,103 +327,83 @@ void initState() {
                     ),
                     const SizedBox(width: 10),
                     ElevatedButton(
-                      onPressed: _isPlaying ? null : _addFrameAtEnd,
-                      child: const Text("Add Frame End"),
-                    ),
-                    const SizedBox(width: 10),
-                    ElevatedButton(
                       onPressed: _isPlaying ? null : _insertFrameAfterCurrent,
-                      child: const Text("Insert Frame"),
-                    ),
-                    const SizedBox(width: 20),
-                    // 🔥 Speed Slider
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Text("Speed: ${_playbackSpeed.toStringAsFixed(1)}x"),
-                          Slider(
-                            value: _playbackSpeed,
-                            min: 0.1,
-                            max: 3.0,
-                            divisions: 29,
-                            label: "${_playbackSpeed.toStringAsFixed(1)}x",
-                            onChanged: (val) {
-                              setState(() {
-                                _playbackSpeed = val;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
+                      child: const Icon(Icons.add), // just a "+" icon
                     ),
                   ],
                 ),
-
               ],
             ),
           ),
         ],
       ),
-    );
+    );  
   }
 
   // ----------------------
   // Draggable players
   // ----------------------
-  Widget _buildPlayer(Offset position, double rotation, Color color, String label) {
-    return Positioned(
-      left: position.dx - 20,
-      top: position.dy - 20,
-      child: GestureDetector(
-        onScaleUpdate: (details) {
-          setState(() {
-            if (details.pointerCount == 1) {
-              final delta = details.focalPointDelta;
-              _updateFramePosition(label, position + delta);
-            } else if (details.pointerCount == 2) {
-              _updateRotation(label, rotation + details.rotation);
-            }
-          });
-        },
-        child: Transform.rotate(
-          angle: rotation,
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            child: const Icon(Icons.arrow_upward, color: Colors.white),
-          ),
+  Widget _buildPlayer(String label, Color color) {
+  final position = _getPosition(label);
+  final rotation = _getRotation(label);
+
+  return Positioned(
+    left: position.dx - 20,
+    top: position.dy - 20,
+    child: GestureDetector(
+      onScaleUpdate: (details) {
+        setState(() {
+          if (details.pointerCount == 1) {
+            _updateFramePosition(label, _getPosition(label) + details.focalPointDelta);
+          } else if (details.pointerCount == 2) {
+            _updateRotation(label, _getRotation(label) + details.rotation);
+          }
+        });
+      },
+      child: Transform.rotate(
+        angle: rotation,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          child: const Icon(Icons.arrow_upward, color: Colors.white),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   // ----------------------
   // Draggable ball
   // ----------------------
-  Widget _buildBall(Offset position) {
-    return Positioned(
-      left: position.dx - 15,
-      top: position.dy - 15,
-      child: GestureDetector(
-        onScaleUpdate: (details) {
+  Widget _buildBall() {
+  final position = _getPosition("BALL");
+
+  return Positioned(
+    left: position.dx - 15,
+    top: position.dy - 15,
+    child: GestureDetector(
+      onScaleUpdate: (details) {
+        if (!_isPlaying) {
           setState(() {
             if (details.pointerCount == 1) {
               _updateFramePosition("BALL", currentFrame.ball + details.focalPointDelta);
             }
           });
-        },
-        child: Container(
-          width: 30,
-          height: 30,
-          decoration: const BoxDecoration(
-            color: Colors.orange,
-            shape: BoxShape.circle,
-          ),
+        }
+      },
+      child: Container(
+        width: 30,
+        height: 30,
+        decoration: const BoxDecoration(
+          color: Colors.orange,
+          shape: BoxShape.circle,
         ),
-      )
-    );
-  }
+      ),
+    ),
+  );
+}
 
   // ----------------------
   // Draggable path control points
@@ -393,7 +424,7 @@ void initState() {
             width: 16,
             height: 16,
             decoration: const BoxDecoration(
-              color: Colors.black,
+              color: Color.fromARGB(118, 90, 90, 90),
               shape: BoxShape.circle,
             ),
           ),
@@ -403,9 +434,50 @@ void initState() {
   }
 
   // ----------------------
-  // Update player positions and rotations
+  // Helpers for accessing positions & rotations
+  // ----------------------
+  Offset _getPosition(String label) {
+    final frame = _isPlaying && _animatedFrame != null ? _animatedFrame! : currentFrame;
+
+    switch (label) {
+      case "P1":
+        return frame.p1;
+      case "P2":
+        return frame.p2;
+      case "P3":
+        return frame.p3;
+      case "P4":
+        return frame.p4;
+      case "BALL":
+        return frame.ball;
+      default:
+        throw ArgumentError("Unknown label: $label");
+    }
+  }
+
+  double _getRotation(String label) {
+    final frame = _isPlaying && _animatedFrame != null ? _animatedFrame! : currentFrame;
+
+    switch (label) {
+      case "P1":
+        return frame.p1Rotation;
+      case "P2":
+        return frame.p2Rotation;
+      case "P3":
+        return frame.p3Rotation;
+      case "P4":
+        return frame.p4Rotation;
+      default:
+        return 0.0; // Ball doesn’t rotate
+    }
+  }
+
+  // ----------------------
+  // Update frame position
   // ----------------------
   void _updateFramePosition(String label, Offset newPos) {
+    if (_isPlaying) return; // 🔒 Ignore updates during playback
+
     setState(() {
       final frameIndex = widget.project.frames.indexOf(currentFrame);
       final previousFrame = _getPreviousFrame();
@@ -413,7 +485,8 @@ void initState() {
       switch (label) {
         case "P1":
           currentFrame.p1 = newPos;
-          if (frameIndex > 0 && previousFrame != null &&
+          if (frameIndex > 0 && // 🚫 Skip frame 0
+              previousFrame != null &&
               (currentFrame.p1 - previousFrame.p1).distance > 50 &&
               currentFrame.p1PathPoints.isEmpty) {
             currentFrame.p1PathPoints = [
@@ -427,7 +500,8 @@ void initState() {
 
         case "P2":
           currentFrame.p2 = newPos;
-          if (frameIndex > 0 && previousFrame != null &&
+          if (frameIndex > 0 &&
+              previousFrame != null &&
               (currentFrame.p2 - previousFrame.p2).distance > 50 &&
               currentFrame.p2PathPoints.isEmpty) {
             currentFrame.p2PathPoints = [
@@ -441,7 +515,8 @@ void initState() {
 
         case "P3":
           currentFrame.p3 = newPos;
-          if (frameIndex > 0 && previousFrame != null &&
+          if (frameIndex > 0 &&
+              previousFrame != null &&
               (currentFrame.p3 - previousFrame.p3).distance > 50 &&
               currentFrame.p3PathPoints.isEmpty) {
             currentFrame.p3PathPoints = [
@@ -455,7 +530,8 @@ void initState() {
 
         case "P4":
           currentFrame.p4 = newPos;
-          if (frameIndex > 0 && previousFrame != null &&
+          if (frameIndex > 0 &&
+              previousFrame != null &&
               (currentFrame.p4 - previousFrame.p4).distance > 50 &&
               currentFrame.p4PathPoints.isEmpty) {
             currentFrame.p4PathPoints = [
@@ -469,7 +545,8 @@ void initState() {
 
         case "BALL":
           currentFrame.ball = newPos;
-          if (frameIndex > 0 && previousFrame != null &&
+          if (frameIndex > 0 &&
+              previousFrame != null &&
               (currentFrame.ball - previousFrame.ball).distance > 50 &&
               currentFrame.ballPathPoints.isEmpty) {
             currentFrame.ballPathPoints = [
@@ -484,9 +561,12 @@ void initState() {
     });
   }
 
-
-
+  // ----------------------
+  // Update rotation
+  // ----------------------
   void _updateRotation(String label, double newRotation) {
+    if (_isPlaying) return; // 🔒 Ignore updates during playback
+
     setState(() {
       switch (label) {
         case "P1":
@@ -505,25 +585,11 @@ void initState() {
     });
   }
 
+
+
   // ----------------------
   // Add / Insert Frames
   // ----------------------
-  void _addFrameAtEnd() {
-  setState(() {
-    final previousFrame = widget.project.frames.last;
-    final newFrame = previousFrame.copy();
-
-    // Reset path control points for fresh editing
-    newFrame.p1PathPoints = [];
-    newFrame.p2PathPoints = [];
-    newFrame.p3PathPoints = [];
-    newFrame.p4PathPoints = [];
-    newFrame.ballPathPoints = [];
-
-    widget.project.frames.add(newFrame);
-    currentFrame = newFrame;
-  });
-}
 
 void _insertFrameAfterCurrent() {
   setState(() {
@@ -542,6 +608,55 @@ void _insertFrameAfterCurrent() {
     currentFrame = newFrame;
   });
 }
+
+// ----------------------
+// Popup to confirm deletion of frame
+// ----------------------
+void _confirmDeleteFrame(Frame frame) async {
+  final shouldDelete = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text("Delete Frame"),
+      content: const Text("Are you sure you want to delete this frame?"),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text("Cancel"),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          child: const Text("Delete"),
+        ),
+      ],
+    ),
+  );
+
+  if (shouldDelete == true) {
+    setState(() {
+      final index = widget.project.frames.indexOf(frame);
+      if (index != -1) {
+        widget.project.frames.removeAt(index);
+
+        // Update currentFrame safely
+        if (widget.project.frames.isEmpty) {
+          currentFrame = Frame(
+            p1: const Offset(0, 0),
+            p2: const Offset(0, 0),
+            p3: const Offset(0, 0),
+            p4: const Offset(0, 0),
+            ball: const Offset(0, 0),
+          ); // or null if you allow nullable
+        } else if (index > 0) {
+          currentFrame = widget.project.frames[index - 1];
+        } else {
+          currentFrame = widget.project.frames.first;
+        }
+      }
+    });
+  }
+}
+
 
 
   // ----------------------
