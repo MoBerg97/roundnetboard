@@ -591,26 +591,42 @@ void initState() {
   // Add / Insert Frames
   // ----------------------
 
-void _insertFrameAfterCurrent() {
+  void _insertFrameAfterCurrent() {
   setState(() {
-    final currentIndex = widget.project.frames.indexOf(currentFrame);
-    final previousFrame = widget.project.frames[currentIndex];
-    final newFrame = previousFrame.copy();
+    Frame newFrame;
+    if (widget.project.frames.isEmpty) {
+      // No frames exist, create a default first frame
+      newFrame = Frame(
+        p1: const Offset(100, 200),
+        p2: const Offset(120, 300),
+        p3: const Offset(250, 200),
+        p4: const Offset(270, 300),
+        ball: const Offset(180, 250),
+      );
+      widget.project.frames.add(newFrame);
+    } else {
+      // Insert after current
+      final currentIndex = widget.project.frames.indexOf(currentFrame);
+      final previousFrame = widget.project.frames[currentIndex];
+      newFrame = previousFrame.copy();
+      widget.project.frames.insert(currentIndex + 1, newFrame);
+    }
 
-    // Reset path control points for fresh editing
-    newFrame.p1PathPoints = [];
-    newFrame.p2PathPoints = [];
-    newFrame.p3PathPoints = [];
-    newFrame.p4PathPoints = [];
-    newFrame.ballPathPoints = [];
-
-    widget.project.frames.insert(currentIndex + 1, newFrame);
     currentFrame = newFrame;
+
+    // If this is the first frame, ensure all path points are empty
+    if (widget.project.frames.indexOf(currentFrame) == 0) {
+      currentFrame.p1PathPoints.clear();
+      currentFrame.p2PathPoints.clear();
+      currentFrame.p3PathPoints.clear();
+      currentFrame.p4PathPoints.clear();
+      currentFrame.ballPathPoints.clear();
+    }
   });
 }
 
 // ----------------------
-// Popup to confirm deletion of frame
+// Confirm Delete Frame
 // ----------------------
 void _confirmDeleteFrame(Frame frame) async {
   final shouldDelete = await showDialog<bool>(
@@ -635,54 +651,59 @@ void _confirmDeleteFrame(Frame frame) async {
   if (shouldDelete == true) {
     setState(() {
       final index = widget.project.frames.indexOf(frame);
-      if (index != -1) {
-        widget.project.frames.removeAt(index);
+      if (index < 0) return; // Safety check
 
-        // Update currentFrame safely
-        if (widget.project.frames.isEmpty) {
-          currentFrame = Frame(
-            p1: const Offset(0, 0),
-            p2: const Offset(0, 0),
-            p3: const Offset(0, 0),
-            p4: const Offset(0, 0),
-            ball: const Offset(0, 0),
-          ); // or null if you allow nullable
-        } else if (index > 0) {
-          currentFrame = widget.project.frames[index - 1];
-        } else {
-          currentFrame = widget.project.frames.first;
-        }
+      widget.project.frames.removeAt(index);
+
+      // Ensure currentFrame stays valid
+      if (widget.project.frames.isEmpty) {
+        // No frames left: create a default first frame
+        final defaultFrame = Frame(
+          p1: const Offset(100, 200),
+          p2: const Offset(120, 300),
+          p3: const Offset(250, 200),
+          p4: const Offset(270, 300),
+          ball: const Offset(180, 250),
+        );
+        widget.project.frames.add(defaultFrame);
+        currentFrame = defaultFrame;
+      } else if (index == 0) {
+        // Deleted first frame: select new first frame
+        currentFrame = widget.project.frames.first;
+
+        // Clear path points so no controls are shown
+        currentFrame.p1PathPoints.clear();
+        currentFrame.p2PathPoints.clear();
+        currentFrame.p3PathPoints.clear();
+        currentFrame.p4PathPoints.clear();
+        currentFrame.ballPathPoints.clear();
+      } else {
+        // Select previous frame
+        currentFrame = widget.project.frames[index - 1];
       }
     });
   }
 }
 
-
-
-  // ----------------------
-  // Select frame from timeline
-  // ----------------------
-  void _selectFrame(Frame frame) {
-    setState(() {
-      currentFrame = frame;
-
-      // No need to create new points yet — just display existing ones
-      // New control points will be added dynamically when player/ball moves
-    });
-  }
-
-  // ----------------------
-  // Get previous frame (for path drawing)
-  // ----------------------
-  Frame? _getPreviousFrame() {
-    final index = widget.project.frames.indexOf(currentFrame);
-    if (index > 0) return widget.project.frames[index - 1];
-    return null;
-  }
-
-  Frame? _getTwoFramesAgo() {
-    final index = widget.project.frames.indexOf(currentFrame);
-    if (index >= 2) return widget.project.frames[index - 2];
-    return null;
-  }
+// ----------------------
+// Get previous frame
+// ----------------------
+Frame? _getPreviousFrame() {
+  if (widget.project.frames.isEmpty) return null;
+  final index = widget.project.frames.indexOf(currentFrame);
+  if (index > 0) return widget.project.frames[index - 1];
+  return null;
 }
+
+// ----------------------
+// Get two frames ago
+// ----------------------
+Frame? _getTwoFramesAgo() {
+  if (widget.project.frames.isEmpty) return null;
+  final index = widget.project.frames.indexOf(currentFrame);
+  if (index >= 2) return widget.project.frames[index - 2];
+  return null;
+}
+}
+
+
