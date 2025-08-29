@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/animation_project.dart';
 import 'board_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -13,6 +14,17 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Projects'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: ValueListenableBuilder(
         valueListenable: projectBox.listenable(),
@@ -29,10 +41,15 @@ class HomeScreen extends StatelessWidget {
               return ListTile(
                 title: Text(project.name),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => BoardScreen(project: project),
+                  Navigator.of(context).push(
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) =>
+                          BoardScreen(project: project),
+                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        return FadeTransition(opacity: animation, child: child);
+                      },
+                      transitionDuration: const Duration(milliseconds: 300),
+                      reverseTransitionDuration: const Duration(milliseconds: 300),
                     ),
                   );
                 },
@@ -105,7 +122,7 @@ class HomeScreen extends StatelessWidget {
               final newName = controller.text.trim();
               if (newName.isNotEmpty) {
                 project.name = newName;
-                project.save(); // Important: save changes to Hive
+                project.save(); // Save changes to Hive
               }
               Navigator.pop(context);
             },
