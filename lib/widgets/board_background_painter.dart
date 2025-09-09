@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/settings.dart';
 import 'dart:math' as math;
+import '../models/settings.dart';
 
 class BoardBackgroundPainter extends CustomPainter {
   final Size screenSize;
@@ -8,32 +8,26 @@ class BoardBackgroundPainter extends CustomPainter {
 
   BoardBackgroundPainter({required this.screenSize, required this.settings});
 
-  Offset _boardCenter() => Offset(screenSize.width / 2, screenSize.height / 2);
-
-double _boardScale() {
-  // Scale so that outer circle fits within screen with some padding
-  final maxRadius = math.min(screenSize.width, screenSize.height) / 2 - 16; // padding
-  final outerRadius = settings.outerCircleRadius.clamp(1.0, double.infinity);
-  return maxRadius / outerRadius;
-}
-
-
-  Offset _toScreen(Offset logicalPos) {
-    // Convert logical board coordinates to screen coordinates
-    final center = _boardCenter();
-    final scale = _boardScale();
-    return center + (logicalPos * scale);
+  Offset _boardCenter() {
+    const double appBarHeight = kToolbarHeight;
+    const double timelineHeight = 120;
+    final usableHeight = screenSize.height - appBarHeight - timelineHeight;
+    final offsetTop = appBarHeight;
+    final cx = screenSize.width / 2;
+    final cy = offsetTop + usableHeight / 2;
+    return Offset(cx, cy);
   }
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw the board background elements based on settings
     final center = _boardCenter();
-    final scale = _boardScale();
 
-    // --- 1. Net circle with hashed fill ---
-    final netRadius = settings.netCircleRadius * scale;
+    // --- Background ---
+    final bgPaint = Paint()..color = Colors.green[400]!;
+    canvas.drawRect(Offset.zero & size, bgPaint);
 
+    // --- Net circle ---
+    final netRadius = settings.netCircleRadiusPx;
     final netPaint = Paint()
       ..color = Colors.black.withOpacity(0.4)
       ..style = PaintingStyle.stroke
@@ -41,26 +35,31 @@ double _boardScale() {
 
     canvas.drawCircle(center, netRadius, netPaint);
 
-    final step = 6.0 * scale;
-
-    // Draw hashed lines inside the net circle
+    final step = 6.0;
     for (double dx = -netRadius; dx <= netRadius; dx += step) {
-      final dy = math.sqrt(netRadius * netRadius - dx * dx);
-      canvas.drawLine(center + Offset(dx, -dy), center + Offset(dx, dy), netPaint);
+      final dy = (netRadius * netRadius - dx * dx) > 0
+          ? math.sqrt(netRadius * netRadius - dx * dx)
+          : 0;
+      canvas.drawLine(center + Offset(dx.toDouble(), -dy.toDouble()), center + Offset(dx.toDouble(), dy.toDouble()), netPaint);
     }
     for (double dy = -netRadius; dy <= netRadius; dy += step) {
-      final dx = math.sqrt(netRadius * netRadius - dy * dy);
-      canvas.drawLine(center + Offset(-dx, dy), center + Offset(dx, dy), netPaint);
+      final dx = (netRadius * netRadius - dy * dy) > 0
+          ? math.sqrt(netRadius * netRadius - dy * dy)
+          : 0;
+      canvas.drawLine(center + Offset(-dx.toDouble(), dy.toDouble()), center + Offset(dx.toDouble(), dy.toDouble()), netPaint);
     }
 
-    // --- 2. White thin circles (inner and outer) ---
+    // --- Inner + Outer circles ---
     final whitePaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
-    canvas.drawCircle(center, settings.innerCircleRadius * scale, whitePaint);
-    canvas.drawCircle(center, settings.outerCircleRadius * scale, whitePaint);
+    final innerRadius = settings.innerCircleRadiusPx;
+    final outerRadius = settings.outerCircleRadiusPx;
+
+    canvas.drawCircle(center, innerRadius, whitePaint);
+    canvas.drawCircle(center, outerRadius, whitePaint);
   }
 
   @override

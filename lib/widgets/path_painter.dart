@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/frame.dart';
+import '../models/settings.dart';
 import 'dart:math' as math;
 
 class PathPainter extends CustomPainter {
@@ -7,26 +8,32 @@ class PathPainter extends CustomPainter {
   final Frame? previousFrame;
   final Frame? currentFrame;
   final Size screenSize;
+  final Settings settings;
 
   PathPainter({
     required this.twoFramesAgo,
     required this.previousFrame,
     required this.currentFrame,
     required this.screenSize,
+    required this.settings,
   });
 
-  Offset _boardCenter() => Offset(screenSize.width / 2, screenSize.height / 2);
-
-  double _boardScale() {
-    // Outer circle radius is 260 logical units
-    final maxRadius = math.min(screenSize.width, screenSize.height) / 2 - 16;
-    return maxRadius / 260.0;
+  Offset _boardCenter(Size size) {
+    const double appBarHeight = kToolbarHeight;
+    const double timelineHeight = 120;
+    final usableHeight = size.height - appBarHeight - timelineHeight;
+    final offsetTop = appBarHeight;
+    final cx = size.width / 2;
+    final cy = offsetTop + usableHeight / 2;
+    return Offset(cx, cy);
   }
 
-  Offset _toScreen(Offset logicalPos) {
-    final center = _boardCenter();
-    final scale = _boardScale();
-    return center + (logicalPos * scale);
+  Offset _toScreen(Offset cmPos) {
+    final center = _boardCenter(screenSize);
+    return center + Offset(
+      settings.cmToLogical(cmPos.dx, screenSize),
+      settings.cmToLogical(cmPos.dy, screenSize),
+    );
   }
 
   @override
@@ -44,7 +51,7 @@ class PathPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    // 🔹 Faded path: twoFramesAgo → previousFrame
+    // faded path: twoFramesAgo → previousFrame
     if (twoFramesAgo != null) {
       _drawPathWithControlPoints(canvas, twoFramesAgo!.p1, previousFrame!.p1, previousFrame!.p1PathPoints, fadedPaint);
       _drawPathWithControlPoints(canvas, twoFramesAgo!.p2, previousFrame!.p2, previousFrame!.p2PathPoints, fadedPaint);
@@ -53,7 +60,7 @@ class PathPainter extends CustomPainter {
       _drawPathWithControlPoints(canvas, twoFramesAgo!.ball, previousFrame!.ball, previousFrame!.ballPathPoints, fadedPaint);
     }
 
-    // 🔹 Solid path: previousFrame → currentFrame
+    // solid path: previousFrame → currentFrame
     _drawPathWithControlPoints(canvas, previousFrame!.p1, currentFrame!.p1, currentFrame!.p1PathPoints, paint);
     _drawPathWithControlPoints(canvas, previousFrame!.p2, currentFrame!.p2, currentFrame!.p2PathPoints, paint);
     _drawPathWithControlPoints(canvas, previousFrame!.p3, currentFrame!.p3, currentFrame!.p3PathPoints, paint);
@@ -94,5 +101,11 @@ class PathPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant PathPainter oldDelegate) {
+    return oldDelegate.twoFramesAgo != twoFramesAgo ||
+           oldDelegate.previousFrame != previousFrame ||
+           oldDelegate.currentFrame != currentFrame ||
+           oldDelegate.screenSize != screenSize ||
+           oldDelegate.settings != settings;
+  }
 }

@@ -9,7 +9,6 @@ import '../widgets/board_background_painter.dart';
 import '../models/settings.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-
 class BoardScreen extends StatefulWidget {
   final AnimationProject project;
 
@@ -19,7 +18,8 @@ class BoardScreen extends StatefulWidget {
   State<BoardScreen> createState() => _BoardScreenState();
 }
 
-class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin  {
+class _BoardScreenState extends State<BoardScreen>
+    with TickerProviderStateMixin {
   late Frame currentFrame;
 
   // Settings
@@ -27,10 +27,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   late Box<Settings> _settingsBox;
 
   // Board pan & zoom
-  Offset _boardOffset = Offset.zero;  // pan translation
-  double _boardScaleFactor = 1.0;    // zoom factor
-
-
+  Offset _boardOffset = Offset.zero; // pan translation
+  double _boardScaleFactor = 1.0; // zoom factor
 
   // Playback
   bool _isPlaying = false;
@@ -46,25 +44,40 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   // ----------------------
   // Board helpers
   // ----------------------
-  Offset _boardCenter(Size size) => Offset(size.width / 2, size.height / 2);
+  Offset _boardCenter(Size size) {
+    const double appBarHeight = kToolbarHeight;
+    const double timelineHeight = 120;
 
-  double _boardScale(Size size) {
-    final maxRadius = math.min(size.width, size.height) / 2 - 16; // padding
-    return maxRadius / _settings.outerCircleRadius;
-  }
+    final usableHeight = size.height - appBarHeight - timelineHeight;
+    final offsetTop = appBarHeight;
+    final offsetBottom = timelineHeight;
+
+    // Horizontal center is unchanged
+    final cx = size.width / 2;
+    // Vertical center is in the middle of the usable area
+    final cy = offsetTop + usableHeight / 2;
+
+    return Offset(cx, cy);
+  }  
+
+Offset _toScreenPosition(Offset cmPos, Size size) {
+  final center = _boardCenter(size);
+  return center + Offset(
+    _settings.cmToLogical(cmPos.dx, size),
+    _settings.cmToLogical(cmPos.dy, size),
+  );
+}
+
+Offset _toLogicalPosition(Offset screenPos, Size size) {
+  final center = _boardCenter(size);
+  final scalePerCm = _settings.cmToLogical(1.0, size);
+  return Offset(
+    (screenPos.dx - center.dx) / scalePerCm,
+    (screenPos.dy - center.dy) / scalePerCm,
+  );
+}
 
 
-  Offset _toScreenPosition(Offset logicalPos, Size size) {
-    final center = _boardCenter(size);
-    final scale = _boardScale(size);
-    return center + (logicalPos * scale);
-  }
-
-  Offset _toLogicalPosition(Offset screenPos, Size size) {
-    final center = _boardCenter(size);
-    final scale = _boardScale(size);
-    return (screenPos - center) / scale;
-  }
 
   // ----------------------
   // Init / Dispose
@@ -72,7 +85,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    
+
     // Load settings
     _settingsBox = Hive.box<Settings>('settings');
     _settings = _settingsBox.getAt(0)!;
@@ -87,17 +100,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (widget.project.frames.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final size = MediaQuery.of(context).size;
-        final scale = _boardScale(size);
         final center = _boardCenter(size);
 
-        final r = _settings.outerCircleRadius;
+        final r = _settings.outerCircleRadiusCm;
 
         final defaultFrame = Frame(
-          p1: Offset(0, -r),   // top
-          p2: Offset(r, 0),    // right
-          p3: Offset(0, r),    // bottom
-          p4: Offset(-r, 0),   // left
-          ball: Offset.zero,    // center
+          p1: Offset(0, -r), // top
+          p2: Offset(r, 0), // right
+          p3: Offset(0, r), // bottom
+          p4: Offset(-r, 0), // left
+          ball: Offset.zero, // center
         );
 
         setState(() {
@@ -183,7 +195,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     );
   }
 
-  Offset _interpolateOffset(Offset a, Offset b, List<Offset> controlPoints, double t) {
+  Offset _interpolateOffset(
+    Offset a,
+    Offset b,
+    List<Offset> controlPoints,
+    double t,
+  ) {
     if (controlPoints.isEmpty) return Offset.lerp(a, b, t)!;
     final p0 = a;
     final p1 = controlPoints[0];
@@ -258,25 +275,25 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   // Insert & Delete
   // ----------------------
   void _insertFrameAfterCurrent() {
-  final index = widget.project.frames.indexOf(currentFrame);
-  final newFrame = Frame(
-    p1: currentFrame.p1,
-    p2: currentFrame.p2,
-    p3: currentFrame.p3,
-    p4: currentFrame.p4,
-    ball: currentFrame.ball,
-    p1PathPoints: [], // ✅ start empty
-    p2PathPoints: [],
-    p3PathPoints: [],
-    p4PathPoints: [],
-    ballPathPoints: [],
-  );
+    final index = widget.project.frames.indexOf(currentFrame);
+    final newFrame = Frame(
+      p1: currentFrame.p1,
+      p2: currentFrame.p2,
+      p3: currentFrame.p3,
+      p4: currentFrame.p4,
+      ball: currentFrame.ball,
+      p1PathPoints: [], // ✅ start empty
+      p2PathPoints: [],
+      p3PathPoints: [],
+      p4PathPoints: [],
+      ballPathPoints: [],
+    );
 
-  setState(() {
-    widget.project.frames.insert(index + 1, newFrame);
-    currentFrame = newFrame;
-  });
-}
+    setState(() {
+      widget.project.frames.insert(index + 1, newFrame);
+      currentFrame = newFrame;
+    });
+  }
 
   void _confirmDeleteFrame(Frame frame) async {
     final shouldDelete = await showDialog<bool>(
@@ -285,8 +302,15 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         title: const Text("Delete Frame"),
         content: const Text("Are you sure you want to delete this frame?"),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text("Cancel")),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), style: ElevatedButton.styleFrom(backgroundColor: Colors.red), child: const Text("Delete")),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("Delete"),
+          ),
         ],
       ),
     );
@@ -297,7 +321,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         widget.project.frames.removeAt(index);
 
         if (widget.project.frames.isEmpty) {
-          final defaultFrame = Frame(p1: const Offset(0, -265), p2: const Offset(265, 0), p3: const Offset(0, 265), p4: const Offset(-265, 0), ball: Offset.zero);
+          final defaultFrame = Frame(
+            p1: const Offset(0, -265),
+            p2: const Offset(265, 0),
+            p3: const Offset(0, 265),
+            p4: const Offset(-265, 0),
+            ball: Offset.zero,
+          );
           widget.project.frames.add(defaultFrame);
           currentFrame = defaultFrame;
         } else if (index == 0) {
@@ -316,9 +346,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    Settings.setScreenSize(screenSize); // <-- Add this line
+
     final isPlayback = _isPlaying && _animatedFrame != null;
     final frameToShow = isPlayback ? _animatedFrame! : currentFrame;
-    final screenSize = MediaQuery.of(context).size;
 
     return WillPopScope(
       onWillPop: () async => true, // physical back button still works
@@ -356,14 +388,39 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             previousFrame: _getPreviousFrame(),
                             twoFramesAgo: _getTwoFramesAgo(),
                             screenSize: screenSize,
+                            settings: _settings
                           ),
                         ),
 
                       // Players
-                      _buildPlayer(frameToShow.p1, frameToShow.p1Rotation, Colors.blue, "P1", screenSize),
-                      _buildPlayer(frameToShow.p2, frameToShow.p2Rotation, Colors.blue, "P2", screenSize),
-                      _buildPlayer(frameToShow.p3, frameToShow.p3Rotation, Colors.red, "P3", screenSize),
-                      _buildPlayer(frameToShow.p4, frameToShow.p4Rotation, Colors.red, "P4", screenSize),
+                      _buildPlayer(
+                        frameToShow.p1,
+                        frameToShow.p1Rotation,
+                        Colors.blue,
+                        "P1",
+                        screenSize,
+                      ),
+                      _buildPlayer(
+                        frameToShow.p2,
+                        frameToShow.p2Rotation,
+                        Colors.blue,
+                        "P2",
+                        screenSize,
+                      ),
+                      _buildPlayer(
+                        frameToShow.p3,
+                        frameToShow.p3Rotation,
+                        Colors.red,
+                        "P3",
+                        screenSize,
+                      ),
+                      _buildPlayer(
+                        frameToShow.p4,
+                        frameToShow.p4Rotation,
+                        Colors.red,
+                        "P4",
+                        screenSize,
+                      ),
 
                       // Ball
                       _buildBall(frameToShow.ball, screenSize),
@@ -414,7 +471,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       // check if path midpoint is being tapped
                       Positioned.fill(
                         child: GestureDetector(
-                          onTapDown: (details) => _handleBoardTap(details.localPosition, screenSize),
+                          onTapDown: (details) => _handleBoardTap(
+                            details.localPosition,
+                            screenSize,
+                          ),
                           behavior: HitTestBehavior.translucent,
                           child: Container(), // transparent
                         ),
@@ -445,7 +505,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               max: 3.0,
                               divisions: 29,
                               label: "${_playbackSpeed.toStringAsFixed(1)}x",
-                              onChanged: (v) => setState(() => _playbackSpeed = v),
+                              onChanged: (v) =>
+                                  setState(() => _playbackSpeed = v),
                             ),
                           ),
                         ],
@@ -462,16 +523,28 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           final frame = widget.project.frames[index];
                           final isSelected = frame == currentFrame;
                           return GestureDetector(
-                            onTap: () { if (!_isPlaying) setState(() => currentFrame = frame); },
+                            onTap: () {
+                              if (!_isPlaying)
+                                setState(() => currentFrame = frame);
+                            },
                             child: Stack(
                               children: [
                                 Container(
                                   width: 60,
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: isSelected ? Colors.blueAccent : Colors.grey[400],
+                                    color: isSelected
+                                        ? Colors.blueAccent
+                                        : Colors.grey[400],
                                     borderRadius: BorderRadius.circular(8),
-                                    border: isSelected ? Border.all(color: Colors.yellow, width: 3) : null,
+                                    border: isSelected
+                                        ? Border.all(
+                                            color: Colors.yellow,
+                                            width: 3,
+                                          )
+                                        : null,
                                   ),
                                   child: Center(child: Text("${index + 1}")),
                                 ),
@@ -484,8 +557,15 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                       child: Container(
                                         width: 18,
                                         height: 18,
-                                        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                                        child: const Icon(Icons.remove, size: 12, color: Colors.white),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.remove,
+                                          size: 12,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -503,7 +583,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     children: [
                       ElevatedButton(
                         onPressed: _isPlaying ? _stopPlayback : _startPlayback,
-                        style: ElevatedButton.styleFrom(backgroundColor: _isPlaying ? Colors.red : Colors.green),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _isPlaying
+                              ? Colors.red
+                              : Colors.green,
+                        ),
                         child: Icon(_isPlaying ? Icons.stop : Icons.play_arrow),
                       ),
                       const SizedBox(width: 10),
@@ -525,157 +609,157 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   // ----------------------
   // Create control points on tap
   // ----------------------
-void _handleBoardTap(Offset tapPos, Size size) {
-  if (_isPlaying) return;
-  final prev = _getPreviousFrame();
-  if (prev == null) return;
-
-  final scale = _boardScale(size);
-  final center = _boardCenter(size);
-
-  bool tryAdd(List<Offset> points, Offset start, Offset end) {
-    if (points.isNotEmpty) return false; // Only allow if no control point
-
-    // Midpoint in logical coordinates
-    final midLogical = (start + end) / 2;
-    // Convert midpoint to screen coordinates
-    final midScreen = center + midLogical * scale;
-
-    // Check if tap is close enough in screen space
-    if ((tapPos - midScreen).distance <= 24) {
-      setState(() {
-        // Insert the midpoint as a **logical coordinate**
-        points.add(midLogical);
-      });
-      return true;
+  void _handleBoardTap(Offset tapPos, Size size) {
+    if (_isPlaying) return;
+    final prev = _getPreviousFrame();
+    if (prev == null) return;
+  
+    // Helper: try to add control point for a path
+    bool tryAdd(String label, Offset startCm, Offset endCm, List<Offset> points) {
+      if (points.isNotEmpty) return false;
+      final pathLengthCm = (endCm - startCm).distance;
+      if (pathLengthCm <= 50) return false; // Only if path is long enough
+  
+      final midCm = (startCm + endCm) / 2;
+      final midScreen = _toScreenPosition(midCm, size); // Convert cm to screen
+  
+      if ((tapPos - midScreen).distance < 24) { // 24 px threshold
+        setState(() => points.add(midCm));
+        return true;
+      }
+      return false;
     }
-    return false;
+  
+    // Try each path
+    if (tryAdd("P1", prev.p1, currentFrame.p1, currentFrame.p1PathPoints)) return;
+    if (tryAdd("P2", prev.p2, currentFrame.p2, currentFrame.p2PathPoints)) return;
+    if (tryAdd("P3", prev.p3, currentFrame.p3, currentFrame.p3PathPoints)) return;
+    if (tryAdd("P4", prev.p4, currentFrame.p4, currentFrame.p4PathPoints)) return;
+    if (tryAdd("BALL", prev.ball, currentFrame.ball, currentFrame.ballPathPoints)) return;
   }
 
-  if (tryAdd(currentFrame.p1PathPoints, prev.p1, currentFrame.p1)) return;
-  if (tryAdd(currentFrame.p2PathPoints, prev.p2, currentFrame.p2)) return;
-  if (tryAdd(currentFrame.p3PathPoints, prev.p3, currentFrame.p3)) return;
-  if (tryAdd(currentFrame.p4PathPoints, prev.p4, currentFrame.p4)) return;
-  if (tryAdd(currentFrame.ballPathPoints, prev.ball, currentFrame.ball)) return;
-}
 
-
-
-// ----------------------
-// Build path control points with double-tap to delete
-// ----------------------
-List<Widget> _buildPathControlPoints(
+  // ----------------------
+  // Build path control points with double-tap to delete
+  // ----------------------
+  List<Widget> _buildPathControlPoints(
     List<Offset> points,
-    Offset start,
-    Offset end,
+    Offset startCm,
+    Offset endCm,
     Size size,
     String label,
-) {
-  final scale = _boardScale(size);
-  final center = _boardCenter(size);
-  final widgets = <Widget>[];
+  ) {
+    final widgets = <Widget>[];
 
-  for (int i = 0; i < points.length; i++) {
-    final screenPos = center + (points[i] * scale);
+    for (int i = 0; i < points.length; i++) {
+      final screenPos = _toScreenPosition(points[i], size);
 
-    widgets.add(Positioned(
-      left: screenPos.dx - 8,
-      top: screenPos.dy - 8,
-      child: GestureDetector(
-        onDoubleTap: () => _removeControlPoint(points, i, start, end, size),
-        onPanStart: (details) {
-          _dragStartLogical["$label-$i"] = points[i];
-          _dragStartScreen["$label-$i"] = details.globalPosition;
-        },
-        onPanUpdate: (details) {
-          setState(() {
-            final deltaScreen = details.globalPosition -
-                (_dragStartScreen["$label-$i"] ?? details.globalPosition);
-            points[i] = (_dragStartLogical["$label-$i"] ?? points[i]) + deltaScreen / scale;
-          });
-        },
-        onPanEnd: (_) {
-          _dragStartLogical.remove("$label-$i");
-          _dragStartScreen.remove("$label-$i");
-        },
-        child: Container(
-          width: 16,
-          height: 16,
-          decoration: const BoxDecoration(
-              color: Colors.black, shape: BoxShape.circle),
+      widgets.add(
+        Positioned(
+          left: screenPos.dx - 8,
+          top: screenPos.dy - 8,
+          child: GestureDetector(
+            onDoubleTap: () => _removeControlPoint(points, i, startCm, endCm, size),
+            onPanStart: (details) {
+              _dragStartLogical["$label-$i"] = points[i];
+              _dragStartScreen["$label-$i"] = details.globalPosition;
+            },
+            onPanUpdate: (details) {
+              setState(() {
+                final deltaScreen =
+                    details.globalPosition - (_dragStartScreen["$label-$i"] ?? details.globalPosition);
+                final scalePerCm = _settings.cmToLogical(1.0, size);
+                points[i] = (_dragStartLogical["$label-$i"] ?? points[i]) + deltaScreen / scalePerCm;
+              });
+            },
+            onPanEnd: (_) {
+              _dragStartLogical.remove("$label-$i");
+              _dragStartScreen.remove("$label-$i");
+            },
+            child: Container(
+              width: 16,
+              height: 16,
+              decoration: const BoxDecoration(
+                color: Colors.black,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
         ),
-      ),
-    ));
+      );
+    }
+
+    return widgets;
   }
-
-  return widgets;
-}
-
 
 
   // ----------------------
   // Remove control point with animation
   // ----------------------
   void _removeControlPoint(
-  List<Offset> points,
-  int index,
-  Offset start,
-  Offset end,
-  Size size,
-) {
-  if (index < 0 || index >= points.length) return;
+    List<Offset> points,
+    int index,
+    Offset startCm,
+    Offset endCm,
+    Size size,
+  ) {
+    if (index < 0 || index >= points.length) return;
 
-  final removedPoint = points[index];
-  final scale = _boardScale(size);
-  final center = _boardCenter(size);
+    final removedPoint = points[index];
+    final target = (startCm + endCm) / 2; // midpoint in cm
 
-  final target = (start + end) / 2; // Snap back to midpoint
+    final controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
 
-  final controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 300),
-  );
+    late final Animation<Offset> animation;
+    animation = Tween<Offset>(begin: removedPoint, end: target).animate(
+      CurvedAnimation(parent: controller, curve: Curves.easeInOut),
+    )..addListener(() {
+        setState(() {
+          if (index < points.length) points[index] = animation.value;
+        });
+      });
 
-  late final Animation<Offset> animation;
-  animation = Tween<Offset>(begin: removedPoint, end: target)
-      .animate(CurvedAnimation(parent: controller, curve: Curves.easeInOut))
-    ..addListener(() {
+    controller.forward().then((_) {
       setState(() {
-        if (index < points.length) points[index] = animation.value;
+        points.removeAt(index);
+        controller.dispose();
       });
     });
-
-  controller.forward().then((_) {
-    setState(() {
-      points.removeAt(index);
-      controller.dispose();
-    });
-  });
-}
-
-
+  }
 
 
   // ----------------------
   // Build players
   // ----------------------
-  Widget _buildPlayer(Offset pos, double rotation, Color color, String label, Size size) {
-    final scale = _boardScale(size);
-    final center = _boardCenter(size);
-    final screenPos = center + (pos * scale);
+  Widget _buildPlayer(
+    Offset posCm,
+    double rotation,
+    Color color,
+    String label,
+    Size size,
+  ) {
+    final screenPos = _toScreenPosition(posCm, size);
 
     return Positioned(
       left: screenPos.dx - 20,
       top: screenPos.dy - 20,
       child: GestureDetector(
         onPanStart: (details) {
-          _dragStartLogical[label] = pos;
+          _dragStartLogical[label] = posCm;
           _dragStartScreen[label] = details.globalPosition;
         },
         onPanUpdate: (details) {
           setState(() {
-            final deltaScreen = details.globalPosition - (_dragStartScreen[label] ?? details.globalPosition);
-            _updateFramePosition(label, (_dragStartLogical[label] ?? pos) + deltaScreen / scale);
+            final deltaScreen =
+                details.globalPosition - (_dragStartScreen[label] ?? details.globalPosition);
+            final scalePerCm = _settings.cmToLogical(1.0, size);
+            _updateFramePosition(
+              label,
+              (_dragStartLogical[label] ?? posCm) + deltaScreen / scalePerCm,
+            );
           });
         },
         onPanEnd: (_) {
@@ -695,26 +779,30 @@ List<Widget> _buildPathControlPoints(
     );
   }
 
+
   // ----------------------
   // Build ball
   // ----------------------
-  Widget _buildBall(Offset pos, Size size) {
-    final scale = _boardScale(size);
-    final center = _boardCenter(size);
-    final screenPos = center + (pos * scale);
+  Widget _buildBall(Offset posCm, Size size) {
+    final screenPos = _toScreenPosition(posCm, size);
 
     return Positioned(
       left: screenPos.dx - 15,
       top: screenPos.dy - 15,
       child: GestureDetector(
         onPanStart: (details) {
-          _dragStartLogical["BALL"] = pos;
+          _dragStartLogical["BALL"] = posCm;
           _dragStartScreen["BALL"] = details.globalPosition;
         },
         onPanUpdate: (details) {
           setState(() {
-            final deltaScreen = details.globalPosition - (_dragStartScreen["BALL"] ?? details.globalPosition);
-            _updateFramePosition("BALL", (_dragStartLogical["BALL"] ?? pos) + deltaScreen / scale);
+            final deltaScreen =
+                details.globalPosition - (_dragStartScreen["BALL"] ?? details.globalPosition);
+            final scalePerCm = _settings.cmToLogical(1.0, size);
+            _updateFramePosition(
+              "BALL",
+              (_dragStartLogical["BALL"] ?? posCm) + deltaScreen / scalePerCm,
+            );
           });
         },
         onPanEnd: (_) {
@@ -724,9 +812,13 @@ List<Widget> _buildPathControlPoints(
         child: Container(
           width: 30,
           height: 30,
-          decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+          decoration: const BoxDecoration(
+            color: Colors.orange,
+            shape: BoxShape.circle,
+          ),
         ),
       ),
     );
   }
+
 }

@@ -18,26 +18,30 @@ class SettingsAdapter extends TypeAdapter<Settings> {
     };
     return Settings(
       playbackSpeed: fields[0] as double,
-      outerCircleRadius: fields[1] as double,
-      innerCircleRadius: fields[2] as double,
-      netCircleRadius: fields[3] as double,
-    )..outerBoundsRadius = fields[4] as double;
+      outerCircleRadiusCm: fields[1] as double,
+      innerCircleRadiusCm: fields[2] as double,
+      netCircleRadiusCm: fields[3] as double,
+      outerBoundsRadiusCm: fields[4] as double,
+      referenceRadiusCm: fields[5] as double,
+    );
   }
 
   @override
   void write(BinaryWriter writer, Settings obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.playbackSpeed)
       ..writeByte(1)
-      ..write(obj.outerCircleRadius)
+      ..write(obj.outerCircleRadiusCm)
       ..writeByte(2)
-      ..write(obj.innerCircleRadius)
+      ..write(obj.innerCircleRadiusCm)
       ..writeByte(3)
-      ..write(obj.netCircleRadius)
+      ..write(obj.netCircleRadiusCm)
       ..writeByte(4)
-      ..write(obj.outerBoundsRadius);
+      ..write(obj.outerBoundsRadiusCm)
+      ..writeByte(5)
+      ..write(obj.referenceRadiusCm);
   }
 
   @override

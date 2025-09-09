@@ -10,32 +10,26 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  Settings? _settings; // nullable until loaded
+  Settings? _settings;
 
   @override
   void initState() {
     super.initState();
-
-    // Delay access to Hive until after the widget tree is ready
     Future.microtask(() async {
       final settingsBox = Hive.box<Settings>('settings');
-
-      // Safely load or create settings
       if (settingsBox.isEmpty) {
         final defaultSettings = Settings();
         await settingsBox.add(defaultSettings);
         setState(() => _settings = defaultSettings);
       } else {
         final stored = settingsBox.getAt(0);
-        try {
-          _settings = stored!;
-        } catch (e) {
-          print("Failed to read settings: $e. Replacing with defaults.");
+        if (stored != null) {
+          setState(() => _settings = stored);
+        } else {
           final defaultSettings = Settings();
           await settingsBox.putAt(0, defaultSettings);
-          _settings = defaultSettings;
+          setState(() => _settings = defaultSettings);
         }
-        setState(() {});
       }
     });
   }
@@ -47,10 +41,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _resetDefaults() {
     setState(() {
       _settings?.playbackSpeed = 1.0;
-      _settings?.outerBoundsRadius = 850.0;
-      _settings?.outerCircleRadius = 260.0;
-      _settings?.innerCircleRadius = 100.0;
-      _settings?.netCircleRadius = 46.0;
+      _settings?.outerBoundsRadiusCm = 850.0;
+      _settings?.outerCircleRadiusCm = 260.0;
+      _settings?.innerCircleRadiusCm = 100.0;
+      _settings?.netCircleRadiusCm = 46.0;
+      _settings?.referenceRadiusCm = 260.0;
       _saveSettings();
     });
   }
@@ -70,7 +65,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // --- Playback Speed ---
           ListTile(
             title: const Text("Default Playback Speed"),
             subtitle: Text("${_settings!.playbackSpeed.toStringAsFixed(1)}x"),
@@ -90,94 +84,82 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const Divider(),
-
-          // --- OutOfBounds Radius (for future zoom-out feature) ---
-          /*
-          ListTile(
-            title: const Text("OutOfBounds Radius"),
-            subtitle: Text("${_settings!.outerBoundsRadius.toStringAsFixed(0)} cm"),
-            trailing: SizedBox(
-              width: 150,
-              child: Slider(
-                value: _settings!.outerBoundsRadius,
-                min: 500,
-                max: 1500,
-                divisions: 20,
-                label: "${_settings!.outerBoundsRadius.toStringAsFixed(0)}",
-                onChanged: (value) {
-                  setState(() => _settings!.outerBoundsRadius = value);
-                  _saveSettings();
-                },
-              ),
-            ),
-          ),
-          const Divider(),
-          */
-
-          // --- Outer Circle Radius ---
           ListTile(
             title: const Text("Serve Zone Radius"),
-            subtitle: Text("${_settings!.outerCircleRadius.toStringAsFixed(0)} cm"),
+            subtitle: Text("${_settings!.outerCircleRadiusCm.toStringAsFixed(0)} cm"),
             trailing: SizedBox(
               width: 150,
               child: Slider(
-                value: _settings!.outerCircleRadius,
+                value: _settings!.outerCircleRadiusCm,
                 min: 200,
                 max: 400,
                 divisions: 20,
-                label: "${_settings!.outerCircleRadius.toStringAsFixed(0)}",
+                label: "${_settings!.outerCircleRadiusCm.toStringAsFixed(0)}",
                 onChanged: (value) {
-                  setState(() => _settings!.outerCircleRadius = value);
+                  setState(() => _settings!.outerCircleRadiusCm = value);
                   _saveSettings();
                 },
               ),
             ),
           ),
           const Divider(),
-
-          // --- Inner Circle Radius ---
           ListTile(
             title: const Text("NoHitZone Radius"),
-            subtitle: Text("${_settings!.innerCircleRadius.toStringAsFixed(0)} cm"),
+            subtitle: Text("${_settings!.innerCircleRadiusCm.toStringAsFixed(0)} cm"),
             trailing: SizedBox(
               width: 150,
               child: Slider(
-                value: _settings!.innerCircleRadius,
+                value: _settings!.innerCircleRadiusCm,
                 min: 40,
                 max: 200,
                 divisions: 32,
-                label: "${_settings!.innerCircleRadius.toStringAsFixed(0)}",
+                label: "${_settings!.innerCircleRadiusCm.toStringAsFixed(0)}",
                 onChanged: (value) {
-                  setState(() => _settings!.innerCircleRadius = value);
+                  setState(() => _settings!.innerCircleRadiusCm = value);
                   _saveSettings();
                 },
               ),
             ),
           ),
           const Divider(),
-
-          // --- Net Circle Radius ---
           ListTile(
             title: const Text("Net Radius"),
-            subtitle: Text("${_settings!.netCircleRadius.toStringAsFixed(0)} cm"),
+            subtitle: Text("${_settings!.netCircleRadiusCm.toStringAsFixed(0)} cm"),
             trailing: SizedBox(
               width: 150,
               child: Slider(
-                value: _settings!.netCircleRadius,
+                value: _settings!.netCircleRadiusCm,
                 min: 10,
                 max: 80,
                 divisions: 35,
-                label: "${_settings!.netCircleRadius.toStringAsFixed(0)}",
+                label: "${_settings!.netCircleRadiusCm.toStringAsFixed(0)}",
                 onChanged: (value) {
-                  setState(() => _settings!.netCircleRadius = value);
+                  setState(() => _settings!.netCircleRadiusCm = value);
                   _saveSettings();
                 },
               ),
             ),
           ),
           const Divider(),
-
-          // --- Reset Button ---
+          ListTile(
+            title: const Text("Reference Radius (scaling)"),
+            subtitle: Text("${_settings!.referenceRadiusCm.toStringAsFixed(0)} cm"),
+            trailing: SizedBox(
+              width: 150,
+              child: Slider(
+                value: _settings!.referenceRadiusCm,
+                min: 200,
+                max: 400,
+                divisions: 20,
+                label: "${_settings!.referenceRadiusCm.toStringAsFixed(0)}",
+                onChanged: (value) {
+                  setState(() => _settings!.referenceRadiusCm = value);
+                  _saveSettings();
+                },
+              ),
+            ),
+          ),
+          const Divider(),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: ElevatedButton.icon(

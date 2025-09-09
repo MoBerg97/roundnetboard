@@ -1,29 +1,56 @@
 import 'package:hive/hive.dart';
+import 'package:flutter/material.dart';
 
 part 'settings.g.dart';
 
-@HiveType(typeId: 4) 
+@HiveType(typeId: 4)
 class Settings extends HiveObject {
-
   @HiveField(0)
   double playbackSpeed;
 
   @HiveField(1)
-  double outerCircleRadius;
+  double outerCircleRadiusCm;
 
   @HiveField(2)
-  double innerCircleRadius;
+  double innerCircleRadiusCm;
 
   @HiveField(3)
-  double netCircleRadius;
+  double netCircleRadiusCm;
 
   @HiveField(4)
-  double outerBoundsRadius = 850.0;
+  double outerBoundsRadiusCm;
+
+  @HiveField(5)
+  double referenceRadiusCm;
 
   Settings({
     this.playbackSpeed = 1.0,
-    this.outerCircleRadius = 260.0,
-    this.innerCircleRadius = 100.0,
-    this.netCircleRadius = 46,
+    this.outerCircleRadiusCm = 260.0,
+    this.innerCircleRadiusCm = 100.0,
+    this.netCircleRadiusCm = 46.0,
+    this.outerBoundsRadiusCm = 850.0,
+    this.referenceRadiusCm = 260.0,
   });
+
+  // Converts cm to logical units (pixels)
+  double cmToLogical(double cm, Size screenSize) {
+    const double padding = 50;
+    const double appBarHeight = kToolbarHeight;
+    const double timelineHeight = 120;
+    final usableHeight = screenSize.height - appBarHeight - timelineHeight;
+    final usableWidth = screenSize.width;
+    final halfMinScreen =
+        (usableHeight < usableWidth ? usableHeight : usableWidth) / 2 - padding;
+    return cm * (halfMinScreen / referenceRadiusCm);
+  }
+
+  // Convenience getters for logical units
+  double get outerCircleRadiusPx => cmToLogical(outerCircleRadiusCm, _lastScreenSize);
+  double get innerCircleRadiusPx => cmToLogical(innerCircleRadiusCm, _lastScreenSize);
+  double get netCircleRadiusPx => cmToLogical(netCircleRadiusCm, _lastScreenSize);
+  double get outerBoundsRadiusPx => cmToLogical(outerBoundsRadiusCm, _lastScreenSize);
+
+  // Store last used screen size for conversion
+  static Size _lastScreenSize = const Size(0, 0);
+  static void setScreenSize(Size size) => _lastScreenSize = size;
 }
