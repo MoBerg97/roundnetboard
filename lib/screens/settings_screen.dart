@@ -94,7 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 min: 200,
                 max: 400,
                 divisions: 20,
-                label: "${_settings!.outerCircleRadiusCm.toStringAsFixed(0)}",
+                label: _settings!.outerCircleRadiusCm.toStringAsFixed(0),
                 onChanged: (value) {
                   setState(() => _settings!.outerCircleRadiusCm = value);
                   _saveSettings();
@@ -113,7 +113,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 min: 40,
                 max: 200,
                 divisions: 32,
-                label: "${_settings!.innerCircleRadiusCm.toStringAsFixed(0)}",
+                label: _settings!.innerCircleRadiusCm.toStringAsFixed(0),
                 onChanged: (value) {
                   setState(() => _settings!.innerCircleRadiusCm = value);
                   _saveSettings();
@@ -132,7 +132,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 min: 10,
                 max: 80,
                 divisions: 35,
-                label: "${_settings!.netCircleRadiusCm.toStringAsFixed(0)}",
+                label: _settings!.netCircleRadiusCm.toStringAsFixed(0),
                 onChanged: (value) {
                   setState(() => _settings!.netCircleRadiusCm = value);
                   _saveSettings();
@@ -151,7 +151,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 min: 200,
                 max: 400,
                 divisions: 20,
-                label: "${_settings!.referenceRadiusCm.toStringAsFixed(0)}",
+                label: _settings!.referenceRadiusCm.toStringAsFixed(0),
                 onChanged: (value) {
                   setState(() => _settings!.referenceRadiusCm = value);
                   _saveSettings();

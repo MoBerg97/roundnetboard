@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/frame.dart';
 import '../models/settings.dart';
-import 'dart:math' as math;
 
 class PathPainter extends CustomPainter {
   final Frame? twoFramesAgo;

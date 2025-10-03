@@ -27,8 +27,8 @@ class _BoardScreenState extends State<BoardScreen>
   late Box<Settings> _settingsBox;
 
   // Board pan & zoom
-  Offset _boardOffset = Offset.zero; // pan translation
-  double _boardScaleFactor = 1.0; // zoom factor
+  final Offset _boardOffset = Offset.zero; // pan translation
+  final double _boardScaleFactor = 1.0; // zoom factor
 
   // Playback
   bool _isPlaying = false;
@@ -37,9 +37,73 @@ class _BoardScreenState extends State<BoardScreen>
   double _playbackSpeed = 1.0;
   int _playbackFrameIndex = 0;
 
+  // ----------------------
+  // Undo/Redo stacks (frame specific)
+  // ----------------------
+  final Map<Frame, List<Frame>> _undoStacks = {};
+  final Map<Frame, List<Frame>> _redoStacks = {};
+
+  // --------------------------
+  // Push current frame snapshot to undo stack (frame specific)
+  // --------------------------
+  void _pushFrameChange() {
+    final idx = widget.project.frames.indexOf(currentFrame);
+    if (idx < 0) return;
+
+    _undoStacks.putIfAbsent(currentFrame, () => []);
+    _undoStacks[currentFrame]!.add(currentFrame.copy());
+    _redoStacks[currentFrame]?.clear();
+  }
+
+  // --------------------------
+  // Undo (frame specific)
+  // --------------------------
+  void _undo() {
+    final stack = _undoStacks[currentFrame];
+    if (stack == null || stack.isEmpty) return;
+
+    setState(() {
+      final last = stack.removeLast();
+      _redoStacks.putIfAbsent(currentFrame, () => []);
+      _redoStacks[currentFrame]!.add(currentFrame.copy());
+
+      final idx = widget.project.frames.indexOf(currentFrame);
+      if (idx >= 0) {
+        widget.project.frames[idx] = last.copy();
+        currentFrame = widget.project.frames[idx];
+      }
+
+      _saveProject();
+    });
+  }
+
+  // --------------------------
+  // Redo (frame specific)
+  // --------------------------
+  void _redo() {
+    final stack = _redoStacks[currentFrame];
+    if (stack == null || stack.isEmpty) return;
+
+    setState(() {
+      final next = stack.removeLast();
+      _undoStacks.putIfAbsent(currentFrame, () => []);
+      _undoStacks[currentFrame]!.add(currentFrame.copy());
+
+      final idx = widget.project.frames.indexOf(currentFrame);
+      if (idx >= 0) {
+        widget.project.frames[idx] = next.copy();
+        currentFrame = widget.project.frames[idx];
+      }
+
+      _saveProject();
+    });
+  }
+
+
+
   // Drag tracking
-  Map<String, Offset> _dragStartLogical = {};
-  Map<String, Offset> _dragStartScreen = {};
+  final Map<String, Offset> _dragStartLogical = {};
+  final Map<String, Offset> _dragStartScreen = {};
 
   // ----------------------
   // Board helpers
@@ -98,25 +162,25 @@ Offset _toLogicalPosition(Offset screenPos, Size size) {
     });
 
     if (widget.project.frames.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final size = MediaQuery.of(context).size;
-        final center = _boardCenter(size);
-
-        final r = _settings.outerCircleRadiusCm;
-
-        final defaultFrame = Frame(
-          p1: Offset(0, -r), // top
-          p2: Offset(r, 0), // right
-          p3: Offset(0, r), // bottom
-          p4: Offset(-r, 0), // left
-          ball: Offset.zero, // center
-        );
-
-        setState(() {
-          widget.project.frames.add(defaultFrame);
-          currentFrame = defaultFrame;
-        });
-      });
+      final r = _settings.outerCircleRadiusCm;
+      final defaultFrame = Frame(
+        p1: Offset(0, -r),
+        p2: Offset(r, 0),
+        p3: Offset(0, r),
+        p4: Offset(-r, 0),
+        ball: Offset.zero,
+        p1Rotation: 0,
+        p2Rotation: 0,
+        p3Rotation: 0,
+        p4Rotation: 0,
+        p1PathPoints: [],
+        p2PathPoints: [],
+        p3PathPoints: [],
+        p4PathPoints: [],
+        ballPathPoints: [],
+      );
+      widget.project.frames.add(defaultFrame);
+      currentFrame = defaultFrame;
     } else {
       currentFrame = widget.project.frames.first;
     }
@@ -248,6 +312,14 @@ Offset _toLogicalPosition(Offset screenPos, Size size) {
           currentFrame.ball = newPos;
           break;
       }
+
+      // Replace frame in project.frames
+      final idx= widget.project.frames.indexOf(currentFrame);
+      if (idx >= 0) {
+        widget.project.frames[idx] = currentFrame;
+      }
+
+      _redoStacks[currentFrame]?.clear(); // clear redo on new action
     });
   }
 
@@ -269,6 +341,7 @@ Offset _toLogicalPosition(Offset screenPos, Size size) {
           break;
       }
     });
+    _saveProject();
   }
 
   // ----------------------
@@ -293,6 +366,8 @@ Offset _toLogicalPosition(Offset screenPos, Size size) {
       widget.project.frames.insert(index + 1, newFrame);
       currentFrame = newFrame;
     });
+    
+    _saveProject();
   }
 
   void _confirmDeleteFrame(Frame frame) async {
@@ -341,19 +416,21 @@ Offset _toLogicalPosition(Offset screenPos, Size size) {
           currentFrame = widget.project.frames[index - 1];
         }
       });
+
+      _saveProject();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    Settings.setScreenSize(screenSize); // <-- Add this line
+    Settings.setScreenSize(screenSize);
 
     final isPlayback = _isPlaying && _animatedFrame != null;
     final frameToShow = isPlayback ? _animatedFrame! : currentFrame;
 
     return WillPopScope(
-      onWillPop: () async => true, // physical back button still works
+      onWillPop: () async => true,
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.project.name),
@@ -524,8 +601,9 @@ Offset _toLogicalPosition(Offset screenPos, Size size) {
                           final isSelected = frame == currentFrame;
                           return GestureDetector(
                             onTap: () {
-                              if (!_isPlaying)
+                              if (!_isPlaying) {
                                 setState(() => currentFrame = frame);
+                              }
                             },
                             child: Stack(
                               children: [
@@ -581,22 +659,43 @@ Offset _toLogicalPosition(Offset screenPos, Size size) {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      // UNDO button
+                      IconButton(
+                        icon: const Icon(Icons.undo),
+                        tooltip: "Undo",
+                        onPressed: (_undoStacks[currentFrame]?.isNotEmpty ?? false) ? _undo : null,
+                      ),
+
+                      const SizedBox(width: 10),
+
+                      // REDO button
+                      IconButton(
+                        icon: const Icon(Icons.redo),
+                        tooltip: "Redo",
+                        onPressed: (_redoStacks[currentFrame]?.isNotEmpty ?? false) ? _redo : null,
+                      ),
+
+                      const SizedBox(width: 20),
+
+                      // Play / Stop button
                       ElevatedButton(
                         onPressed: _isPlaying ? _stopPlayback : _startPlayback,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isPlaying
-                              ? Colors.red
-                              : Colors.green,
+                          backgroundColor: _isPlaying ? Colors.red : Colors.green,
                         ),
                         child: Icon(_isPlaying ? Icons.stop : Icons.play_arrow),
                       ),
+
                       const SizedBox(width: 10),
+
+                      // Add frame button
                       ElevatedButton(
                         onPressed: _isPlaying ? null : _insertFrameAfterCurrent,
                         child: const Icon(Icons.add),
                       ),
                     ],
                   ),
+
                 ],
               ),
             ),
@@ -607,36 +706,57 @@ Offset _toLogicalPosition(Offset screenPos, Size size) {
   }
 
   // ----------------------
+  // save poroject on change
+  // ----------------------
+
+  void _saveProject() {
+    widget.project.save();
+    debugPrint("Project saved with ${widget.project.frames.length} frames");
+  }
+
+  // ----------------------
   // Create control points on tap
   // ----------------------
-  void _handleBoardTap(Offset tapPos, Size size) {
-    if (_isPlaying) return;
-    final prev = _getPreviousFrame();
-    if (prev == null) return;
-  
-    // Helper: try to add control point for a path
-    bool tryAdd(String label, Offset startCm, Offset endCm, List<Offset> points) {
-      if (points.isNotEmpty) return false;
-      final pathLengthCm = (endCm - startCm).distance;
-      if (pathLengthCm <= 50) return false; // Only if path is long enough
-  
-      final midCm = (startCm + endCm) / 2;
-      final midScreen = _toScreenPosition(midCm, size); // Convert cm to screen
-  
-      if ((tapPos - midScreen).distance < 24) { // 24 px threshold
-        setState(() => points.add(midCm));
-        return true;
-      }
-      return false;
+  // ----------------------
+// Create control points on tap
+// ----------------------
+void _handleBoardTap(Offset tapPos, Size size) {
+  if (_isPlaying) return;
+  final prev = _getPreviousFrame();
+  if (prev == null) return;
+
+  // Helper: try to add control point for a path
+  bool tryAdd(String label, Offset startCm, Offset endCm, List<Offset> points) {
+    if (points.isNotEmpty) return false;
+    final pathLengthCm = (endCm - startCm).distance;
+    if (pathLengthCm <= 50) return false; // Only if path is long enough
+
+    final midCm = (startCm + endCm) / 2;
+    final midScreen = _toScreenPosition(midCm, size); // Convert cm to screen
+
+    if ((tapPos - midScreen).distance < 24) { // 24 px threshold
+      // ✅ Snapshot before change
+      final index = widget.project.frames.indexOf(currentFrame);
+      _pushFrameChange();
+
+      setState(() {
+        points.add(midCm);
+      });
+
+      _saveProject(); // persist change
+      return true;
     }
-  
-    // Try each path
-    if (tryAdd("P1", prev.p1, currentFrame.p1, currentFrame.p1PathPoints)) return;
-    if (tryAdd("P2", prev.p2, currentFrame.p2, currentFrame.p2PathPoints)) return;
-    if (tryAdd("P3", prev.p3, currentFrame.p3, currentFrame.p3PathPoints)) return;
-    if (tryAdd("P4", prev.p4, currentFrame.p4, currentFrame.p4PathPoints)) return;
-    if (tryAdd("BALL", prev.ball, currentFrame.ball, currentFrame.ballPathPoints)) return;
+    return false;
   }
+
+  // Try each path
+  if (tryAdd("P1", prev.p1, currentFrame.p1, currentFrame.p1PathPoints)) return;
+  if (tryAdd("P2", prev.p2, currentFrame.p2, currentFrame.p2PathPoints)) return;
+  if (tryAdd("P3", prev.p3, currentFrame.p3, currentFrame.p3PathPoints)) return;
+  if (tryAdd("P4", prev.p4, currentFrame.p4, currentFrame.p4PathPoints)) return;
+  if (tryAdd("BALL", prev.ball, currentFrame.ball, currentFrame.ballPathPoints)) return;
+}
+
 
 
   // ----------------------
@@ -659,8 +779,13 @@ Offset _toLogicalPosition(Offset screenPos, Size size) {
           left: screenPos.dx - 8,
           top: screenPos.dy - 8,
           child: GestureDetector(
-            onDoubleTap: () => _removeControlPoint(points, i, startCm, endCm, size),
+            onDoubleTap: () {
+              _pushFrameChange(); // snapshot before deletion
+              _removeControlPoint(points, i, startCm, endCm, size);
+              _saveProject();
+            },
             onPanStart: (details) {
+              _pushFrameChange(); // snapshot before drag
               _dragStartLogical["$label-$i"] = points[i];
               _dragStartScreen["$label-$i"] = details.globalPosition;
             },
@@ -675,6 +800,7 @@ Offset _toLogicalPosition(Offset screenPos, Size size) {
             onPanEnd: (_) {
               _dragStartLogical.remove("$label-$i");
               _dragStartScreen.remove("$label-$i");
+              _saveProject();
             },
             child: Container(
               width: 16,
@@ -693,132 +819,151 @@ Offset _toLogicalPosition(Offset screenPos, Size size) {
   }
 
 
-  // ----------------------
-  // Remove control point with animation
-  // ----------------------
-  void _removeControlPoint(
-    List<Offset> points,
-    int index,
-    Offset startCm,
-    Offset endCm,
-    Size size,
-  ) {
-    if (index < 0 || index >= points.length) return;
 
-    final removedPoint = points[index];
-    final target = (startCm + endCm) / 2; // midpoint in cm
+// ----------------------
+// Remove control point with animation (undo/redo enabled)
+// ----------------------
+void _removeControlPoint(
+  List<Offset> points,
+  int index,
+  Offset startCm,
+  Offset endCm,
+  Size size,
+) {
+  if (index < 0 || index >= points.length) return;
 
-    final controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
+  // ✅ Snapshot before change
+  final frameIndex = widget.project.frames.indexOf(currentFrame);
+  _pushFrameChange();
 
-    late final Animation<Offset> animation;
-    animation = Tween<Offset>(begin: removedPoint, end: target).animate(
-      CurvedAnimation(parent: controller, curve: Curves.easeInOut),
-    )..addListener(() {
-        setState(() {
-          if (index < points.length) points[index] = animation.value;
-        });
-      });
+  final removedPoint = points[index];
+  final target = (startCm + endCm) / 2; // midpoint in cm
 
-    controller.forward().then((_) {
+  final controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 300),
+  );
+
+  late final Animation<Offset> animation;
+  animation = Tween<Offset>(begin: removedPoint, end: target).animate(
+    CurvedAnimation(parent: controller, curve: Curves.easeInOut),
+  )..addListener(() {
       setState(() {
-        points.removeAt(index);
-        controller.dispose();
+        if (index < points.length) points[index] = animation.value;
       });
     });
-  }
+
+  controller.forward().then((_) {
+    setState(() {
+      points.removeAt(index);
+      controller.dispose();
+
+      // Replace frame in project.frames
+      final idx= widget.project.frames.indexOf(currentFrame);
+      if (idx >= 0) {
+        widget.project.frames[idx] = currentFrame;
+      }
+
+      _redoStacks[currentFrame]?.clear(); // clear redo on new action
+      _saveProject(); // persist change
+    });
+  });
+}
 
 
-  // ----------------------
-  // Build players
-  // ----------------------
-  Widget _buildPlayer(
-    Offset posCm,
-    double rotation,
-    Color color,
-    String label,
-    Size size,
-  ) {
-    final screenPos = _toScreenPosition(posCm, size);
 
-    return Positioned(
-      left: screenPos.dx - 20,
-      top: screenPos.dy - 20,
-      child: GestureDetector(
-        onPanStart: (details) {
-          _dragStartLogical[label] = posCm;
-          _dragStartScreen[label] = details.globalPosition;
-        },
-        onPanUpdate: (details) {
-          setState(() {
-            final deltaScreen =
-                details.globalPosition - (_dragStartScreen[label] ?? details.globalPosition);
-            final scalePerCm = _settings.cmToLogical(1.0, size);
-            _updateFramePosition(
-              label,
-              (_dragStartLogical[label] ?? posCm) + deltaScreen / scalePerCm,
-            );
-          });
-        },
-        onPanEnd: (_) {
-          _dragStartLogical.remove(label);
-          _dragStartScreen.remove(label);
-        },
-        child: Transform.rotate(
-          angle: rotation,
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            child: const Icon(Icons.arrow_upward, color: Colors.white),
-          ),
-        ),
-      ),
-    );
-  }
+ // ----------------------
+// Build players
+// ----------------------
+Widget _buildPlayer(
+  Offset posCm,
+  double rotation,
+  Color color,
+  String label,
+  Size size,
+) {
+  final screenPos = _toScreenPosition(posCm, size);
 
-
-  // ----------------------
-  // Build ball
-  // ----------------------
-  Widget _buildBall(Offset posCm, Size size) {
-    final screenPos = _toScreenPosition(posCm, size);
-
-    return Positioned(
-      left: screenPos.dx - 15,
-      top: screenPos.dy - 15,
-      child: GestureDetector(
-        onPanStart: (details) {
-          _dragStartLogical["BALL"] = posCm;
-          _dragStartScreen["BALL"] = details.globalPosition;
-        },
-        onPanUpdate: (details) {
-          setState(() {
-            final deltaScreen =
-                details.globalPosition - (_dragStartScreen["BALL"] ?? details.globalPosition);
-            final scalePerCm = _settings.cmToLogical(1.0, size);
-            _updateFramePosition(
-              "BALL",
-              (_dragStartLogical["BALL"] ?? posCm) + deltaScreen / scalePerCm,
-            );
-          });
-        },
-        onPanEnd: (_) {
-          _dragStartLogical.remove("BALL");
-          _dragStartScreen.remove("BALL");
-        },
+  return Positioned(
+    left: screenPos.dx - 20,
+    top: screenPos.dy - 20,
+    child: GestureDetector(
+      onPanStart: (details) {
+        _pushFrameChange(); // snapshot before drag
+        _dragStartLogical[label] = posCm;
+        _dragStartScreen[label] = details.globalPosition;
+      },
+      onPanUpdate: (details) {
+        setState(() {
+          final deltaScreen =
+              details.globalPosition - (_dragStartScreen[label] ?? details.globalPosition);
+          final scalePerCm = _settings.cmToLogical(1.0, size);
+          _updateFramePosition(
+            label,
+            (_dragStartLogical[label] ?? posCm) + deltaScreen / scalePerCm,
+          );
+        });
+      },
+      onPanEnd: (_) {
+        _dragStartLogical.remove(label);
+        _dragStartScreen.remove(label);
+        _saveProject();
+      },
+      child: Transform.rotate(
+        angle: rotation,
         child: Container(
-          width: 30,
-          height: 30,
-          decoration: const BoxDecoration(
-            color: Colors.orange,
-            shape: BoxShape.circle,
-          ),
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          child: const Icon(Icons.arrow_upward, color: Colors.white),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+// ----------------------
+// Build ball
+// ----------------------
+Widget _buildBall(Offset posCm, Size size) {
+  final screenPos = _toScreenPosition(posCm, size);
+
+  return Positioned(
+    left: screenPos.dx - 15,
+    top: screenPos.dy - 15,
+    child: GestureDetector(
+      onPanStart: (details) {
+        _pushFrameChange(); // snapshot before drag
+        _dragStartLogical["BALL"] = posCm;
+        _dragStartScreen["BALL"] = details.globalPosition;
+      },
+      onPanUpdate: (details) {
+        setState(() {
+          final deltaScreen =
+              details.globalPosition - (_dragStartScreen["BALL"] ?? details.globalPosition);
+          final scalePerCm = _settings.cmToLogical(1.0, size);
+          _updateFramePosition(
+            "BALL",
+            (_dragStartLogical["BALL"] ?? posCm) + deltaScreen / scalePerCm,
+          );
+        });
+      },
+      onPanEnd: (_) {
+        _dragStartLogical.remove("BALL");
+        _dragStartScreen.remove("BALL");
+        _saveProject();
+      },
+      child: Container(
+        width: 30,
+        height: 30,
+        decoration: const BoxDecoration(
+          color: Colors.orange,
+          shape: BoxShape.circle,
+        ),
+      ),
+    ),
+  );
+}
+
 
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'dart:ui';
 
 import 'models/offset_adapter.dart';
 import 'models/frame.dart';

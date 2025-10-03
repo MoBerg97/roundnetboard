@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "type": "flutter",
+      "request": "launch",
+      "name": "Launch Flutter Windows App",
+      "program": "${workspaceFolder}/lib/${input:mainFile}",
+      "flutterMode": "debug",
+      "flutterPlatform": "windows",
+      "cwd": "${workspaceFolder}",
+      "deviceId": "windows"
+    }
+  ],
+  "inputs": [
+    {
+      "type": "pickString",
+      "id": "mainFile",
+      "description": "Select the Dart entry file for your Windows app",
+      "options": [
+        "main.dart"
+      ]
+    }
+  ]
+}
