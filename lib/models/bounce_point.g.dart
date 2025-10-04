@@ -1,47 +1,44 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'transition_paths.dart';
+part of 'bounce_point.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class TransitionPathsAdapter extends TypeAdapter<TransitionPaths> {
+class BouncePointAdapter extends TypeAdapter<BouncePoint> {
   @override
-  final int typeId = 2;
+  final int typeId = 7;
 
   @override
-  TransitionPaths read(BinaryReader reader) {
+  BouncePoint read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return TransitionPaths(
-      p1Ctrl: fields[0] as Offset,
-      p2Ctrl: fields[1] as Offset,
-      p3Ctrl: fields[2] as Offset,
-      p4Ctrl: fields[3] as Offset,
-      ballCtrl: fields[4] as Offset,
-      bounce: fields[5] as BouncePoint?,
+    return BouncePoint(
+      position: fields[0] as InvalidType,
+      minScale: fields[1] as double,
+      endScale: fields[2] as double,
+      starDurationMs: fields[3] as int,
+      showStar: fields[4] as bool,
     );
   }
 
   @override
-  void write(BinaryWriter writer, TransitionPaths obj) {
+  void write(BinaryWriter writer, BouncePoint obj) {
     writer
-      ..writeByte(6)
-      ..writeByte(0)
-      ..write(obj.p1Ctrl)
-      ..writeByte(1)
-      ..write(obj.p2Ctrl)
-      ..writeByte(2)
-      ..write(obj.p3Ctrl)
-      ..writeByte(3)
-      ..write(obj.p4Ctrl)
-      ..writeByte(4)
-      ..write(obj.ballCtrl)
       ..writeByte(5)
-      ..write(obj.bounce);
+      ..writeByte(0)
+      ..write(obj.position)
+      ..writeByte(1)
+      ..write(obj.minScale)
+      ..writeByte(2)
+      ..write(obj.endScale)
+      ..writeByte(3)
+      ..write(obj.starDurationMs)
+      ..writeByte(4)
+      ..write(obj.showStar);
   }
 
   @override
@@ -50,7 +47,7 @@ class TransitionPathsAdapter extends TypeAdapter<TransitionPaths> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is TransitionPathsAdapter &&
+      other is BouncePointAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
