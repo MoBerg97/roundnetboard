@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/frame.dart';
 import '../models/settings.dart';
+import '../utils/path_engine.dart';
 
 class PathPainter extends CustomPainter {
   final Frame? twoFramesAgo;
@@ -35,6 +36,82 @@ class PathPainter extends CustomPainter {
     );
   }
 
+  // Local Catmull-Rom sampler (returns point in same coordinate space as inputs)
+  Offset _catmullRomPoint(List<Offset> pts, int seg, double t) {
+    final p0 = pts[seg + 0];
+    final p1 = pts[seg + 1];
+    final p2 = pts[seg + 2];
+    final p3 = pts[seg + 3];
+    final t2 = t * t;
+    final t3 = t2 * t;
+    final x = 0.5 *
+        ((2 * p1.dx) +
+            (-p0.dx + p2.dx) * t +
+            (2 * p0.dx - 5 * p1.dx + 4 * p2.dx - p3.dx) * t2 +
+            (-p0.dx + 3 * p1.dx - 3 * p2.dx + p3.dx) * t3);
+    final y = 0.5 *
+        ((2 * p1.dy) +
+            (-p0.dy + p2.dy) * t +
+            (2 * p0.dy - 5 * p1.dy + 4 * p2.dy - p3.dy) * t2 +
+            (-p0.dy + 3 * p1.dy - 3 * p2.dy + p3.dy) * t3);
+    return Offset(x, y);
+  }
+
+  void _drawSplinePath(Canvas canvas, List<Offset> points, Paint paint) {
+    if (points.length < 2) return;
+
+    // If only start and end: straight line
+    if (points.length == 2) {
+      final p0 = _toScreen(points[0]);
+      final p1 = _toScreen(points[1]);
+      final path = Path()..moveTo(p0.dx, p0.dy)..lineTo(p1.dx, p1.dy);
+      canvas.drawPath(path, paint);
+      return;
+    }
+
+    // If exactly 3 points: use two-quadratic approximation via PathEngine
+    if (points.length == 3) {
+      final engine = PathEngine.fromTwoQuadratics(
+        start: points[0],
+        control: points[1],
+        end: points[2],
+        resolution: 400,
+      );
+      final path = Path();
+      const int resolution = 400;
+      if (resolution > 0) {
+        final first = _toScreen(engine.sample(0.0));
+        path.moveTo(first.dx, first.dy);
+        for (var i = 1; i <= resolution; i++) {
+          final t = i / resolution;
+          final s = _toScreen(engine.sample(t));
+          path.lineTo(s.dx, s.dy);
+        }
+      }
+      canvas.drawPath(path, paint);
+      return;
+    }
+
+    // For 4+ points: Catmull-Rom spline (local implementation)
+    final pts = points;
+    final path = Path();
+    const resolution = 400;
+    final totalSegments = pts.length - 3;
+    for (int seg = 0; seg < totalSegments; seg++) {
+      for (int i = 0; i <= resolution; i++) {
+        final t = i / resolution;
+        final pt = _catmullRomPoint(pts, seg, t);
+        final screenPt = _toScreen(pt);
+        if (seg == 0 && i == 0) {
+          path.moveTo(screenPt.dx, screenPt.dy);
+        } else {
+          path.lineTo(screenPt.dx, screenPt.dy);
+        }
+      }
+    }
+    canvas.drawPath(path, paint);
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     if (previousFrame == null || currentFrame == null) return;
@@ -52,51 +129,59 @@ class PathPainter extends CustomPainter {
 
     // faded path: twoFramesAgo → previousFrame
     if (twoFramesAgo != null) {
-      _drawPathWithControlPoints(canvas, twoFramesAgo!.p1, previousFrame!.p1, previousFrame!.p1PathPoints, fadedPaint);
-      _drawPathWithControlPoints(canvas, twoFramesAgo!.p2, previousFrame!.p2, previousFrame!.p2PathPoints, fadedPaint);
-      _drawPathWithControlPoints(canvas, twoFramesAgo!.p3, previousFrame!.p3, previousFrame!.p3PathPoints, fadedPaint);
-      _drawPathWithControlPoints(canvas, twoFramesAgo!.p4, previousFrame!.p4, previousFrame!.p4PathPoints, fadedPaint);
-      _drawPathWithControlPoints(canvas, twoFramesAgo!.ball, previousFrame!.ball, previousFrame!.ballPathPoints, fadedPaint);
+      _drawSplinePath(
+        canvas,
+        [twoFramesAgo!.p1, ...previousFrame!.p1PathPoints, previousFrame!.p1],
+        fadedPaint,
+      );
+      _drawSplinePath(
+        canvas,
+        [twoFramesAgo!.p2, ...previousFrame!.p2PathPoints, previousFrame!.p2],
+        fadedPaint,
+      );
+      _drawSplinePath(
+        canvas,
+        [twoFramesAgo!.p3, ...previousFrame!.p3PathPoints, previousFrame!.p3],
+        fadedPaint,
+      );
+      _drawSplinePath(
+        canvas,
+        [twoFramesAgo!.p4, ...previousFrame!.p4PathPoints, previousFrame!.p4],
+        fadedPaint,
+      );
+      _drawSplinePath(
+        canvas,
+        [twoFramesAgo!.ball, ...previousFrame!.ballPathPoints, previousFrame!.ball],
+        fadedPaint,
+      );
     }
 
     // solid path: previousFrame → currentFrame
-    _drawPathWithControlPoints(canvas, previousFrame!.p1, currentFrame!.p1, currentFrame!.p1PathPoints, paint);
-    _drawPathWithControlPoints(canvas, previousFrame!.p2, currentFrame!.p2, currentFrame!.p2PathPoints, paint);
-    _drawPathWithControlPoints(canvas, previousFrame!.p3, currentFrame!.p3, currentFrame!.p3PathPoints, paint);
-    _drawPathWithControlPoints(canvas, previousFrame!.p4, currentFrame!.p4, currentFrame!.p4PathPoints, paint);
-    _drawPathWithControlPoints(canvas, previousFrame!.ball, currentFrame!.ball, currentFrame!.ballPathPoints, paint);
-  }
-
-  void _drawPathWithControlPoints(
-    Canvas canvas,
-    Offset start,
-    Offset end,
-    List<Offset> controlPoints,
-    Paint paint,
-  ) {
-    final path = Path()..moveTo(_toScreen(start).dx, _toScreen(start).dy);
-
-    if (controlPoints.isNotEmpty) {
-      if (controlPoints.length == 1) {
-        final cp = _toScreen(controlPoints[0]);
-        final e = _toScreen(end);
-        path.quadraticBezierTo(cp.dx, cp.dy, e.dx, e.dy);
-      } else {
-        final points = [...controlPoints, end];
-        var current = _toScreen(start);
-        for (int i = 0; i < points.length - 1; i++) {
-          final cp1 = (_toScreen(points[i]) + current) / 2;
-          final cp2 = (_toScreen(points[i + 1]) + _toScreen(points[i])) / 2;
-          final e = _toScreen(points[i + 1]);
-          path.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, e.dx, e.dy);
-          current = e;
-        }
-      }
-    } else {
-      path.lineTo(_toScreen(end).dx, _toScreen(end).dy);
-    }
-
-    canvas.drawPath(path, paint);
+    _drawSplinePath(
+      canvas,
+      [previousFrame!.p1, ...currentFrame!.p1PathPoints, currentFrame!.p1],
+      paint,
+    );
+    _drawSplinePath(
+      canvas,
+      [previousFrame!.p2, ...currentFrame!.p2PathPoints, currentFrame!.p2],
+      paint,
+    );
+    _drawSplinePath(
+      canvas,
+      [previousFrame!.p3, ...currentFrame!.p3PathPoints, currentFrame!.p3],
+      paint,
+    );
+    _drawSplinePath(
+      canvas,
+      [previousFrame!.p4, ...currentFrame!.p4PathPoints, currentFrame!.p4],
+      paint,
+    );
+    _drawSplinePath(
+      canvas,
+      [previousFrame!.ball, ...currentFrame!.ballPathPoints, currentFrame!.ball],
+      paint,
+    );
   }
 
   @override

@@ -1,6 +1,5 @@
 import 'package:hive/hive.dart';
 import 'package:flutter/material.dart';
-import 'bounce_point.dart';
 import 'dart:ui';
 
 
@@ -13,7 +12,6 @@ class TransitionPaths extends HiveObject {
   @HiveField(2) Offset p3Ctrl;
   @HiveField(3) Offset p4Ctrl;
   @HiveField(4) Offset ballCtrl;
-  @HiveField(5) BouncePoint? bounce;
 
   TransitionPaths({
     required this.p1Ctrl,
@@ -21,7 +19,6 @@ class TransitionPaths extends HiveObject {
     required this.p3Ctrl,
     required this.p4Ctrl,
     required this.ballCtrl,
-    this.bounce,
   });
 
   TransitionPaths copy() => TransitionPaths(

@@ -22,14 +22,13 @@ class TransitionPathsAdapter extends TypeAdapter<TransitionPaths> {
       p3Ctrl: fields[2] as Offset,
       p4Ctrl: fields[3] as Offset,
       ballCtrl: fields[4] as Offset,
-      bounce: fields[5] as BouncePoint?,
     );
   }
 
   @override
   void write(BinaryWriter writer, TransitionPaths obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.p1Ctrl)
       ..writeByte(1)
@@ -39,9 +38,7 @@ class TransitionPathsAdapter extends TypeAdapter<TransitionPaths> {
       ..writeByte(3)
       ..write(obj.p4Ctrl)
       ..writeByte(4)
-      ..write(obj.ballCtrl)
-      ..writeByte(5)
-      ..write(obj.bounce);
+      ..write(obj.ballCtrl);
   }
 
   @override
