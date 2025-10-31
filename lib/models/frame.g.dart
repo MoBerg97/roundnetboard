@@ -31,13 +31,15 @@ class FrameAdapter extends TypeAdapter<Frame> {
       p3PathPoints: (fields[11] as List?)?.cast<Offset>(),
       p4PathPoints: (fields[12] as List?)?.cast<Offset>(),
       ballPathPoints: (fields[13] as List?)?.cast<Offset>(),
+      ballHitT: fields[14] as double?,
+      ballSet: fields[15] as bool?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Frame obj) {
     writer
-      ..writeByte(14)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.p1)
       ..writeByte(1)
@@ -65,7 +67,11 @@ class FrameAdapter extends TypeAdapter<Frame> {
       ..writeByte(12)
       ..write(obj.p4PathPoints)
       ..writeByte(13)
-      ..write(obj.ballPathPoints);
+      ..write(obj.ballPathPoints)
+      ..writeByte(14)
+      ..write(obj.ballHitT)
+      ..writeByte(15)
+      ..write(obj.ballSet);
   }
 
   @override

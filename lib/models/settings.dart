@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+
 import 'package:flutter/material.dart';
 
 part 'settings.g.dart';
@@ -53,4 +54,24 @@ class Settings extends HiveObject {
   // Store last used screen size for conversion
   static Size _lastScreenSize = const Size(0, 0);
   static void setScreenSize(Size size) => _lastScreenSize = size;
+}
+
+extension SettingsMap on Settings {
+  Map<String, dynamic> toMap() => {
+        'playbackSpeed': playbackSpeed,
+        'outerCircleRadiusCm': outerCircleRadiusCm,
+        'innerCircleRadiusCm': innerCircleRadiusCm,
+        'netCircleRadiusCm': netCircleRadiusCm,
+        'outerBoundsRadiusCm': outerBoundsRadiusCm,
+        'referenceRadiusCm': referenceRadiusCm,
+      };
+
+  static Settings fromMap(Map<String, dynamic> m) => Settings(
+        playbackSpeed: (m['playbackSpeed'] ?? 1.0).toDouble(),
+        outerCircleRadiusCm: (m['outerCircleRadiusCm'] ?? 260.0).toDouble(),
+        innerCircleRadiusCm: (m['innerCircleRadiusCm'] ?? 100.0).toDouble(),
+        netCircleRadiusCm: (m['netCircleRadiusCm'] ?? 46.0).toDouble(),
+        outerBoundsRadiusCm: (m['outerBoundsRadiusCm'] ?? 850.0).toDouble(),
+        referenceRadiusCm: (m['referenceRadiusCm'] ?? 260.0).toDouble(),
+      );
 }

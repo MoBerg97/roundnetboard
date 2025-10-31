@@ -49,6 +49,16 @@ class Frame extends HiveObject {
   List<Offset> ballPathPoints;
 
   // --------------------------
+  // Ball event annotations
+  // --------------------------
+  // Hit at param t in [0,1] along previous->current transition
+  @HiveField(14)
+  double? ballHitT;
+  // Set effect toggle for this transition (centered at t=0.5)
+  @HiveField(15)
+  bool? ballSet;
+
+  // --------------------------
   // Constructor
   // --------------------------
   Frame({
@@ -66,6 +76,8 @@ class Frame extends HiveObject {
     List<Offset>? p3PathPoints,
     List<Offset>? p4PathPoints,
     List<Offset>? ballPathPoints,
+    this.ballHitT,
+    this.ballSet,
   })  : p1PathPoints = p1PathPoints ?? [],
         p2PathPoints = p2PathPoints ?? [],
         p3PathPoints = p3PathPoints ?? [],
@@ -90,6 +102,8 @@ class Frame extends HiveObject {
         p3PathPoints: List.from(p3PathPoints),
         p4PathPoints: List.from(p4PathPoints),
         ballPathPoints: List.from(ballPathPoints),
+        ballHitT: ballHitT,
+        ballSet: ballSet,
       );
 
   // --------------------------
@@ -146,4 +160,40 @@ class Frame extends HiveObject {
 
     return newFrame;
   }
+}
+
+extension FrameMap on Frame {
+  Map<String, dynamic> toMap() => {
+        'p1': [p1.dx, p1.dy],
+        'p2': [p2.dx, p2.dy],
+        'p3': [p3.dx, p3.dy],
+        'p4': [p4.dx, p4.dy],
+        'ball': [ball.dx, ball.dy],
+        'p1Rotation': p1Rotation,
+        'p2Rotation': p2Rotation,
+        'p3Rotation': p3Rotation,
+        'p4Rotation': p4Rotation,
+        'p1PathPoints': p1PathPoints.map((o) => [o.dx, o.dy]).toList(),
+        'p2PathPoints': p2PathPoints.map((o) => [o.dx, o.dy]).toList(),
+        'p3PathPoints': p3PathPoints.map((o) => [o.dx, o.dy]).toList(),
+        'p4PathPoints': p4PathPoints.map((o) => [o.dx, o.dy]).toList(),
+        'ballPathPoints': ballPathPoints.map((o) => [o.dx, o.dy]).toList(),
+      };
+
+  static Frame fromMap(Map<String, dynamic> m) => Frame(
+        p1: Offset(m['p1'][0], m['p1'][1]),
+        p2: Offset(m['p2'][0], m['p2'][1]),
+        p3: Offset(m['p3'][0], m['p3'][1]),
+        p4: Offset(m['p4'][0], m['p4'][1]),
+        ball: Offset(m['ball'][0], m['ball'][1]),
+        p1Rotation: (m['p1Rotation'] ?? 0).toDouble(),
+        p2Rotation: (m['p2Rotation'] ?? 0).toDouble(),
+        p3Rotation: (m['p3Rotation'] ?? 0).toDouble(),
+        p4Rotation: (m['p4Rotation'] ?? 0).toDouble(),
+        p1PathPoints: (m['p1PathPoints'] as List).map((e) => Offset(e[0], e[1])).toList(),
+        p2PathPoints: (m['p2PathPoints'] as List).map((e) => Offset(e[0], e[1])).toList(),
+        p3PathPoints: (m['p3PathPoints'] as List).map((e) => Offset(e[0], e[1])).toList(),
+        p4PathPoints: (m['p4PathPoints'] as List).map((e) => Offset(e[0], e[1])).toList(),
+        ballPathPoints: (m['ballPathPoints'] as List).map((e) => Offset(e[0], e[1])).toList(),
+      );
 }

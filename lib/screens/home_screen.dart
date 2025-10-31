@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/animation_project.dart';
+import '../models/settings.dart';
 import 'board_screen.dart';
-import 'settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -14,17 +14,6 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Projects'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
-            },
-          ),
-        ],
       ),
       body: ValueListenableBuilder(
         valueListenable: projectBox.listenable(),
@@ -97,7 +86,8 @@ class HomeScreen extends StatelessWidget {
             onPressed: () {
               final name = controller.text.trim();
               if (name.isNotEmpty) {
-                box.add(AnimationProject(name: name, frames: [], paths: []));
+                final defaultSettings = Settings();
+                box.add(AnimationProject(name: name, frames: [], settings: defaultSettings));
               }
               Navigator.pop(context);
             },

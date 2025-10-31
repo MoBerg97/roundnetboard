@@ -19,7 +19,7 @@ class AnimationProjectAdapter extends TypeAdapter<AnimationProject> {
     return AnimationProject(
       name: fields[0] as String,
       frames: (fields[1] as List).cast<Frame>(),
-      paths: (fields[2] as List).cast<TransitionPaths>(),
+      settings: fields[3] as Settings?,
     );
   }
 
@@ -31,8 +31,8 @@ class AnimationProjectAdapter extends TypeAdapter<AnimationProject> {
       ..write(obj.name)
       ..writeByte(1)
       ..write(obj.frames)
-      ..writeByte(2)
-      ..write(obj.paths);
+      ..writeByte(3)
+      ..write(obj.settings);
   }
 
   @override

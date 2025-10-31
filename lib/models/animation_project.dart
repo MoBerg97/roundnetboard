@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 import 'frame.dart';
-import 'transition_paths.dart';
+import 'settings.dart';
 
 part 'animation_project.g.dart';
 
@@ -11,11 +11,28 @@ class AnimationProject extends HiveObject {
   // Simple lists are fine (you'll save the whole project object when updating)
   @HiveField(1) List<Frame> frames;
 
-  @HiveField(2) List<TransitionPaths> paths;
+  // Project-specific settings
+  @HiveField(3) Settings? settings;
 
   AnimationProject({
     required this.name,
     required this.frames,
-    required this.paths,
+    required this.settings,
   });
+}
+
+extension AnimationProjectMap on AnimationProject {
+  Map<String, dynamic> toMap() => {
+        'name': name,
+        'frames': frames.map((f) => f.toMap()).toList(),
+        'settings': (settings ?? Settings()).toMap(),
+      };
+
+  static AnimationProject fromMap(Map<String, dynamic> m) => AnimationProject(
+        name: m['name'] as String,
+        frames: (m['frames'] as List)
+            .map((e) => FrameMap.fromMap(Map<String, dynamic>.from(e)))
+            .toList(),
+        settings: SettingsMap.fromMap(Map<String, dynamic>.from(m['settings'])),
+      );
 }
