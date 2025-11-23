@@ -909,6 +909,27 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             settings: _settings,
                           ),
                         ),
+                      // Full-board tap handler placed below interactive entities so that
+                      // entity GestureDetectors (players, ball, control points) receive
+                      // gestures first. If they don't handle the gesture, this fills in.
+                      Positioned.fill(
+                        child: GestureDetector(
+                          onTapUp: (details) {
+                            if (!(_isPlaying || _endedAtLastFrame)) {
+                              if (_pendingBallMark == 'hit') {
+                                _placeBallHitAt(details.localPosition, screenSize);
+                              } else {
+                                // Defer to next frame to avoid setState during build
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  _handleBoardTap(details.localPosition, screenSize);
+                                });
+                              }
+                            }
+                          },
+                          behavior: HitTestBehavior.translucent,
+                          child: Container(),
+                        ),
+                      ),
                       _buildPlayer(frameToShow.p1, frameToShow.p1Rotation, Colors.blue, "P1", screenSize),
                       _buildPlayer(frameToShow.p2, frameToShow.p2Rotation, Colors.blue, "P2", screenSize),
                       _buildPlayer(frameToShow.p3, frameToShow.p3Rotation, Colors.red, "P3", screenSize),
@@ -934,22 +955,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         if (currentFrame.ballPathPoints.isNotEmpty)
                           ..._buildPathControlPoints(currentFrame.ballPathPoints, currentFrame.ball, currentFrame.ballPathPoints.last, screenSize, "BALL"),
                       ],
-                      Positioned.fill(
-                        child: GestureDetector(
-                          onTapDown: (details) {
-                            if (!(_isPlaying || _endedAtLastFrame)) {
-                              if (_pendingBallMark == 'hit') {
-                                _placeBallHitAt(details.localPosition, screenSize);
-                              } else {
-                                _handleBoardTap(details.localPosition, screenSize);
-                              }
-                            }
-                          },
-                          
-                          behavior: HitTestBehavior.translucent,
-                          child: Container(),
-                        ),
-                      ),
+                      
                       if (currentFrame.ballHitT != null && !(_isPlaying || _endedAtLastFrame))
                         _buildHitMarker(currentFrame.ballHitT!, screenSize),
                     ],
