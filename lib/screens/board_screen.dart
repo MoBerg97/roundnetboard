@@ -491,7 +491,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (currentFrame.ballPathPoints.isEmpty) return t;
     final ctrl = currentFrame.ballPathPoints.first;
     final ctrlT = 0.5; // control is midpoint in our 2-quad approx
-    final cmOffset = 50.0;
+    final cmOffset = 150.0;
     if ((t - ctrlT).abs() < 0.02) {
       // approximate mapping: shift t by distance in cm over estimated path length
       final pathLen = (currentFrame.ball - prev.ball).distance;
