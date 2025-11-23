@@ -10,9 +10,15 @@ if (keystorePropertiesFile.exists()) {
 
 plugins {
     id("com.android.application")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:34.6.0"))
+    // FlutterFire handles Crashlytics + Analytics automatically
 }
 
 android {
@@ -31,14 +37,12 @@ android {
 
     defaultConfig {
         applicationId = "com.moritzberg.roundnetboard"
-        versionCode = 1
-        versionName = "0.1.0"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
-    
+
     signingConfigs {
         create("release") {
             keyAlias = keystoreProperties["keyAlias"]?.toString()
@@ -48,14 +52,13 @@ android {
         }
     }
 
-   buildTypes {
+    buildTypes {
         getByName("release") {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             isShrinkResources = false
         }
     }
-
 }
 
 flutter {
