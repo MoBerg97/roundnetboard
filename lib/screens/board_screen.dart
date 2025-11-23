@@ -31,7 +31,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   String? _pendingBallMark; // 'hit' | 'set'
   bool _showModifierMenu = false;
-  Offset? _lastPressPos;
+  
 
   final Map<String, Offset> _dragStartLogical = {};
   final Map<String, Offset> _dragStartScreen = {};
@@ -206,13 +206,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     // Hit modifier: linear piecewise reaching 0.5 at tHit
     if (fB.ballHitT != null && !(fB.ballSet ?? false)) {
       final th = fB.ballHitT!.clamp(0.0001, 0.9999);
-      if (t <= th) {
-        final s = 1.0 - 0.5 * (t / th);
-        return s.clamp(0.5, 1.0);
-      } else {
-        final s = 0.5 + 0.5 * ((t - th) / (1.0 - th));
-        return s.clamp(0.5, 1.0);
-      }
+      const window = 0.15; // duration around hit where scale animates
+      final d = (t - th).abs();
+      if (d > window) return 1.0;
+      // peak at 1.3x size at d==0, linear falloff to 1.0 at window boundary
+      final factor = 1.0 + 0.3 * (1.0 - (d / window));
+      return factor.clamp(1.0, 1.3);
     }
     return base;
   }
@@ -444,21 +443,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     }
   }
 
-  bool _isNearBallPathMidpoint(Offset tapPos, Size size) {
-    final prev = _getPreviousFrame();
-    if (prev == null) return false;
-    final hasCtrl = currentFrame.ballPathPoints.isNotEmpty;
-    final midCm = hasCtrl
-        ? PathEngine.fromTwoQuadratics(
-                start: prev.ball,
-                control: currentFrame.ballPathPoints.first,
-                end: currentFrame.ball,
-                resolution: 10)
-            .sample(0.5)
-        : (prev.ball + currentFrame.ball) / 2;
-    final midScreen = _toScreenPosition(midCm, size);
-    return (tapPos - midScreen).distance < 32;
-  }
+  
 
   double _nearestTOnBallPath(Offset tapPos, Size size) {
     final prev = _getPreviousFrame();
@@ -518,12 +503,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       left: pos.dx - 16,
       top: pos.dy - 16,
       child: GestureDetector(
-        onLongPressStart: (_) {
+        onPanStart: (details) {
+          // Start dragging the hit marker immediately when the user pans on it
           setState(() => _pendingBallMark = 'hit');
         },
         onPanUpdate: (details) {
           if (_pendingBallMark == 'hit') {
-            final newT = _nearestTOnBallPath(details.globalPosition, size);
+            // Convert global coordinates to local coordinates relative to the board
+            final box = context.findRenderObject() as RenderBox;
+            final localPos = box.globalToLocal(details.globalPosition);
+            final newT = _nearestTOnBallPath(localPos, size);
             setState(() => currentFrame.ballHitT = newT);
             _saveProject();
           }
@@ -590,12 +579,15 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             },
             onPanStart: (details) {
               _dragStartLogical["$label-$i"] = points[i];
-              _dragStartScreen["$label-$i"] = details.globalPosition;
+              // store screen position relative to board
+              final box = context.findRenderObject() as RenderBox;
+              _dragStartScreen["$label-$i"] = box.globalToLocal(details.globalPosition);
             },
             onPanUpdate: (details) {
               setState(() {
-                final deltaScreen =
-                    details.globalPosition - (_dragStartScreen["$label-$i"] ?? details.globalPosition);
+                final box = context.findRenderObject() as RenderBox;
+                final localPos = box.globalToLocal(details.globalPosition);
+                final deltaScreen = localPos - (_dragStartScreen["$label-$i"] ?? localPos);
                 final scalePerCm = _settings.cmToLogical(1.0, size);
                 points[i] = (_dragStartLogical["$label-$i"] ?? points[i]) + deltaScreen / scalePerCm;
               });
@@ -673,12 +665,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       child: GestureDetector(
         onPanStart: (details) {
           _dragStartLogical[label] = posCm;
-          _dragStartScreen[label] = details.globalPosition;
+          final box = context.findRenderObject() as RenderBox;
+          _dragStartScreen[label] = box.globalToLocal(details.globalPosition);
         },
         onPanUpdate: (details) {
           setState(() {
-            final deltaScreen =
-                details.globalPosition - (_dragStartScreen[label] ?? details.globalPosition);
+            final box = context.findRenderObject() as RenderBox;
+            final localPos = box.globalToLocal(details.globalPosition);
+            final deltaScreen = localPos - (_dragStartScreen[label] ?? localPos);
             final scalePerCm = _settings.cmToLogical(1.0, size);
             _updateFramePosition(
               label,
@@ -722,14 +716,23 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       left: screenPos.dx - 15 * scale,
       top: screenPos.dy - 15 * scale,
       child: GestureDetector(
+        onTap: () {
+          if (!_isPlaying && !_endedAtLastFrame) {
+            setState(() {
+              _showModifierMenu = true;
+            });
+          }
+        },
         onPanStart: (details) {
           _dragStartLogical["BALL"] = posCm;
-          _dragStartScreen["BALL"] = details.globalPosition;
+          final box = context.findRenderObject() as RenderBox;
+          _dragStartScreen["BALL"] = box.globalToLocal(details.globalPosition);
         },
         onPanUpdate: (details) {
           setState(() {
-            final deltaScreen =
-                details.globalPosition - (_dragStartScreen["BALL"] ?? details.globalPosition);
+            final box = context.findRenderObject() as RenderBox;
+            final localPos = box.globalToLocal(details.globalPosition);
+            final deltaScreen = localPos - (_dragStartScreen["BALL"] ?? localPos);
             final scalePerCm = _settings.cmToLogical(1.0, size);
             _updateFramePosition(
               "BALL",
@@ -934,7 +937,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       Positioned.fill(
                         child: GestureDetector(
                           onTapDown: (details) {
-                            _lastPressPos = details.localPosition;
                             if (!(_isPlaying || _endedAtLastFrame)) {
                               if (_pendingBallMark == 'hit') {
                                 _placeBallHitAt(details.localPosition, screenSize);
@@ -943,15 +945,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               }
                             }
                           },
-                          onLongPressStart: (_) {
-                            if (_isPlaying || _endedAtLastFrame) return;
-                            if (_lastPressPos == null) return;
-                            if (_isNearBallPathMidpoint(_lastPressPos!, screenSize)) {
-                              setState(() {
-                                _showModifierMenu = true;
-                              });
-                            }
-                          },
+                          
                           behavior: HitTestBehavior.translucent,
                           child: Container(),
                         ),
