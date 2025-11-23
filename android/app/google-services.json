@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1096161905872",
+    "project_id": "roundnetboard",
+    "storage_bucket": "roundnetboard.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1096161905872:android:c5e8f33482f99701b422d5",
+        "android_client_info": {
+          "package_name": "com.moritzberg.roundnetboard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD5d40Zj9_SIObEpAw_JbACKm9APJR0ToI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

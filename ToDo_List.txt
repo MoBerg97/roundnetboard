@@ -8,6 +8,9 @@ less clutter:
         set: instead of a circle, the current path is displayed as a line getting thicker in size from start towards the middle and thinner again from middle to end.
         hit: the star icon should be more transparent.
     the hit and set toggle buttons should have no box background.
+intuitive actions:
+    when a user drags an object and stays holding that object for more than 1sec on about the same location (within 50px), a magnifying window (1.5x) showing the object and its surrounding 10% of displaymin = min(screenwidth,screenheight) is shown hovering 20% of displaymin above the location that user is holding.
+    the magnifying window is deactivated as soon as the user changed the position of the object over 50px in the last .5 seconds
 
 timeline:
     the insert frame button should appear right next to a frame in the timeline, indicating that the next frame is created after the currently selected frame as a direct copy.
@@ -19,7 +22,7 @@ timeline:
     during playback a cursor should appear in the timeline visually indicating the current point in time of the playback. This should be checked to be in accordance with the timing of the frames.
     the timeline should have a pause button.
     the speed adjustment slider should be a slightly transparent slider without background box (only slider control point as dot and slider bar) sitting on top of the timeline with the bar in vertical direction.
-
+    the user should be able to select a duration of the animation of a frame during editing a project. duration is frame specific.
 
 ## Fixes
 the go to previous and go to next frame in the boardscreen should be removed, since the user can already select the current frame directly from the timeline.
@@ -27,7 +30,10 @@ the speed adjuster bar should not vanish until the user actively stop the playba
 the hit animation is animated too short and is too small. It should be the size of the normal ball size times 1.3
 instead of tap-and-holding the ball path to trigger the ball set hit icons to appear, the icons should appear when the ball at its current position is tapped.
 the hit control point is only draggable once after creation. Instead i want the user to be able to drag it any time (triggers when tapped <30cm from middle point of star)
+the hit control poiint is dragged by a user, but the actual point of the ball on the path is not corresponding to the tapped location.
 the dragging od the hit control point is still not on the actual position of the hit control point on screen. There is a bug, showing that the dragging position is shifted vertically in y direciton by a fixed amount.
 the hit can only be toggled on when the current frames ball path is of a distance greater than 30cm
 when a frame is selected as current frame in the boardscreen, the timeline should automatically visually scroll to show the selected frame.
 
+## Else
+setup a public github repository, that contains all code, that should be accessible for public and keeps files that should not be public protected
