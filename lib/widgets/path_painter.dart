@@ -58,130 +58,138 @@ class PathPainter extends CustomPainter {
   }
 
   void _drawSplinePath(Canvas canvas, List<Offset> points, Paint paint) {
+    // Draw the spline as sampled short segments. This allows us to vary
+    // the paint opacity per-segment to produce gradient fades along the path.
     if (points.length < 2) return;
 
-    // If only start and end: straight line
+    final samples = <Offset>[];
+    const int resolution = 400;
+
     if (points.length == 2) {
-      final p0 = _toScreen(points[0]);
-      final p1 = _toScreen(points[1]);
-      final path = Path()..moveTo(p0.dx, p0.dy)..lineTo(p1.dx, p1.dy);
-      canvas.drawPath(path, paint);
-      return;
+      samples.add(_toScreen(points[0]));
+      samples.add(_toScreen(points[1]));
+    } else if (points.length == 3) {
+      final engine = PathEngine.fromTwoQuadratics(
+        start: points[0],
+        control: points[1],
+        end: points[2],
+        resolution: resolution,
+      );
+      for (var i = 0; i <= resolution; i++) {
+        final t = i / resolution;
+        samples.add(_toScreen(engine.sample(t)));
+      }
+    } else {
+      final pts = points;
+      final totalSegments = pts.length - 3;
+      for (int seg = 0; seg < totalSegments; seg++) {
+        for (int i = 0; i <= resolution; i++) {
+          final t = i / resolution;
+          final pt = _catmullRomPoint(pts, seg, t);
+          samples.add(_toScreen(pt));
+        }
+      }
     }
 
-    // If exactly 3 points: use two-quadratic approximation via PathEngine
+    if (samples.length < 2) return;
+
+    // Draw each segment with the provided paint as a fallback for uniform stroke.
+    final segmentPaint = paint;
+    for (int i = 0; i < samples.length - 1; i++) {
+      final a = samples[i];
+      final b = samples[i + 1];
+      canvas.drawLine(a, b, segmentPaint);
+    }
+  }
+
+  void _drawFadedSegments(Canvas canvas, List<Offset> samples, Color baseColor, double startAlpha, double endAlpha, double strokeWidth) {
+    if (samples.length < 2) return;
+    final int n = samples.length - 1;
+    for (int i = 0; i < n; i++) {
+      final t = i / n; // 0..1 along path (start -> end)
+      // Interpolate opacity from startAlpha at path start (t==0) to endAlpha at path end (t==1)
+      final alpha = (startAlpha + (endAlpha - startAlpha) * t).clamp(0.0, 1.0);
+      final paint = Paint()
+        ..color = baseColor.withOpacity(alpha)
+        ..strokeWidth = strokeWidth
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(samples[i], samples[i + 1], paint);
+    }
+  }
+
+  List<Offset> _sampleSplinePoints(List<Offset> points) {
+    final samples = <Offset>[];
+    const int resolution = 400;
+    if (points.length < 2) return samples;
+
+    if (points.length == 2) {
+      samples.add(_toScreen(points[0]));
+      samples.add(_toScreen(points[1]));
+      return samples;
+    }
+
     if (points.length == 3) {
       final engine = PathEngine.fromTwoQuadratics(
         start: points[0],
         control: points[1],
         end: points[2],
-        resolution: 400,
+        resolution: resolution,
       );
-      final path = Path();
-      const int resolution = 400;
-      if (resolution > 0) {
-        final first = _toScreen(engine.sample(0.0));
-        path.moveTo(first.dx, first.dy);
-        for (var i = 1; i <= resolution; i++) {
-          final t = i / resolution;
-          final s = _toScreen(engine.sample(t));
-          path.lineTo(s.dx, s.dy);
-        }
+      for (var i = 0; i <= resolution; i++) {
+        final t = i / resolution;
+        samples.add(_toScreen(engine.sample(t)));
       }
-      canvas.drawPath(path, paint);
-      return;
+      return samples;
     }
 
-    // For 4+ points: Catmull-Rom spline (local implementation)
     final pts = points;
-    final path = Path();
-    const resolution = 400;
     final totalSegments = pts.length - 3;
     for (int seg = 0; seg < totalSegments; seg++) {
       for (int i = 0; i <= resolution; i++) {
         final t = i / resolution;
         final pt = _catmullRomPoint(pts, seg, t);
-        final screenPt = _toScreen(pt);
-        if (seg == 0 && i == 0) {
-          path.moveTo(screenPt.dx, screenPt.dy);
-        } else {
-          path.lineTo(screenPt.dx, screenPt.dy);
-        }
+        samples.add(_toScreen(pt));
       }
     }
-    canvas.drawPath(path, paint);
+    return samples;
   }
 
   @override
   void paint(Canvas canvas, Size size) {
     if (previousFrame == null || currentFrame == null) return;
 
-    final paint = Paint()
-      ..color = Colors.black
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
+    // Paint objects are created per-segment in _drawFadedSegments so no
+    // uniform paint is required here.
 
-    final fadedPaint = Paint()
-      ..color = Colors.black.withOpacity(0.3)
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    // faded path: twoFramesAgo → previousFrame
+    // faded path: twoFramesAgo → previousFrame (older path)
     if (twoFramesAgo != null) {
-      _drawSplinePath(
-        canvas,
-        [twoFramesAgo!.p1, ...previousFrame!.p1PathPoints, previousFrame!.p1],
-        fadedPaint,
-      );
-      _drawSplinePath(
-        canvas,
-        [twoFramesAgo!.p2, ...previousFrame!.p2PathPoints, previousFrame!.p2],
-        fadedPaint,
-      );
-      _drawSplinePath(
-        canvas,
-        [twoFramesAgo!.p3, ...previousFrame!.p3PathPoints, previousFrame!.p3],
-        fadedPaint,
-      );
-      _drawSplinePath(
-        canvas,
-        [twoFramesAgo!.p4, ...previousFrame!.p4PathPoints, previousFrame!.p4],
-        fadedPaint,
-      );
-      _drawSplinePath(
-        canvas,
-        [twoFramesAgo!.ball, ...previousFrame!.ballPathPoints, previousFrame!.ball],
-        fadedPaint,
-      );
+      final p1Samples = _sampleSplinePoints([twoFramesAgo!.p1, ...previousFrame!.p1PathPoints, previousFrame!.p1]);
+      final p2Samples = _sampleSplinePoints([twoFramesAgo!.p2, ...previousFrame!.p2PathPoints, previousFrame!.p2]);
+      final p3Samples = _sampleSplinePoints([twoFramesAgo!.p3, ...previousFrame!.p3PathPoints, previousFrame!.p3]);
+      final p4Samples = _sampleSplinePoints([twoFramesAgo!.p4, ...previousFrame!.p4PathPoints, previousFrame!.p4]);
+      final ballSamples = _sampleSplinePoints([twoFramesAgo!.ball, ...previousFrame!.ballPathPoints, previousFrame!.ball]);
+
+      // Per ToDo: previous frame fades from start alpha=1.0 to end alpha=0.75
+      _drawFadedSegments(canvas, p1Samples, Colors.black, 1.0, 0.75, 2.0);
+      _drawFadedSegments(canvas, p2Samples, Colors.black, 1.0, 0.75, 2.0);
+      _drawFadedSegments(canvas, p3Samples, Colors.black, 1.0, 0.75, 2.0);
+      _drawFadedSegments(canvas, p4Samples, Colors.black, 1.0, 0.75, 2.0);
+      _drawFadedSegments(canvas, ballSamples, Colors.black, 1.0, 0.75, 2.0);
     }
 
-    // solid path: previousFrame → currentFrame
-    _drawSplinePath(
-      canvas,
-      [previousFrame!.p1, ...currentFrame!.p1PathPoints, currentFrame!.p1],
-      paint,
-    );
-    _drawSplinePath(
-      canvas,
-      [previousFrame!.p2, ...currentFrame!.p2PathPoints, currentFrame!.p2],
-      paint,
-    );
-    _drawSplinePath(
-      canvas,
-      [previousFrame!.p3, ...currentFrame!.p3PathPoints, currentFrame!.p3],
-      paint,
-    );
-    _drawSplinePath(
-      canvas,
-      [previousFrame!.p4, ...currentFrame!.p4PathPoints, currentFrame!.p4],
-      paint,
-    );
-    _drawSplinePath(
-      canvas,
-      [previousFrame!.ball, ...currentFrame!.ballPathPoints, currentFrame!.ball],
-      paint,
-    );
+    // solid path: previousFrame → currentFrame (preview) — fade from start alpha=0.5 to end alpha=0.0
+    final s1 = _sampleSplinePoints([previousFrame!.p1, ...currentFrame!.p1PathPoints, currentFrame!.p1]);
+    final s2 = _sampleSplinePoints([previousFrame!.p2, ...currentFrame!.p2PathPoints, currentFrame!.p2]);
+    final s3 = _sampleSplinePoints([previousFrame!.p3, ...currentFrame!.p3PathPoints, currentFrame!.p3]);
+    final s4 = _sampleSplinePoints([previousFrame!.p4, ...currentFrame!.p4PathPoints, currentFrame!.p4]);
+    final sBall = _sampleSplinePoints([previousFrame!.ball, ...currentFrame!.ballPathPoints, currentFrame!.ball]);
+
+    _drawFadedSegments(canvas, s1, Colors.black, 0.5, 0.0, 2.0);
+    _drawFadedSegments(canvas, s2, Colors.black, 0.5, 0.0, 2.0);
+    _drawFadedSegments(canvas, s3, Colors.black, 0.5, 0.0, 2.0);
+    _drawFadedSegments(canvas, s4, Colors.black, 0.5, 0.0, 2.0);
+    _drawFadedSegments(canvas, sBall, Colors.black, 0.5, 0.0, 2.0);
   }
 
   @override
