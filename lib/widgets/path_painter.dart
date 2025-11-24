@@ -145,11 +145,13 @@ class PathPainter extends CustomPainter {
       final p4Samples = _sampleSplinePoints([twoFramesAgo!.p4, ...previousFrame!.p4PathPoints, previousFrame!.p4]);
       final ballSamples = _sampleSplinePoints([twoFramesAgo!.ball, ...previousFrame!.ballPathPoints, previousFrame!.ball]);
       // Older path: fade from 30% at the newer (previous) frame to 5% at the older (twoFramesAgo)
-      _drawFadedSegments(canvas, p1Samples, Colors.black, 0.30, 0.05, 2.0);
-      _drawFadedSegments(canvas, p2Samples, Colors.black, 0.30, 0.05, 2.0);
-      _drawFadedSegments(canvas, p3Samples, Colors.black, 0.30, 0.05, 2.0);
-      _drawFadedSegments(canvas, p4Samples, Colors.black, 0.30, 0.05, 2.0);
-      _drawFadedSegments(canvas, ballSamples, Colors.black, 0.30, 0.05, 2.0);
+      // in the following code make sure, that the Frames are in the right order
+      // (canvas, object, Color, olderFrame, newerFrame, 2.0);
+      _drawFadedSegments(canvas, p1Samples, Colors.black, 0.05, 0.30, 2.0);
+      _drawFadedSegments(canvas, p2Samples, Colors.black, 0.05, 0.30, 2.0);
+      _drawFadedSegments(canvas, p3Samples, Colors.black, 0.05, 0.30, 2.0);
+      _drawFadedSegments(canvas, p4Samples, Colors.black, 0.05, 0.30, 2.0);
+      _drawFadedSegments(canvas, ballSamples, Colors.black, 0.05, 0.30, 2.0);
     }
 
     // solid path: previousFrame -> currentFrame (preview)
@@ -159,11 +161,13 @@ class PathPainter extends CustomPainter {
     final s3 = _sampleSplinePoints([previousFrame!.p3, ...currentFrame!.p3PathPoints, currentFrame!.p3]);
     final s4 = _sampleSplinePoints([previousFrame!.p4, ...currentFrame!.p4PathPoints, currentFrame!.p4]);
     final sBall = _sampleSplinePoints([previousFrame!.ball, ...currentFrame!.ballPathPoints, currentFrame!.ball]);
-    _drawFadedSegments(canvas, s1, Colors.black, 1.0, 0.30, 2.0);
-    _drawFadedSegments(canvas, s2, Colors.black, 1.0, 0.30, 2.0);
-    _drawFadedSegments(canvas, s3, Colors.black, 1.0, 0.30, 2.0);
-    _drawFadedSegments(canvas, s4, Colors.black, 1.0, 0.30, 2.0);
-    _drawFadedSegments(canvas, sBall, Colors.black, 1.0, 0.30, 2.0);
+    // in the following code make sure, that the Frames are in the right order
+    // (canvas, object, Color, olderFrame, newerFrame, 2.0);
+    _drawFadedSegments(canvas, s1, Colors.black, 0.30, 1.0, 2.0);
+    _drawFadedSegments(canvas, s2, Colors.black, 0.30, 1.0, 2.0);
+    _drawFadedSegments(canvas, s3, Colors.black, 0.30, 1.0, 2.0);
+    _drawFadedSegments(canvas, s4, Colors.black, 0.30, 1.0, 2.0);
+    _drawFadedSegments(canvas, sBall, Colors.black, 0.30, 1.0, 2.0);
   }
 
   @override
