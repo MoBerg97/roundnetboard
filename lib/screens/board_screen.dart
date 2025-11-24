@@ -37,6 +37,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   final Map<String, Offset> _dragStartScreen = {};
   // Key for the board render box to compute coordinates reliably
   final GlobalKey _boardKey = GlobalKey();
+  late final ScrollController _timelineController;
 
   @override
   void initState() {
@@ -74,12 +75,29 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     }
     _ticker = createTicker(_onTick);
     _history = HistoryManager(widget.project);
+    _timelineController = ScrollController();
   }
 
   @override
   void dispose() {
     _ticker.dispose();
+    _timelineController.dispose();
     super.dispose();
+  }
+
+  void _scrollToSelectedFrame() {
+    final index = widget.project.frames.indexOf(currentFrame);
+    if (index < 0) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!_timelineController.hasClients) return;
+      const itemExtent = 68.0; // 60 width + 2*4 margin
+      final viewport = _timelineController.position.viewportDimension;
+      final target = index * itemExtent - (viewport - itemExtent) / 2;
+      final max = _timelineController.position.maxScrollExtent;
+      final offset = target.clamp(0.0, max);
+      _timelineController.animateTo(offset, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    });
   }
 
   Offset _boardCenter(Size size) {
@@ -317,6 +335,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     setState(() {
       currentFrame = widget.project.frames[newIdx + 1];
     });
+    _scrollToSelectedFrame();
   }
 
   void _confirmDeleteFrame(Frame frame) async {
@@ -696,6 +715,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           setState(() {
             currentFrame = widget.project.frames[newIdx];
           });
+          _scrollToSelectedFrame();
           _dragStartLogical.remove(label);
           _dragStartScreen.remove(label);
         },
@@ -750,6 +770,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           setState(() {
             currentFrame = widget.project.frames[newIdx];
           });
+          _scrollToSelectedFrame();
           _dragStartLogical.remove("BALL");
           _dragStartScreen.remove("BALL");
         },
@@ -995,6 +1016,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     child: AbsorbPointer(
                       absorbing: _isPlaying || _endedAtLastFrame,
                       child: ListView.builder(
+                        controller: _timelineController,
                         scrollDirection: Axis.horizontal,
                         itemCount: widget.project.frames.length,
                         itemBuilder: (context, index) {
@@ -1002,7 +1024,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           final isSelected = frame == currentFrame;
                           return GestureDetector(
                             onTap: () {
-                              if (!(_isPlaying || _endedAtLastFrame)) setState(() => currentFrame = frame);
+                              if (!(_isPlaying || _endedAtLastFrame)) {
+                                setState(() {
+                                  currentFrame = frame;
+                                });
+                                _scrollToSelectedFrame();
+                              }
                             },
                             child: Stack(
                               children: [
@@ -1062,7 +1089,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             ? null
                             : () {
                                 final idx = widget.project.frames.indexOf(currentFrame);
-                                if (idx > 0) setState(() => currentFrame = widget.project.frames[idx - 1]);
+                                if (idx > 0) {
+                                  setState(() => currentFrame = widget.project.frames[idx - 1]);
+                                  _scrollToSelectedFrame();
+                                }
                               },
                         icon: const Icon(Icons.skip_previous),
                       ),
@@ -1075,6 +1105,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 final idx = widget.project.frames.indexOf(currentFrame);
                                 if (idx < widget.project.frames.length - 1) {
                                   setState(() => currentFrame = widget.project.frames[idx + 1]);
+                                  _scrollToSelectedFrame();
                                 }
                               },
                         icon: const Icon(Icons.skip_next),
@@ -1094,7 +1125,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             ? () {
                                 final idx = _history.undo();
                                 if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
-                                  setState(() => currentFrame = widget.project.frames[idx]);
+                                  setState(() {
+                                    currentFrame = widget.project.frames[idx];
+                                  });
+                                  _scrollToSelectedFrame();
                                 } else {
                                   setState(() {});
                                 }
@@ -1111,7 +1145,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             ? () {
                                 final idx = _history.redo();
                                 if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
-                                  setState(() => currentFrame = widget.project.frames[idx]);
+                                  setState(() {
+                                    currentFrame = widget.project.frames[idx];
+                                  });
+                                  _scrollToSelectedFrame();
                                 } else {
                                   setState(() {});
                                 }
