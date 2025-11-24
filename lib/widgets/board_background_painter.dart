@@ -29,7 +29,7 @@ class BoardBackgroundPainter extends CustomPainter {
     // --- Net circle ---
     final netRadius = settings.netCircleRadiusPx;
     final netPaint = Paint()
-      ..color = Colors.black.withOpacity(0.4)
+      ..color = Colors.black.withAlpha((0.4 * 255).round())
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 

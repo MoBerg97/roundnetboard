@@ -76,7 +76,10 @@ class PathPainter extends CustomPainter {
     final shader = ui.Gradient.linear(
       samples.first,
       samples.last,
-      [baseColor.withOpacity(startAlpha.clamp(0.0, 1.0)), baseColor.withOpacity(endAlpha.clamp(0.0, 1.0))],
+      [
+        baseColor.withAlpha((startAlpha.clamp(0.0, 1.0) * 255).round()),
+        baseColor.withAlpha((endAlpha.clamp(0.0, 1.0) * 255).round()),
+      ],
     );
     final paint = Paint()
       ..shader = shader
@@ -141,27 +144,26 @@ class PathPainter extends CustomPainter {
       final p3Samples = _sampleSplinePoints([twoFramesAgo!.p3, ...previousFrame!.p3PathPoints, previousFrame!.p3]);
       final p4Samples = _sampleSplinePoints([twoFramesAgo!.p4, ...previousFrame!.p4PathPoints, previousFrame!.p4]);
       final ballSamples = _sampleSplinePoints([twoFramesAgo!.ball, ...previousFrame!.ballPathPoints, previousFrame!.ball]);
-      // Older path: fade from 30% at the oldest point to 10% at the newer point
-      _drawFadedSegments(canvas, p1Samples, Colors.black, 0.3, 0.1, 2.0);
-      _drawFadedSegments(canvas, p2Samples, Colors.black, 0.3, 0.1, 2.0);
-      _drawFadedSegments(canvas, p3Samples, Colors.black, 0.3, 0.1, 2.0);
-      _drawFadedSegments(canvas, p4Samples, Colors.black, 0.3, 0.1, 2.0);
-      _drawFadedSegments(canvas, ballSamples, Colors.black, 0.3, 0.1, 2.0);
+      // Older path: fade from 30% at the newer (previous) frame to 5% at the older (twoFramesAgo)
+      _drawFadedSegments(canvas, p1Samples, Colors.black, 0.30, 0.05, 2.0);
+      _drawFadedSegments(canvas, p2Samples, Colors.black, 0.30, 0.05, 2.0);
+      _drawFadedSegments(canvas, p3Samples, Colors.black, 0.30, 0.05, 2.0);
+      _drawFadedSegments(canvas, p4Samples, Colors.black, 0.30, 0.05, 2.0);
+      _drawFadedSegments(canvas, ballSamples, Colors.black, 0.30, 0.05, 2.0);
     }
 
-    // solid path: previousFrame → currentFrame (preview)
-    // Fade from 50% at the previous-frame end (start of this segment)
-    // to 100% (fully visible) at the current-frame end (path endpoint).
+    // solid path: previousFrame -> currentFrame (preview)
+    // Preview path: fade from fully visible at the previous-frame end to 30% at the current-frame end.
     final s1 = _sampleSplinePoints([previousFrame!.p1, ...currentFrame!.p1PathPoints, currentFrame!.p1]);
     final s2 = _sampleSplinePoints([previousFrame!.p2, ...currentFrame!.p2PathPoints, currentFrame!.p2]);
     final s3 = _sampleSplinePoints([previousFrame!.p3, ...currentFrame!.p3PathPoints, currentFrame!.p3]);
     final s4 = _sampleSplinePoints([previousFrame!.p4, ...currentFrame!.p4PathPoints, currentFrame!.p4]);
     final sBall = _sampleSplinePoints([previousFrame!.ball, ...currentFrame!.ballPathPoints, currentFrame!.ball]);
-    _drawFadedSegments(canvas, s1, Colors.black, 0.5, 1.0, 2.0);
-    _drawFadedSegments(canvas, s2, Colors.black, 0.5, 1.0, 2.0);
-    _drawFadedSegments(canvas, s3, Colors.black, 0.5, 1.0, 2.0);
-    _drawFadedSegments(canvas, s4, Colors.black, 0.5, 1.0, 2.0);
-    _drawFadedSegments(canvas, sBall, Colors.black, 0.5, 1.0, 2.0);
+    _drawFadedSegments(canvas, s1, Colors.black, 1.0, 0.30, 2.0);
+    _drawFadedSegments(canvas, s2, Colors.black, 1.0, 0.30, 2.0);
+    _drawFadedSegments(canvas, s3, Colors.black, 1.0, 0.30, 2.0);
+    _drawFadedSegments(canvas, s4, Colors.black, 1.0, 0.30, 2.0);
+    _drawFadedSegments(canvas, sBall, Colors.black, 1.0, 0.30, 2.0);
   }
 
   @override
