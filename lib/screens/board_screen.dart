@@ -35,6 +35,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   final Map<String, Offset> _dragStartLogical = {};
   final Map<String, Offset> _dragStartScreen = {};
+  // Key for the board render box to compute coordinates reliably
+  final GlobalKey _boardKey = GlobalKey();
 
   @override
   void initState() {
@@ -507,10 +509,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           // Start dragging the hit marker immediately when the user pans on it
           setState(() => _pendingBallMark = 'hit');
         },
-        onPanUpdate: (details) {
+            onPanUpdate: (details) {
           if (_pendingBallMark == 'hit') {
             // Convert global coordinates to local coordinates relative to the board
-            final box = context.findRenderObject() as RenderBox;
+            final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
             final localPos = box.globalToLocal(details.globalPosition);
             final newT = _nearestTOnBallPath(localPos, size);
             setState(() => currentFrame.ballHitT = newT);
@@ -580,12 +582,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             onPanStart: (details) {
               _dragStartLogical["$label-$i"] = points[i];
               // store screen position relative to board
-              final box = context.findRenderObject() as RenderBox;
+              final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
               _dragStartScreen["$label-$i"] = box.globalToLocal(details.globalPosition);
             },
             onPanUpdate: (details) {
               setState(() {
-                final box = context.findRenderObject() as RenderBox;
+                final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
                 final localPos = box.globalToLocal(details.globalPosition);
                 final deltaScreen = localPos - (_dragStartScreen["$label-$i"] ?? localPos);
                 final scalePerCm = _settings.cmToLogical(1.0, size);
@@ -665,12 +667,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       child: GestureDetector(
         onPanStart: (details) {
           _dragStartLogical[label] = posCm;
-          final box = context.findRenderObject() as RenderBox;
+          final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
           _dragStartScreen[label] = box.globalToLocal(details.globalPosition);
         },
         onPanUpdate: (details) {
           setState(() {
-            final box = context.findRenderObject() as RenderBox;
+            final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
             final localPos = box.globalToLocal(details.globalPosition);
             final deltaScreen = localPos - (_dragStartScreen[label] ?? localPos);
             final scalePerCm = _settings.cmToLogical(1.0, size);
@@ -725,12 +727,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         },
         onPanStart: (details) {
           _dragStartLogical["BALL"] = posCm;
-          final box = context.findRenderObject() as RenderBox;
+          final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
           _dragStartScreen["BALL"] = box.globalToLocal(details.globalPosition);
         },
         onPanUpdate: (details) {
           setState(() {
-            final box = context.findRenderObject() as RenderBox;
+            final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
             final localPos = box.globalToLocal(details.globalPosition);
             final deltaScreen = localPos - (_dragStartScreen["BALL"] ?? localPos);
             final scalePerCm = _settings.cmToLogical(1.0, size);
@@ -888,6 +890,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               child: AbsorbPointer(
                 absorbing: _isPlaying || _endedAtLastFrame,
                 child: Container(
+                  key: _boardKey,
                   color: Colors.green[400],
                   child: Stack(
                     children: [
