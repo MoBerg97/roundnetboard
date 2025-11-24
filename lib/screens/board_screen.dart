@@ -219,11 +219,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     // Hit modifier: shrink to a minimum of 0.25 at hit time, easing back to 1.0
     if (fB.ballHitT != null && !(fB.ballSet ?? false)) {
       final th = fB.ballHitT!.clamp(0.0, 1.0);
-      const window = 0.15; // duration around hit where scale animates
+      const window = 0.25; // duration around hit where scale animates (longer for visibility)
       final d = (t - th).abs();
       if (d > window) return 1.0;
-      // scale ranges from 0.25 (at d==0) to 1.0 (at d==window)
-      final scale = 0.25 + (1.0 - 0.25) * (d / window);
+      // Use a quadratic easing so the size change is more noticeable and slower near the center
+      final frac = (d / window).clamp(0.0, 1.0);
+      final eased = frac * frac; // slower ramp-up from the center outward
+      final scale = 0.25 + (1.0 - 0.25) * eased;
       return scale.clamp(0.25, 1.0);
     }
     return base;
@@ -802,9 +804,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final screenSize = MediaQuery.of(context).size;
     Settings.setScreenSize(screenSize);
     final isPlayback = _isPlaying && _animatedFrame != null;
+    final prev = _getPreviousFrame();
     final frameToShow = _endedAtLastFrame
         ? widget.project.frames.last
         : (isPlayback ? _animatedFrame! : currentFrame);
+    final double timelineHeight = _isPlaying ? 80.0 : 120.0; // compress timeline when playing
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
@@ -818,11 +822,15 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           actions: [
             IconButton(
               icon: const Icon(Icons.settings),
-              onPressed: () {
-                Navigator.push(
+              onPressed: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => SettingsScreen(project: widget.project)),
                 );
+                // Reload settings after returning from settings screen so toggles take effect immediately
+                setState(() {
+                  _settings = widget.project.settings!;
+                });
               },
             ),
           ],
@@ -961,7 +969,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             final opacity = (info['opacity'] as double?) ?? 1.0;
                             return Positioned(
                               left: pos.dx - 12,
-                                top: pos.dy + 12,
+                                top: pos.dy - 12,
                               child: Opacity(
                                 opacity: opacity,
                                 child: CustomPaint(
@@ -979,15 +987,15 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         _buildSetPreview(screenSize),
                       if (!(_isPlaying || _endedAtLastFrame)) ...[
                         if (currentFrame.p1PathPoints.isNotEmpty)
-                          ..._buildPathControlPoints(currentFrame.p1PathPoints, currentFrame.p1, currentFrame.p1PathPoints.last, screenSize, "P1"),
+                          ..._buildPathControlPoints(currentFrame.p1PathPoints, prev != null ? prev.p1 : currentFrame.p1, currentFrame.p1, screenSize, "P1"),
                         if (currentFrame.p2PathPoints.isNotEmpty)
-                          ..._buildPathControlPoints(currentFrame.p2PathPoints, currentFrame.p2, currentFrame.p2PathPoints.last, screenSize, "P2"),
+                          ..._buildPathControlPoints(currentFrame.p2PathPoints, prev != null ? prev.p2 : currentFrame.p2, currentFrame.p2, screenSize, "P2"),
                         if (currentFrame.p3PathPoints.isNotEmpty)
-                          ..._buildPathControlPoints(currentFrame.p3PathPoints, currentFrame.p3, currentFrame.p3PathPoints.last, screenSize, "P3"),
+                          ..._buildPathControlPoints(currentFrame.p3PathPoints, prev != null ? prev.p3 : currentFrame.p3, currentFrame.p3, screenSize, "P3"),
                         if (currentFrame.p4PathPoints.isNotEmpty)
-                          ..._buildPathControlPoints(currentFrame.p4PathPoints, currentFrame.p4, currentFrame.p4PathPoints.last, screenSize, "P4"),
+                          ..._buildPathControlPoints(currentFrame.p4PathPoints, prev != null ? prev.p4 : currentFrame.p4, currentFrame.p4, screenSize, "P4"),
                         if (currentFrame.ballPathPoints.isNotEmpty)
-                          ..._buildPathControlPoints(currentFrame.ballPathPoints, currentFrame.ball, currentFrame.ballPathPoints.last, screenSize, "BALL"),
+                          ..._buildPathControlPoints(currentFrame.ballPathPoints, prev != null ? prev.ball : currentFrame.ball, currentFrame.ball, screenSize, "BALL"),
                       ],
                       
                       if (currentFrame.ballHitT != null && !(_isPlaying || _endedAtLastFrame))
@@ -997,26 +1005,110 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 ),
               ),
             ),
-            Container(
-              height: 120,
+            AnimatedContainer(
+              height: timelineHeight,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
               color: Colors.grey[200],
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Column(
                 children: [
                   if (_isPlaying)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Column(
                         children: [
-                          const Text("Speed", style: TextStyle(fontSize: 12)),
-                          Expanded(
-                            child: Slider(
-                              value: _playbackSpeed,
-                              min: 0.1,
-                              max: 3.0,
-                              divisions: 29,
-                              label: "${_playbackSpeed.toStringAsFixed(1)}x",
-                              onChanged: (v) => setState(() => _playbackSpeed = v),
+                          // Speed slider
+                          Row(
+                            children: [
+                              const Text("Speed", style: TextStyle(fontSize: 12)),
+                              Expanded(
+                                child: Slider(
+                                  value: _playbackSpeed,
+                                  min: 0.1,
+                                  max: 3.0,
+                                  divisions: 29,
+                                  label: "${_playbackSpeed.toStringAsFixed(1)}x",
+                                  onChanged: (v) => setState(() => _playbackSpeed = v),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          // Playback progress bar with cursor
+                          GestureDetector(
+                            onHorizontalDragUpdate: (details) {
+                              if (widget.project.frames.length < 2) return;
+                              // Allow manual seeking during playback for better UX
+                              setState(() {
+                                final box = context.findRenderObject() as RenderBox?;
+                                if (box != null) {
+                                  final localX = details.globalPosition.dx - box.globalToLocal(Offset.zero).dx;
+                                  final frac = (localX / box.size.width).clamp(0.0, 1.0);
+                                  _playbackFrameIndex = (frac * (widget.project.frames.length - 1)).floor();
+                                  _playbackT = (frac * (widget.project.frames.length - 1)) - _playbackFrameIndex;
+                                }
+                              });
+                            },
+                            child: Container(
+                              height: 24,
+                              margin: const EdgeInsets.symmetric(horizontal: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Stack(
+                                children: [
+                                  // Background progress
+                                  Container(
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      color: Colors.blueAccent.withAlpha((0.3 * 255).round()),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    width: ((_playbackFrameIndex + _playbackT) / (widget.project.frames.length - 1).toDouble()) * MediaQuery.of(context).size.width * 0.88,
+                                  ),
+                                  // Frame indicator text
+                                  Center(
+                                    child: Text(
+                                      "${_playbackFrameIndex + 1}/${widget.project.frames.length}",
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_endedAtLastFrame)
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.orange[100],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.orange, width: 2),
+                            ),
+                            child: Column(
+                              children: [
+                                const Icon(Icons.check_circle, color: Colors.green, size: 32),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Playback Finished',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'All controls are blocked.\nPress Stop to return to editing.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -1032,6 +1124,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         itemBuilder: (context, index) {
                           final frame = widget.project.frames[index];
                           final isSelected = frame == currentFrame;
+                          // During playback, highlight the current playback frame
+                          final isPlayingFrame = _isPlaying && index == _playbackFrameIndex;
                           return GestureDetector(
                             onTap: () {
                               if (!(_isPlaying || _endedAtLastFrame)) {
@@ -1047,7 +1141,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   width: 60,
                                   margin: const EdgeInsets.symmetric(horizontal: 4),
                                   decoration: BoxDecoration(
-                                    color: isSelected ? Colors.blueAccent : Colors.grey[400],
+                                    color: isPlayingFrame 
+                                      ? Colors.purpleAccent 
+                                      : (isSelected ? Colors.blueAccent : Colors.grey[400]),
                                     borderRadius: BorderRadius.circular(8),
                                     border: isSelected ? Border.all(color: Colors.yellow, width: 3) : null,
                                   ),
