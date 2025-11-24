@@ -6,11 +6,27 @@ less clutter:
     lines of previous frame can be set to be not displayed in current frame as a setting in the settings menu of the board screen (three dots in app bar)
     adjust the hit and set symbols on the boardscreen (not the icons to toggle them):
         set: instead of a circle, the current path is displayed as a line getting thicker in size from start towards the middle and thinner again from middle to end.
-        hit: the star icon should be more transparent.
+        hit: the star icon should be more transparent and only grey color, no outline.
     the hit and set toggle buttons should have no box background.
 intuitive actions:
     when a user drags an object and stays holding that object for more than 1sec on about the same location (within 50px), a magnifying window (1.5x) showing the object and its surrounding 10% of displaymin = min(screenwidth,screenheight) is shown hovering 20% of displaymin above the location that user is holding.
     the magnifying window is deactivated as soon as the user changed the position of the object over 50px in the last .5 seconds
+
+court:
+    the court should be zoomable with two states, first state is as it currently is, showing at least 1.2 times servezone_radius around the center of the court. second zoom stage should be the whole court towards the outer boundary at 850cm radius around the center of court.
+    the user should be able to select standard court or empty court as a drop down menu setting when opening a new porject.
+
+annotations:
+    there should be a foldable menu for annotations that provides frame specific annotations.
+    the annotations should be selectable from a variety of icons indicating the annotation to add.
+    add a line annotation tool, that also is editable in color, user can manually edit the end points of the line.
+    when a line should be added (tap on line icon), first the user must set the two endpoints of the line. then that line is created and henceforth editable.
+    annotations should be frame specific and also should be copyed along all other objects when a new frame is inserted.
+
+players:
+    the color of player objects should be editable. 
+    the user should be able to additionally add a single character shown on the player object always (project specific).
+    
 
 timeline:
     the insert frame button should appear right next to a frame in the timeline, indicating that the next frame is created after the currently selected frame as a direct copy.
