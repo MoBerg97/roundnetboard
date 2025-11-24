@@ -23,6 +23,8 @@ class Settings extends HiveObject {
 
   @HiveField(5)
   double referenceRadiusCm;
+  @HiveField(6)
+  bool showPreviousFrameLines;
 
   Settings({
     this.playbackSpeed = 1.0,
@@ -31,6 +33,7 @@ class Settings extends HiveObject {
     this.netCircleRadiusCm = 46.0,
     this.outerBoundsRadiusCm = 850.0,
     this.referenceRadiusCm = 260.0,
+    this.showPreviousFrameLines = true,
   });
 
   // Converts cm to logical units (pixels)
@@ -64,6 +67,7 @@ extension SettingsMap on Settings {
         'netCircleRadiusCm': netCircleRadiusCm,
         'outerBoundsRadiusCm': outerBoundsRadiusCm,
         'referenceRadiusCm': referenceRadiusCm,
+      'showPreviousFrameLines': showPreviousFrameLines,
       };
 
   static Settings fromMap(Map<String, dynamic> m) => Settings(
@@ -73,5 +77,6 @@ extension SettingsMap on Settings {
         netCircleRadiusCm: (m['netCircleRadiusCm'] ?? 46.0).toDouble(),
         outerBoundsRadiusCm: (m['outerBoundsRadiusCm'] ?? 850.0).toDouble(),
         referenceRadiusCm: (m['referenceRadiusCm'] ?? 260.0).toDouble(),
+      showPreviousFrameLines: (m['showPreviousFrameLines'] ?? true) as bool,
       );
 }

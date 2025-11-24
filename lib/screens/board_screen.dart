@@ -118,14 +118,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         );
   }
 
-  Offset _toLogicalPosition(Offset screenPos, Size size) {
-    final center = _boardCenter(size);
-    final scalePerCm = _settings.cmToLogical(1.0, size);
-    return Offset(
-      (screenPos.dx - center.dx) / scalePerCm,
-      (screenPos.dy - center.dy) / scalePerCm,
-    );
-  }
+  // removed unused _toLogicalPosition helper
 
   void _onTick(Duration elapsed) {
     if (!_isPlaying) return;
@@ -218,38 +211,27 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final frames = widget.project.frames;
     if (_playbackFrameIndex >= frames.length - 1) return base;
     final fB = frames[_playbackFrameIndex + 1];
-    // Set modifier: quadratic peak at t=0.5, from 1.0 -> 2.0 -> 1.0
+    // Set animation: subtle swell when set is enabled (use existing behavior)
     if ((fB.ballSet ?? false) && fB.ballHitT == null) {
       final quad = 1.0 + (1.0 - 4.0 * (t - 0.5) * (t - 0.5));
       return quad.clamp(0.5, 2.0);
     }
-    // Hit modifier: linear piecewise reaching 0.5 at tHit
+    // Hit modifier: shrink to a minimum of 0.25 at hit time, easing back to 1.0
     if (fB.ballHitT != null && !(fB.ballSet ?? false)) {
-      final th = fB.ballHitT!.clamp(0.0001, 0.9999);
+      final th = fB.ballHitT!.clamp(0.0, 1.0);
       const window = 0.15; // duration around hit where scale animates
       final d = (t - th).abs();
       if (d > window) return 1.0;
-      // peak at 1.3x size at d==0, linear falloff to 1.0 at window boundary
-      final factor = 1.0 + 0.3 * (1.0 - (d / window));
-      return factor.clamp(1.0, 1.3);
+      // scale ranges from 0.25 (at d==0) to 1.0 (at d==window)
+      final scale = 0.25 + (1.0 - 0.25) * (d / window);
+      return scale.clamp(0.25, 1.0);
     }
     return base;
   }
 
-  double _starOpacityAt(double t) {
-    final frames = widget.project.frames;
-    if (_playbackFrameIndex >= frames.length - 1) return 0;
-    final fB = frames[_playbackFrameIndex + 1];
-    if (fB.ballHitT == null) return 0;
-    final d = (t - fB.ballHitT!.clamp(0.0, 1.0)).abs();
-    const double window = 0.1;
-    if (d > window) return 0;
-    return (1 - d / window).clamp(0.0, 1.0);
-  }
+  // star opacity is handled via _playbackHitStarInfo during playback
 
-  double _gauss(double x, double sigma) {
-    return math.exp(-(x * x) / (2 * sigma * sigma));
-  }
+  // removed unused _gauss helper
 
   double _interpolateRotation(double a, double b, double t) => a + (b - a) * t;
 
@@ -292,26 +274,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     });
   }
 
-  void _updateRotation(String label, double newRotation) {
-    if (_isPlaying) return;
-    setState(() {
-      switch (label) {
-        case "P1":
-          currentFrame.p1Rotation = newRotation;
-          break;
-        case "P2":
-          currentFrame.p2Rotation = newRotation;
-          break;
-        case "P3":
-          currentFrame.p3Rotation = newRotation;
-          break;
-        case "P4":
-          currentFrame.p4Rotation = newRotation;
-          break;
-      }
-    });
-    _saveProject();
-  }
+  // removed unused _updateRotation helper
+  
 
   void _insertFrameAfterCurrent() {
     final index = widget.project.frames.indexOf(currentFrame);
@@ -359,7 +323,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     );
     if (shouldDelete == true) {
       final index = widget.project.frames.indexOf(frame);
-      final newIdx = _history.push(DeleteFrameAction(frameIndex: index));
+      _history.push(DeleteFrameAction(frameIndex: index));
       setState(() {
         if (widget.project.frames.isEmpty) {
           final r = _settings.outerCircleRadiusCm;
@@ -500,7 +464,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   double _avoidControlPointOverlap(Frame prev, double t) {
     if (currentFrame.ballPathPoints.isEmpty) return t;
-    final ctrl = currentFrame.ballPathPoints.first;
     final ctrlT = 0.5; // control is midpoint in our 2-quad approx
     final cmOffset = 150.0;
     if ((t - ctrlT).abs() < 0.02) {
@@ -807,12 +770,32 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     );
   }
 
-  void _drawControlHandles(Canvas canvas, List<Offset> pathPoints, Paint handlePaint, Size size) {
-    for (final point in pathPoints) {
-      final screenPoint = _toScreenPosition(point, size);
-      canvas.drawCircle(screenPoint, 6, handlePaint);
-    }
+  // During playback we render the persisted hit star at its exact path position
+  // (may persist across frame boundary for up to 0.5 frames). This helper
+  // returns the star opacity and screen position if active.
+  Map<String, dynamic> _playbackHitStarInfo(Size size) {
+    if (!_isPlaying) return {};
+    final frames = widget.project.frames;
+    if (_playbackFrameIndex >= frames.length - 1) return {};
+    final fAIndex = _playbackFrameIndex;
+    final fBIndex = _playbackFrameIndex + 1;
+    final fA = frames[fAIndex];
+    final fB = frames[fBIndex];
+    if (fB.ballHitT == null) return {};
+    final globalNow = _playbackFrameIndex + _playbackT;
+    final hitGlobal = _playbackFrameIndex + fB.ballHitT!;
+    const double hold = 0.5;
+    if (!(globalNow >= hitGlobal && globalNow <= hitGlobal + hold)) return {};
+    // compute hit position along the path (use two-quad engine if control point exists)
+    final hasCtrl = fB.ballPathPoints.isNotEmpty;
+    final posCm = hasCtrl
+        ? PathEngine.fromTwoQuadratics(start: fA.ball, control: fB.ballPathPoints.first, end: fB.ball, resolution: 400).sample(fB.ballHitT!)
+        : Offset.lerp(fA.ball, fB.ball, fB.ballHitT!)!;
+    final pos = _toScreenPosition(posCm, size);
+    return {'pos': pos, 'opacity': 1.0};
   }
+
+  // control handles are drawn via widgets so this helper is unused and removed
 
   @override
   Widget build(BuildContext context) {
@@ -967,8 +950,30 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         frameToShow.ball,
                         screenSize,
                         scale: isPlayback ? _ballScaleAt(_playbackT) : 1.0,
-                        starOpacity: isPlayback ? _starOpacityAt(_playbackT) : 0.0,
+                        starOpacity: 0.0,
                       ),
+                      // playback persistent hit star (positioned at hit path position)
+                      if (isPlayback) ...[
+                        (() {
+                          final info = _playbackHitStarInfo(screenSize);
+                          if (info.isNotEmpty) {
+                            final pos = info['pos'] as Offset;
+                            final opacity = (info['opacity'] as double?) ?? 1.0;
+                            return Positioned(
+                              left: pos.dx - 12,
+                                top: pos.dy + 12,
+                              child: Opacity(
+                                opacity: opacity,
+                                child: CustomPaint(
+                                  size: const Size(24, 24),
+                                  painter: _StarPainter(),
+                                ),
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        })(),
+                      ],
                       // Set preview: slightly transparent max-size ball at midpoint when editing
                       if (!isPlayback && (currentFrame.ballSet ?? false))
                         _buildSetPreview(screenSize),

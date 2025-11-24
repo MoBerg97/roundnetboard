@@ -26,6 +26,7 @@ annotations:
 players:
     the color of player objects should be editable. 
     the user should be able to additionally add a single character shown on the player object always (project specific).
+    the user should be able to delete players and add players. The color of the added player object should match the color of the last tapped player object.
     
 
 timeline:
