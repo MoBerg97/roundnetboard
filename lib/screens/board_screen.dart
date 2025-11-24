@@ -100,6 +100,20 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     });
   }
 
+  void _scrollToPlaybackFrame() {
+    final index = (_playbackFrameIndex).clamp(0, widget.project.frames.length - 1);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!_timelineController.hasClients) return;
+      const itemExtent = 68.0; // 60 width + 2*4 margin
+      final viewport = _timelineController.position.viewportDimension;
+      final target = index * itemExtent - (viewport - itemExtent) / 2;
+      final max = _timelineController.position.maxScrollExtent;
+      final offset = target.clamp(0.0, max);
+      _timelineController.animateTo(offset, duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
+    });
+  }
+
   Offset _boardCenter(Size size) {
     const double appBarHeight = kToolbarHeight;
     const double timelineHeight = 120;
@@ -123,6 +137,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   void _onTick(Duration elapsed) {
     if (!_isPlaying) return;
     final frames = widget.project.frames;
+    // compute previous animated index so we can detect when it moves
+    final prevAnimIndex = ((_playbackFrameIndex + _playbackT).clamp(0.0, (frames.length - 1).toDouble())).round();
     if (_playbackFrameIndex >= frames.length - 1) {
       setState(() {
         _endedAtLastFrame = true;
@@ -141,6 +157,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         }
       }
     });
+    final newAnimIndex = ((_playbackFrameIndex + _playbackT).clamp(0.0, (frames.length - 1).toDouble())).round();
+    if (newAnimIndex != prevAnimIndex) {
+      _scrollToPlaybackFrame();
+    }
   }
 
   void _startPlayback() {
@@ -152,6 +172,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _playbackT = 0.0;
     });
     _ticker.start();
+    // center the timeline on the first playback frame
+    _scrollToPlaybackFrame();
   }
 
   void _stopPlayback() {
@@ -809,6 +831,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         ? widget.project.frames.last
         : (isPlayback ? _animatedFrame! : currentFrame);
     final double timelineHeight = _isPlaying ? 80.0 : 120.0; // compress timeline when playing
+    final int playbackAnimIndex = _isPlaying
+      ? ((_playbackFrameIndex + _playbackT).clamp(0.0, (widget.project.frames.length - 1).toDouble())).round()
+      : -1;
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
@@ -1010,12 +1035,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
               color: Colors.grey[200],
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: 4),
               child: Column(
                 children: [
                   if (_isPlaying)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: Column(
                         children: [
                           // Speed slider
@@ -1034,61 +1059,94 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
-                          // Playback progress bar with cursor
+                          const SizedBox(height: 2),
+                          // Thin playback cursor bar (shows a small dot that moves across)
                           GestureDetector(
                             onHorizontalDragUpdate: (details) {
                               if (widget.project.frames.length < 2) return;
-                              // Allow manual seeking during playback for better UX
+                              RenderBox? box = context.findRenderObject() as RenderBox?;
+                              if (box == null) return;
+                              final local = box.globalToLocal(details.globalPosition);
+                              final leftPadding = 8.0;
+                              final rightPadding = 8.0;
+                              final available = box.size.width - leftPadding - rightPadding;
+                              final dx = (local.dx - leftPadding).clamp(0.0, available);
+                              final frac = (available <= 0) ? 0.0 : (dx / available);
                               setState(() {
-                                final box = context.findRenderObject() as RenderBox?;
-                                if (box != null) {
-                                  final localX = details.globalPosition.dx - box.globalToLocal(Offset.zero).dx;
-                                  final frac = (localX / box.size.width).clamp(0.0, 1.0);
-                                  _playbackFrameIndex = (frac * (widget.project.frames.length - 1)).floor();
-                                  _playbackT = (frac * (widget.project.frames.length - 1)) - _playbackFrameIndex;
-                                }
+                                final total = (widget.project.frames.length - 1).toDouble();
+                                final globalPos = frac * total;
+                                _playbackFrameIndex = globalPos.floor();
+                                _playbackT = globalPos - _playbackFrameIndex;
                               });
+                              _scrollToPlaybackFrame();
                             },
-                            child: Container(
-                              height: 24,
-                              margin: const EdgeInsets.symmetric(horizontal: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[300],
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Stack(
-                                children: [
-                                  // Background progress
-                                  Container(
-                                    height: 24,
-                                    decoration: BoxDecoration(
-                                      color: Colors.blueAccent.withAlpha((0.3 * 255).round()),
-                                      borderRadius: BorderRadius.circular(4),
+                            child: LayoutBuilder(builder: (context, constraints) {
+                              final leftPadding = 8.0;
+                              final rightPadding = 8.0;
+                              final width = constraints.maxWidth;
+                              final available = (width - leftPadding - rightPadding).clamp(0.0, double.infinity);
+                              final frac = widget.project.frames.length > 1
+                                  ? ((_playbackFrameIndex + _playbackT) / (widget.project.frames.length - 1).toDouble()).clamp(0.0, 1.0)
+                                  : 0.0;
+                              final dotX = leftPadding + frac * available;
+                              return SizedBox(
+                                height: 24,
+                                child: Stack(
+                                  children: [
+                                    Positioned(
+                                      left: leftPadding,
+                                      right: rightPadding,
+                                      top: 12,
+                                      child: Container(
+                                        height: 4,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[400],
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
                                     ),
-                                    width: ((_playbackFrameIndex + _playbackT) / (widget.project.frames.length - 1).toDouble()) * MediaQuery.of(context).size.width * 0.88,
-                                  ),
-                                  // Frame indicator text
-                                  Center(
-                                    child: Text(
-                                      "${_playbackFrameIndex + 1}/${widget.project.frames.length}",
-                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                    Positioned(
+                                      left: dotX - 5,
+                                      top: 8,
+                                      child: Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: BoxDecoration(
+                                          color: Colors.blueAccent,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 2, offset: Offset(0,1))],
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
+                              );
+                            }),
+                          ),
+                          const SizedBox(height: 3),
+                          // Compact playback controls: stop button and simple frame counter
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton(
+                                onPressed: _stopPlayback,
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size(36,28)),
+                                child: const Icon(Icons.stop, size: 16),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              Text("${_playbackFrameIndex + 1}/${widget.project.frames.length}", style: const TextStyle(fontSize: 12)),
+                            ],
                           ),
                         ],
                       ),
                     ),
                   if (_endedAtLastFrame)
                     Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(1),
                       child: Column(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(1),
                             decoration: BoxDecoration(
                               color: Colors.orange[100],
                               borderRadius: BorderRadius.circular(8),
@@ -1096,17 +1154,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             ),
                             child: Column(
                               children: [
-                                const Icon(Icons.check_circle, color: Colors.green, size: 32),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 1),
                                 const Text(
                                   'Playback Finished',
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                ),
-                                const SizedBox(height: 4),
-                                const Text(
-                                  'All controls are blocked.\nPress Stop to return to editing.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 12),
                                 ),
                               ],
                             ),
@@ -1114,7 +1165,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         ],
                       ),
                     ),
-                  Expanded(
+                    Expanded(
                     child: AbsorbPointer(
                       absorbing: _isPlaying || _endedAtLastFrame,
                       child: ListView.builder(
@@ -1124,8 +1175,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         itemBuilder: (context, index) {
                           final frame = widget.project.frames[index];
                           final isSelected = frame == currentFrame;
-                          // During playback, highlight the current playback frame
-                          final isPlayingFrame = _isPlaying && index == _playbackFrameIndex;
+                          // During playback, highlight the current playback frame (rounded to nearest)
+                          final isPlayingFrame = _isPlaying && index == playbackAnimIndex;
                           return GestureDetector(
                             onTap: () {
                               if (!(_isPlaying || _endedAtLastFrame)) {
@@ -1149,7 +1200,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   ),
                                   child: Center(child: Text("${index + 1}")),
                                 ),
-                                if (isSelected)
+                                if (isSelected && !(_isPlaying || _endedAtLastFrame))
                                   Positioned(
                                     top: 2,
                                     right: 2,
@@ -1177,92 +1228,93 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ElevatedButton(
-                        onPressed: (_isPlaying || _endedAtLastFrame) ? _stopPlayback : _startPlayback,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: (_isPlaying || _endedAtLastFrame) ? Colors.red : Colors.green,
+                  const SizedBox(height: 2),
+                  if (!(_isPlaying || _endedAtLastFrame))
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton(
+                          onPressed: (_isPlaying || _endedAtLastFrame) ? _stopPlayback : _startPlayback,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: (_isPlaying || _endedAtLastFrame) ? Colors.red : Colors.green,
+                          ),
+                          child: Icon((_isPlaying || _endedAtLastFrame) ? Icons.stop : Icons.play_arrow),
                         ),
-                        child: Icon((_isPlaying || _endedAtLastFrame) ? Icons.stop : Icons.play_arrow),
-                      ),
-                      const SizedBox(width: 10),
-                      IconButton(
-                        tooltip: "Previous frame",
-                        onPressed: (_isPlaying || _endedAtLastFrame)
-                            ? null
-                            : () {
-                                final idx = widget.project.frames.indexOf(currentFrame);
-                                if (idx > 0) {
-                                  setState(() => currentFrame = widget.project.frames[idx - 1]);
-                                  _scrollToSelectedFrame();
+                        const SizedBox(width: 10),
+                        IconButton(
+                          tooltip: "Previous frame",
+                          onPressed: (_isPlaying || _endedAtLastFrame)
+                              ? null
+                              : () {
+                                  final idx = widget.project.frames.indexOf(currentFrame);
+                                  if (idx > 0) {
+                                    setState(() => currentFrame = widget.project.frames[idx - 1]);
+                                    _scrollToSelectedFrame();
+                                  }
+                                },
+                          icon: const Icon(Icons.skip_previous),
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          tooltip: "Next frame",
+                          onPressed: (_isPlaying || _endedAtLastFrame)
+                              ? null
+                              : () {
+                                  final idx = widget.project.frames.indexOf(currentFrame);
+                                  if (idx < widget.project.frames.length - 1) {
+                                    setState(() => currentFrame = widget.project.frames[idx + 1]);
+                                    _scrollToSelectedFrame();
+                                  }
+                                },
+                          icon: const Icon(Icons.skip_next),
+                        ),
+                        const SizedBox(width: 10),
+                        ElevatedButton(
+                          onPressed: (_isPlaying || _endedAtLastFrame) ? null : _insertFrameAfterCurrent,
+                          child: const Icon(Icons.add),
+                        ),
+                        const SizedBox(width: 20),
+                        IconButton(
+                          icon: const Icon(Icons.undo),
+                          tooltip: "Undo",
+                          onPressed: (_isPlaying || _endedAtLastFrame)
+                              ? null
+                              : (_history.canUndo
+                              ? () {
+                                  final idx = _history.undo();
+                                  if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
+                                    setState(() {
+                                      currentFrame = widget.project.frames[idx];
+                                    });
+                                    _scrollToSelectedFrame();
+                                  } else {
+                                    setState(() {});
+                                  }
                                 }
-                              },
-                        icon: const Icon(Icons.skip_previous),
-                      ),
-                      const SizedBox(width: 4),
-                      IconButton(
-                        tooltip: "Next frame",
-                        onPressed: (_isPlaying || _endedAtLastFrame)
-                            ? null
-                            : () {
-                                final idx = widget.project.frames.indexOf(currentFrame);
-                                if (idx < widget.project.frames.length - 1) {
-                                  setState(() => currentFrame = widget.project.frames[idx + 1]);
-                                  _scrollToSelectedFrame();
+                              : null),
+                        ),
+                        const SizedBox(width: 10),
+                        IconButton(
+                          icon: const Icon(Icons.redo),
+                          tooltip: "Redo",
+                          onPressed: (_isPlaying || _endedAtLastFrame)
+                              ? null
+                              : (_history.canRedo
+                              ? () {
+                                  final idx = _history.redo();
+                                  if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
+                                    setState(() {
+                                      currentFrame = widget.project.frames[idx];
+                                    });
+                                    _scrollToSelectedFrame();
+                                  } else {
+                                    setState(() {});
+                                  }
                                 }
-                              },
-                        icon: const Icon(Icons.skip_next),
-                      ),
-                      const SizedBox(width: 10),
-                      ElevatedButton(
-                        onPressed: (_isPlaying || _endedAtLastFrame) ? null : _insertFrameAfterCurrent,
-                        child: const Icon(Icons.add),
-                      ),
-                      const SizedBox(width: 20),
-                      IconButton(
-                        icon: const Icon(Icons.undo),
-                        tooltip: "Undo",
-                        onPressed: (_isPlaying || _endedAtLastFrame)
-                            ? null
-                            : (_history.canUndo
-                            ? () {
-                                final idx = _history.undo();
-                                if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
-                                  setState(() {
-                                    currentFrame = widget.project.frames[idx];
-                                  });
-                                  _scrollToSelectedFrame();
-                                } else {
-                                  setState(() {});
-                                }
-                              }
-                            : null),
-                      ),
-                      const SizedBox(width: 10),
-                      IconButton(
-                        icon: const Icon(Icons.redo),
-                        tooltip: "Redo",
-                        onPressed: (_isPlaying || _endedAtLastFrame)
-                            ? null
-                            : (_history.canRedo
-                            ? () {
-                                final idx = _history.redo();
-                                if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
-                                  setState(() {
-                                    currentFrame = widget.project.frames[idx];
-                                  });
-                                  _scrollToSelectedFrame();
-                                } else {
-                                  setState(() {});
-                                }
-                              }
-                            : null),
-                      ),
-                    ],
-                  ),
+                              : null),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
