@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' as ui;
 import '../models/frame.dart';
 import '../models/settings.dart';
 import '../utils/path_engine.dart';
@@ -57,65 +58,32 @@ class PathPainter extends CustomPainter {
     return Offset(x, y);
   }
 
-  void _drawSplinePath(Canvas canvas, List<Offset> points, Paint paint) {
-    // Draw the spline as sampled short segments. This allows us to vary
-    // the paint opacity per-segment to produce gradient fades along the path.
-    if (points.length < 2) return;
-
-    final samples = <Offset>[];
-    const int resolution = 400;
-
-    if (points.length == 2) {
-      samples.add(_toScreen(points[0]));
-      samples.add(_toScreen(points[1]));
-    } else if (points.length == 3) {
-      final engine = PathEngine.fromTwoQuadratics(
-        start: points[0],
-        control: points[1],
-        end: points[2],
-        resolution: resolution,
-      );
-      for (var i = 0; i <= resolution; i++) {
-        final t = i / resolution;
-        samples.add(_toScreen(engine.sample(t)));
-      }
-    } else {
-      final pts = points;
-      final totalSegments = pts.length - 3;
-      for (int seg = 0; seg < totalSegments; seg++) {
-        for (int i = 0; i <= resolution; i++) {
-          final t = i / resolution;
-          final pt = _catmullRomPoint(pts, seg, t);
-          samples.add(_toScreen(pt));
-        }
-      }
-    }
-
-    if (samples.length < 2) return;
-
-    // Draw each segment with the provided paint as a fallback for uniform stroke.
-    final segmentPaint = paint;
-    for (int i = 0; i < samples.length - 1; i++) {
-      final a = samples[i];
-      final b = samples[i + 1];
-      canvas.drawLine(a, b, segmentPaint);
-    }
-  }
+  // helper removed: path drawing is handled by _drawFadedSegments and
+  // _sampleSplinePoints which generate a Path and shader-based fades.
 
   void _drawFadedSegments(Canvas canvas, List<Offset> samples, Color baseColor, double startAlpha, double endAlpha, double strokeWidth) {
     if (samples.length < 2) return;
-    final int n = samples.length - 1;
-    for (int i = 0; i < n; i++) {
-      final t = i / n; // 0..1 along path (start -> end)
-      // Interpolate opacity from startAlpha at path start (t==0) to endAlpha at path end (t==1)
-      final alpha = (startAlpha + (endAlpha - startAlpha) * t).clamp(0.0, 1.0);
-      final paint = Paint()
-        ..color = baseColor.withOpacity(alpha)
-        ..strokeWidth = strokeWidth
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round;
-      canvas.drawLine(samples[i], samples[i + 1], paint);
+    // Build a path from sampled points
+    final path = Path();
+    path.moveTo(samples.first.dx, samples.first.dy);
+    for (var i = 1; i < samples.length; i++) {
+      path.lineTo(samples[i].dx, samples[i].dy);
     }
+
+    // Use a linear gradient shader along the path from start->end to avoid
+    // overlapping-segment additive alpha. The shader maps startAlpha at
+    // samples.first to endAlpha at samples.last.
+    final shader = ui.Gradient.linear(
+      samples.first,
+      samples.last,
+      [baseColor.withOpacity(startAlpha.clamp(0.0, 1.0)), baseColor.withOpacity(endAlpha.clamp(0.0, 1.0))],
+    );
+    final paint = Paint()
+      ..shader = shader
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPath(path, paint);
   }
 
   List<Offset> _sampleSplinePoints(List<Offset> points) {

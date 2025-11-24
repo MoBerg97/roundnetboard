@@ -68,6 +68,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const Divider(),
+          SwitchListTile(
+            title: const Text('Show Previous Frame Lines'),
+            value: _settings.showPreviousFrameLines,
+            onChanged: (v) {
+              setState(() => _settings.showPreviousFrameLines = v);
+              _saveSettings();
+            },
+          ),
+          const Divider(),
           ListTile(
             title: const Text("Serve Zone Radius"),
             subtitle: Text("${_settings.outerCircleRadiusCm.toStringAsFixed(0)} cm"),
