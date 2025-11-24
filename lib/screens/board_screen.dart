@@ -410,7 +410,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final midCm = (startCm + endCm) / 2;
       final midScreen = _toScreenPosition(midCm, size);
       if ((tapPos - midScreen).distance < 24) {
-        setState(() => points.add(midCm));
+        setState(() {
+          points.add(midCm);
+          // ensure the project's frame list has the updated frame object
+          final idx = widget.project.frames.indexOf(currentFrame);
+          if (idx >= 0) widget.project.frames[idx] = currentFrame;
+        });
         final idx = widget.project.frames.indexOf(currentFrame);
         PathEngine.invalidateCacheFor(idx, label);
         _saveProject();
