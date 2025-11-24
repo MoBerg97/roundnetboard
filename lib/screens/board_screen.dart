@@ -1038,144 +1038,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               curve: Curves.easeInOut,
               color: Colors.grey[200],
               padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              child: Stack(
                 children: [
-                  if (_isPlaying)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                      child: Column(
-                        children: [
-                          // Speed slider
-                          Row(
-                            children: [
-                              const Text("Speed", style: TextStyle(fontSize: 12)),
-                              Expanded(
-                                child: Slider(
-                                  value: _playbackSpeed,
-                                  min: 0.1,
-                                  max: 3.0,
-                                  divisions: 29,
-                                  label: "${_playbackSpeed.toStringAsFixed(1)}x",
-                                  onChanged: (v) => setState(() => _playbackSpeed = v),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 1),
-                          // Thin playback cursor bar (shows a small dot that moves across)
-                          GestureDetector(
-                            onHorizontalDragUpdate: (details) {
-                              if (widget.project.frames.length < 2) return;
-                              RenderBox? box = context.findRenderObject() as RenderBox?;
-                              if (box == null) return;
-                              final local = box.globalToLocal(details.globalPosition);
-                              final leftPadding = 8.0;
-                              final rightPadding = 8.0;
-                              final available = box.size.width - leftPadding - rightPadding;
-                              final dx = (local.dx - leftPadding).clamp(0.0, available);
-                              final frac = (available <= 0) ? 0.0 : (dx / available);
-                              setState(() {
-                                final total = (widget.project.frames.length - 1).toDouble();
-                                final globalPos = frac * total;
-                                _playbackFrameIndex = globalPos.floor();
-                                _playbackT = globalPos - _playbackFrameIndex;
-                              });
-                              _scrollToPlaybackFrame();
-                            },
-                            child: LayoutBuilder(builder: (context, constraints) {
-                              final leftPadding = 8.0;
-                              final rightPadding = 8.0;
-                              final width = constraints.maxWidth;
-                              final available = (width - leftPadding - rightPadding).clamp(0.0, double.infinity);
-                              final frac = widget.project.frames.length > 1
-                                  ? ((_playbackFrameIndex + _playbackT) / (widget.project.frames.length - 1).toDouble()).clamp(0.0, 1.0)
-                                  : 0.0;
-                              final dotX = leftPadding + frac * available;
-                              return SizedBox(
-                                height: 24,
-                                child: Stack(
-                                  children: [
-                                    Positioned(
-                                      left: leftPadding,
-                                      right: rightPadding,
-                                      top: 12,
-                                      child: Container(
-                                        height: 4,
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[400],
-                                          borderRadius: BorderRadius.circular(2),
-                                        ),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      left: dotX - 5,
-                                      top: 8,
-                                      child: Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: BoxDecoration(
-                                          color: Colors.blueAccent,
-                                          shape: BoxShape.circle,
-                                          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 2, offset: Offset(0,1))],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-                          ),
-                          const SizedBox(height: 2),
-                          // Compact playback controls: stop button and simple frame counter
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              ElevatedButton(
-                                onPressed: _stopPlayback,
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size(36,28)),
-                                child: const Icon(Icons.stop, size: 16),
-                              ),
-                              const SizedBox(width: 8),
-                              Text("${_playbackFrameIndex + 1}/${widget.project.frames.length}", style: const TextStyle(fontSize: 12)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (_endedAtLastFrame)
-                    Padding(
-                      padding: EdgeInsets.zero,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: Colors.orange[100],
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: Colors.orange, width: 1),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  'Playback Finished',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
-                                ),
-                                const SizedBox(height: 2),
-                                ElevatedButton(
-                                  onPressed: _stopPlayback,
-                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size(30, 24), padding: EdgeInsets.zero),
-                                  child: const Icon(Icons.stop, size: 12),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
+                  // Thumbnails ListView positioned at bottom when editing, full height when playing
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: !(_isPlaying || _endedAtLastFrame) ? 56 : 0,
+                    height: !(_isPlaying || _endedAtLastFrame) ? (timelineHeight - 56 - 4) : timelineHeight - 4,
                     child: AbsorbPointer(
                       absorbing: _isPlaying || _endedAtLastFrame,
                       child: ListView.builder(
@@ -1185,14 +1055,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         itemBuilder: (context, index) {
                           final frame = widget.project.frames[index];
                           final isSelected = frame == currentFrame;
-                          // During playback, highlight the current playback frame (rounded to nearest)
                           final isPlayingFrame = _isPlaying && index == playbackAnimIndex;
                           return GestureDetector(
                             onTap: () {
                               if (!(_isPlaying || _endedAtLastFrame)) {
-                                setState(() {
-                                  currentFrame = frame;
-                                });
+                                setState(() => currentFrame = frame);
                                 _scrollToSelectedFrame();
                               }
                             },
@@ -1202,9 +1069,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   width: 60,
                                   margin: const EdgeInsets.symmetric(horizontal: 4),
                                   decoration: BoxDecoration(
-                                    color: isPlayingFrame 
-                                      ? Colors.purpleAccent 
-                                      : (isSelected ? Colors.blueAccent : Colors.grey[400]),
+                                    color: isPlayingFrame
+                                        ? Colors.purpleAccent
+                                        : (isSelected ? Colors.blueAccent : Colors.grey[400]),
                                     borderRadius: BorderRadius.circular(8),
                                     border: isSelected ? Border.all(color: Colors.yellow, width: 3) : null,
                                   ),
@@ -1238,92 +1105,232 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       ),
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  if (!(_isPlaying || _endedAtLastFrame))
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ElevatedButton(
-                          onPressed: (_isPlaying || _endedAtLastFrame) ? _stopPlayback : _startPlayback,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: (_isPlaying || _endedAtLastFrame) ? Colors.red : Colors.green,
+
+                  // Playback controls overlayed at top
+                  if (_isPlaying)
+                    Positioned(
+                      top: 4,
+                      left: 12,
+                      right: 12,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              const Text("Speed", style: TextStyle(fontSize: 11)),
+                              Expanded(
+                                child: Slider(
+                                  value: _playbackSpeed,
+                                  min: 0.1,
+                                  max: 3.0,
+                                  divisions: 29,
+                                  label: "${_playbackSpeed.toStringAsFixed(1)}x",
+                                  onChanged: (v) => setState(() => _playbackSpeed = v),
+                                ),
+                              ),
+                            ],
                           ),
-                          child: Icon((_isPlaying || _endedAtLastFrame) ? Icons.stop : Icons.play_arrow),
+                          const SizedBox(height: 1),
+                          GestureDetector(
+                            onHorizontalDragUpdate: (details) {
+                              if (widget.project.frames.length < 2) return;
+                              RenderBox? box = context.findRenderObject() as RenderBox?;
+                              if (box == null) return;
+                              final local = box.globalToLocal(details.globalPosition);
+                              final leftPadding = 8.0;
+                              final rightPadding = 8.0;
+                              final available = box.size.width - leftPadding - rightPadding;
+                              final dx = (local.dx - leftPadding).clamp(0.0, available);
+                              final frac = (available <= 0) ? 0.0 : (dx / available);
+                              setState(() {
+                                final total = (widget.project.frames.length - 1).toDouble();
+                                final globalPos = frac * total;
+                                _playbackFrameIndex = globalPos.floor();
+                                _playbackT = globalPos - _playbackFrameIndex;
+                              });
+                              _scrollToPlaybackFrame();
+                            },
+                            child: LayoutBuilder(builder: (context, constraints) {
+                              final leftPadding = 8.0;
+                              final rightPadding = 8.0;
+                              final width = constraints.maxWidth;
+                              final available = (width - leftPadding - rightPadding).clamp(0.0, double.infinity);
+                              final frac = widget.project.frames.length > 1
+                                  ? ((_playbackFrameIndex + _playbackT) / (widget.project.frames.length - 1).toDouble()).clamp(0.0, 1.0)
+                                  : 0.0;
+                              final dotX = leftPadding + frac * available;
+                              return SizedBox(
+                                height: 20,
+                                child: Stack(
+                                  children: [
+                                    Positioned(
+                                      left: leftPadding,
+                                      right: rightPadding,
+                                      top: 10,
+                                      child: Container(
+                                        height: 4,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[400],
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      left: dotX - 5,
+                                      top: 6,
+                                      child: Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: BoxDecoration(
+                                          color: Colors.blueAccent,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 2, offset: Offset(0,1))],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton(
+                                onPressed: _stopPlayback,
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size(36,26)),
+                                child: const Icon(Icons.stop, size: 14),
+                              ),
+                              const SizedBox(width: 8),
+                              Text("${_playbackFrameIndex + 1}/${widget.project.frames.length}", style: const TextStyle(fontSize: 11)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Playback finished badge
+                  if (_endedAtLastFrame)
+                    Positioned(
+                      top: 4,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[100],
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.orange, width: 1),
                         ),
-                        const SizedBox(width: 10),
-                        IconButton(
-                          tooltip: "Previous frame",
-                          onPressed: (_isPlaying || _endedAtLastFrame)
-                              ? null
-                              : () {
-                                  final idx = widget.project.frames.indexOf(currentFrame);
-                                  if (idx > 0) {
-                                    setState(() => currentFrame = widget.project.frames[idx - 1]);
-                                    _scrollToSelectedFrame();
-                                  }
-                                },
-                          icon: const Icon(Icons.skip_previous),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('Playback Finished', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 9)),
+                            const SizedBox(width: 4),
+                            ElevatedButton(
+                              onPressed: _stopPlayback,
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size(28, 22), padding: EdgeInsets.zero),
+                              child: const Icon(Icons.stop, size: 11),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 4),
-                        IconButton(
-                          tooltip: "Next frame",
-                          onPressed: (_isPlaying || _endedAtLastFrame)
-                              ? null
-                              : () {
-                                  final idx = widget.project.frames.indexOf(currentFrame);
-                                  if (idx < widget.project.frames.length - 1) {
-                                    setState(() => currentFrame = widget.project.frames[idx + 1]);
-                                    _scrollToSelectedFrame();
-                                  }
-                                },
-                          icon: const Icon(Icons.skip_next),
-                        ),
-                        const SizedBox(width: 10),
-                        ElevatedButton(
-                          onPressed: (_isPlaying || _endedAtLastFrame) ? null : _insertFrameAfterCurrent,
-                          child: const Icon(Icons.add),
-                        ),
-                        const SizedBox(width: 20),
-                        IconButton(
-                          icon: const Icon(Icons.undo),
-                          tooltip: "Undo",
-                          onPressed: (_isPlaying || _endedAtLastFrame)
-                              ? null
-                              : (_history.canUndo
-                              ? () {
-                                  final idx = _history.undo();
-                                  if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
-                                    setState(() {
-                                      currentFrame = widget.project.frames[idx];
-                                    });
-                                    _scrollToSelectedFrame();
-                                  } else {
-                                    setState(() {});
-                                  }
-                                }
-                              : null),
-                        ),
-                        const SizedBox(width: 10),
-                        IconButton(
-                          icon: const Icon(Icons.redo),
-                          tooltip: "Redo",
-                          onPressed: (_isPlaying || _endedAtLastFrame)
-                              ? null
-                              : (_history.canRedo
-                              ? () {
-                                  final idx = _history.redo();
-                                  if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
-                                    setState(() {
-                                      currentFrame = widget.project.frames[idx];
-                                    });
-                                    _scrollToSelectedFrame();
-                                  } else {
-                                    setState(() {});
-                                  }
-                                }
-                              : null),
-                        ),
-                      ],
+                      ),
+                    ),
+
+                  // Edit controls (bottom, editing mode only)
+                  if (!(_isPlaying || _endedAtLastFrame))
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: 56,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton(
+                            onPressed: (_isPlaying || _endedAtLastFrame) ? _stopPlayback : _startPlayback,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: (_isPlaying || _endedAtLastFrame) ? Colors.red : Colors.green,
+                              minimumSize: const Size(36, 24),
+                            ),
+                            child: Icon((_isPlaying || _endedAtLastFrame) ? Icons.stop : Icons.play_arrow, size: 18),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            tooltip: "Previous frame",
+                            onPressed: (_isPlaying || _endedAtLastFrame)
+                                ? null
+                                : () {
+                                    final idx = widget.project.frames.indexOf(currentFrame);
+                                    if (idx > 0) {
+                                      setState(() => currentFrame = widget.project.frames[idx - 1]);
+                                      _scrollToSelectedFrame();
+                                    }
+                                  },
+                            icon: const Icon(Icons.skip_previous),
+                            iconSize: 18,
+                          ),
+                          const SizedBox(width: 2),
+                          IconButton(
+                            tooltip: "Next frame",
+                            onPressed: (_isPlaying || _endedAtLastFrame)
+                                ? null
+                                : () {
+                                    final idx = widget.project.frames.indexOf(currentFrame);
+                                    if (idx < widget.project.frames.length - 1) {
+                                      setState(() => currentFrame = widget.project.frames[idx + 1]);
+                                      _scrollToSelectedFrame();
+                                    }
+                                  },
+                            icon: const Icon(Icons.skip_next),
+                            iconSize: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: (_isPlaying || _endedAtLastFrame) ? null : _insertFrameAfterCurrent,
+                            style: ElevatedButton.styleFrom(minimumSize: const Size(32, 24)),
+                            child: const Icon(Icons.add, size: 18),
+                          ),
+                          const SizedBox(width: 12),
+                          IconButton(
+                            icon: const Icon(Icons.undo),
+                            tooltip: "Undo",
+                            iconSize: 18,
+                            onPressed: (_isPlaying || _endedAtLastFrame)
+                                ? null
+                                : (_history.canUndo
+                                    ? () {
+                                        final idx = _history.undo();
+                                        if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
+                                          setState(() => currentFrame = widget.project.frames[idx]);
+                                          _scrollToSelectedFrame();
+                                        } else {
+                                          setState(() {});
+                                        }
+                                      }
+                                    : null),
+                          ),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            icon: const Icon(Icons.redo),
+                            tooltip: "Redo",
+                            iconSize: 18,
+                            onPressed: (_isPlaying || _endedAtLastFrame)
+                                ? null
+                                : (_history.canRedo
+                                    ? () {
+                                        final idx = _history.redo();
+                                        if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
+                                          setState(() => currentFrame = widget.project.frames[idx]);
+                                          _scrollToSelectedFrame();
+                                        } else {
+                                          setState(() {});
+                                        }
+                                      }
+                                    : null),
+                          ),
+                        ],
+                      ),
                     ),
                 ],
               ),
