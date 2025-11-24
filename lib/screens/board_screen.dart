@@ -830,7 +830,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final frameToShow = _endedAtLastFrame
         ? widget.project.frames.last
         : (isPlayback ? _animatedFrame! : currentFrame);
-    final double timelineHeight = _isPlaying ? 80.0 : 120.0; // compress timeline when playing
+    // Timeline maintains consistent height during state transitions to avoid layout shifts
+    // Playback: 80px (compact), End-state: 80px (with stop button), Editing: 120px (full controls)
+    final double timelineHeight = _isPlaying || _endedAtLastFrame ? 80.0 : 120.0;
     final int playbackAnimIndex = _isPlaying
       ? ((_playbackFrameIndex + _playbackT).clamp(0.0, (widget.project.frames.length - 1).toDouble())).round()
       : -1;
@@ -1035,12 +1037,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
               color: Colors.grey[200],
-              padding: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: 2),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   if (_isPlaying)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                       child: Column(
                         children: [
                           // Speed slider
@@ -1059,7 +1062,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               ),
                             ],
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 1),
                           // Thin playback cursor bar (shows a small dot that moves across)
                           GestureDetector(
                             onHorizontalDragUpdate: (details) {
@@ -1123,7 +1126,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               );
                             }),
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 2),
                           // Compact playback controls: stop button and simple frame counter
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -1142,22 +1145,29 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     ),
                   if (_endedAtLastFrame)
                     Padding(
-                      padding: const EdgeInsets.all(1),
+                      padding: EdgeInsets.zero,
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(1),
+                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
                             decoration: BoxDecoration(
                               color: Colors.orange[100],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.orange, width: 2),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.orange, width: 1),
                             ),
                             child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                const SizedBox(height: 1),
                                 const Text(
                                   'Playback Finished',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
+                                ),
+                                const SizedBox(height: 2),
+                                ElevatedButton(
+                                  onPressed: _stopPlayback,
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size(30, 24), padding: EdgeInsets.zero),
+                                  child: const Icon(Icons.stop, size: 12),
                                 ),
                               ],
                             ),
