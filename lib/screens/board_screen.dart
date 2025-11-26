@@ -148,14 +148,23 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _ticker.stop();
       return;
     }
+    
+    // Get current frame duration and calculate tick increment
+    final currentFrame = frames[_playbackFrameIndex];
+    final frameDuration = currentFrame.duration > 0 ? currentFrame.duration : 0.5; // Default to 0.5s if invalid
+    // Each tick represents 16.67ms (60fps), increment based on frame duration and playback speed
+    final tickIncrement = (1.0 / (frameDuration * 60.0)) * _playbackSpeed;
+    
     setState(() {
-      _playbackT += 0.02 * _playbackSpeed;
+      _playbackT += tickIncrement;
       if (_playbackT >= 1.0) {
-        _playbackT = 0.0;
+        _playbackT -= 1.0; // Keep fractional part for smooth interpolation
         _playbackFrameIndex++;
         if (_playbackFrameIndex >= frames.length - 1) {
           _endedAtLastFrame = true;
         }
+        // Auto-scroll to center current frame
+        _scrollToPlaybackFrame();
       }
     });
     final newAnimIndex = ((_playbackFrameIndex + _playbackT).clamp(0.0, (frames.length - 1).toDouble())).round();
@@ -200,6 +209,52 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _isPaused = false;
     });
     _ticker.start();
+  }
+
+  void _showDurationPicker() {
+    final durations = [0.25, 0.5, 1.0, 2.0];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Set Frame Duration"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: durations.map((d) {
+            final isSelected = (currentFrame.duration - d).abs() < 0.01;
+            return GestureDetector(
+              onTap: () {
+                setState(() => currentFrame.duration = d);
+                _saveProject();
+                Navigator.pop(context);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.blueAccent : Colors.grey[300],
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "${d.toStringAsFixed(2)}s",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    if (isSelected)
+                      const Icon(Icons.check, color: Colors.white, size: 18),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
   }
 
   Frame? get _animatedFrame {
@@ -860,8 +915,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         ? widget.project.frames.last
         : (isPlayback ? _animatedFrame! : currentFrame);
     // Timeline maintains consistent height during state transitions to avoid layout shifts
-    // Playback: 120px (compact but with accessible controls), End-state: 120px (with stop button), Editing: 120px (full controls)
-    final double timelineHeight = 120.0;
+    // Playback: 160px (more space for timeline), End-state: 120px (with stop button), Editing: 120px (full controls)
+    final double timelineHeight = _isPlaying ? 160.0 : 120.0;
     final int playbackAnimIndex = _isPlaying
       ? ((_playbackFrameIndex + _playbackT).clamp(0.0, (widget.project.frames.length - 1).toDouble())).round()
       : -1;
@@ -1093,8 +1148,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                   Positioned(
                     left: 0,
                     right: 0,
-                    bottom: !(_isPlaying || _endedAtLastFrame) ? 56 : 0,
-                    height: !(_isPlaying || _endedAtLastFrame) ? (timelineHeight - 56 - 4) : (timelineHeight - 80),
+                    bottom: !(_isPlaying || _endedAtLastFrame) ? 56 : 40,
+                    height: !(_isPlaying || _endedAtLastFrame) ? (timelineHeight - 56 - 4) : (timelineHeight - 40 - 4),
                     child: AbsorbPointer(
                       absorbing: _isPlaying || _endedAtLastFrame,
                       child: ListView.builder(
@@ -1118,11 +1173,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   width: 60,
                                   margin: const EdgeInsets.symmetric(horizontal: 4),
                                   decoration: BoxDecoration(
-                                    color: isPlayingFrame
-                                        ? Colors.purpleAccent
+                                    color: _isPlaying
+                                        ? Colors.grey[400]
                                         : (isSelected ? Colors.blueAccent : Colors.grey[400]),
                                     borderRadius: BorderRadius.circular(8),
-                                    border: isSelected ? Border.all(color: Colors.yellow, width: 3) : null,
+                                    border: (_isPlaying) ? null : (isSelected ? Border.all(color: Colors.yellow, width: 3) : null),
                                   ),
                                   child: Center(child: Text("${index + 1}")),
                                 ),
@@ -1160,8 +1215,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     Positioned(
                       left: 0,
                       right: 0,
-                      bottom: !(_isPlaying || _endedAtLastFrame) ? 56 : 0,
-                      height: !(_isPlaying || _endedAtLastFrame) ? (timelineHeight - 56 - 4) : (timelineHeight - 80),
+                      bottom: !(_isPlaying || _endedAtLastFrame) ? 56 : 40,
+                      height: !(_isPlaying || _endedAtLastFrame) ? (timelineHeight - 56 - 4) : (timelineHeight - 40 - 4),
                       child: AbsorbPointer(
                         absorbing: true,
                         child: Container(
@@ -1203,114 +1258,125 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       ),
                     ),
 
-                  // Playback controls overlayed at top
+                  // Playback controls overlayed at top (playback slider)
                   if (_isPlaying)
                     Positioned(
                       top: 4,
                       left: 12,
                       right: 12,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                      height: 30,
+                      child: GestureDetector(
+                        onHorizontalDragUpdate: (details) {
+                          if (widget.project.frames.length < 2) return;
+                          RenderBox? box = context.findRenderObject() as RenderBox?;
+                          if (box == null) return;
+                          final local = box.globalToLocal(details.globalPosition);
+                          final leftPadding = 8.0;
+                          final rightPadding = 8.0;
+                          final available = box.size.width - leftPadding - rightPadding;
+                          final dx = (local.dx - leftPadding).clamp(0.0, available);
+                          final frac = (available <= 0) ? 0.0 : (dx / available);
+                          setState(() {
+                            final total = (widget.project.frames.length - 1).toDouble();
+                            final globalPos = frac * total;
+                            _playbackFrameIndex = globalPos.floor();
+                            _playbackT = globalPos - _playbackFrameIndex;
+                          });
+                          _scrollToPlaybackFrame();
+                        },
+                        child: LayoutBuilder(builder: (context, constraints) {
+                          final leftPadding = 8.0;
+                          final rightPadding = 8.0;
+                          final width = constraints.maxWidth;
+                          final available = (width - leftPadding - rightPadding).clamp(0.0, double.infinity);
+                          final frac = widget.project.frames.length > 1
+                              ? ((_playbackFrameIndex + _playbackT) / (widget.project.frames.length - 1).toDouble()).clamp(0.0, 1.0)
+                              : 0.0;
+                          final dotX = leftPadding + frac * available;
+                          return SizedBox(
+                            height: 30,
+                            child: Stack(
+                              children: [
+                                Positioned(
+                                  left: leftPadding,
+                                  right: rightPadding,
+                                  top: 13,
+                                  child: Container(
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[400],
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  left: dotX - 5,
+                                  top: 9,
+                                  child: Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: Colors.blueAccent,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 2, offset: const Offset(0, 1))],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+
+                  // Playback controls at bottom (speed slider + buttons)
+                  if (_isPlaying)
+                    Positioned(
+                      bottom: 4,
+                      left: 12,
+                      right: 12,
+                      height: 32,
+                      child: Row(
                         children: [
-                          Row(
-                            children: [
-                              const Text("Speed", style: TextStyle(fontSize: 11)),
-                              Expanded(
-                                child: Slider(
-                                  value: _playbackSpeed,
-                                  min: 0.1,
-                                  max: 3.0,
-                                  divisions: 29,
-                                  label: "${_playbackSpeed.toStringAsFixed(1)}x",
-                                  onChanged: (v) => setState(() => _playbackSpeed = v),
-                                ),
-                              ),
-                            ],
+                          ElevatedButton(
+                            onPressed: _stopPlayback,
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size(36, 26)),
+                            child: const Icon(Icons.stop, size: 14),
                           ),
-                          const SizedBox(height: 1),
-                          GestureDetector(
-                            onHorizontalDragUpdate: (details) {
-                              if (widget.project.frames.length < 2) return;
-                              RenderBox? box = context.findRenderObject() as RenderBox?;
-                              if (box == null) return;
-                              final local = box.globalToLocal(details.globalPosition);
-                              final leftPadding = 8.0;
-                              final rightPadding = 8.0;
-                              final available = box.size.width - leftPadding - rightPadding;
-                              final dx = (local.dx - leftPadding).clamp(0.0, available);
-                              final frac = (available <= 0) ? 0.0 : (dx / available);
-                              setState(() {
-                                final total = (widget.project.frames.length - 1).toDouble();
-                                final globalPos = frac * total;
-                                _playbackFrameIndex = globalPos.floor();
-                                _playbackT = globalPos - _playbackFrameIndex;
-                              });
-                              _scrollToPlaybackFrame();
-                            },
-                            child: LayoutBuilder(builder: (context, constraints) {
-                              final leftPadding = 8.0;
-                              final rightPadding = 8.0;
-                              final width = constraints.maxWidth;
-                              final available = (width - leftPadding - rightPadding).clamp(0.0, double.infinity);
-                              final frac = widget.project.frames.length > 1
-                                  ? ((_playbackFrameIndex + _playbackT) / (widget.project.frames.length - 1).toDouble()).clamp(0.0, 1.0)
-                                  : 0.0;
-                              final dotX = leftPadding + frac * available;
-                              return SizedBox(
-                                height: 20,
-                                child: Stack(
-                                  children: [
-                                    Positioned(
-                                      left: leftPadding,
-                                      right: rightPadding,
-                                      top: 10,
-                                      child: Container(
-                                        height: 4,
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[400],
-                                          borderRadius: BorderRadius.circular(2),
-                                        ),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      left: dotX - 5,
-                                      top: 6,
-                                      child: Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: BoxDecoration(
-                                          color: Colors.blueAccent,
-                                          shape: BoxShape.circle,
-                                          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 2, offset: Offset(0,1))],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
+                          const SizedBox(width: 4),
+                          ElevatedButton(
+                            onPressed: _endedAtLastFrame ? null : (_isPaused ? _resumePlayback : _pausePlayback),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _isPaused ? Colors.green : Colors.orange,
+                              minimumSize: const Size(36, 26),
+                            ),
+                            child: Icon(_isPaused ? Icons.play_arrow : Icons.pause, size: 14),
                           ),
-                          const SizedBox(height: 2),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              ElevatedButton(
-                                onPressed: _stopPlayback,
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size(36,26)),
-                                child: const Icon(Icons.stop, size: 14),
-                              ),
-                              const SizedBox(width: 4),
-                              ElevatedButton(
-                                onPressed: _endedAtLastFrame ? null : (_isPaused ? _resumePlayback : _pausePlayback),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: _isPaused ? Colors.green : Colors.orange,
-                                  minimumSize: const Size(36, 26),
-                                ),
-                                child: Icon(_isPaused ? Icons.play_arrow : Icons.pause, size: 14),
-                              ),
-                              const SizedBox(width: 8),
-                              Text("${_playbackFrameIndex + 1}/${widget.project.frames.length}", style: const TextStyle(fontSize: 11)),
-                            ],
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 80,
+                            child: Slider(
+                              value: _playbackSpeed,
+                              min: 0.1,
+                              max: 3.0,
+                              divisions: 29,
+                              label: "${_playbackSpeed.toStringAsFixed(1)}x",
+                              onChanged: (v) => setState(() => _playbackSpeed = v),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          SizedBox(
+                            width: 35,
+                            child: Text(
+                              "${_playbackSpeed.toStringAsFixed(1)}x",
+                              style: const TextStyle(fontSize: 10),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            "${_playbackFrameIndex + 1}/${widget.project.frames.length}",
+                            style: const TextStyle(fontSize: 11),
                           ),
                         ],
                       ),
@@ -1372,35 +1438,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             Expanded(
                               flex: 0,
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
-                                child: SizedBox(
-                                  width: 120,
-                                  child: Row(
-                                    children: [
-                                      const Text("Duration:", style: TextStyle(fontSize: 11)),
-                                      const SizedBox(width: 4),
-                                      Expanded(
-                                        child: TextField(
-                                          decoration: InputDecoration(
-                                            contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
-                                            isDense: true,
-                                          ),
-                                          keyboardType: TextInputType.numberWithOptions(decimal: true),
-                                          onChanged: (value) {
-                                            final d = double.tryParse(value);
-                                            if (d != null && d > 0) {
-                                              setState(() => currentFrame.duration = d);
-                                              _saveProject();
-                                            }
-                                          },
-                                          controller: TextEditingController(text: currentFrame.duration.toStringAsFixed(2)),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 2),
-                                      const Text("s", style: TextStyle(fontSize: 10)),
-                                    ],
-                                  ),
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                child: IconButton(
+                                  icon: const Icon(Icons.schedule),
+                                  tooltip: "Set frame duration (${currentFrame.duration.toStringAsFixed(2)}s)",
+                                  iconSize: 18,
+                                  onPressed: () => _showDurationPicker(),
                                 ),
                               ),
                             ),
