@@ -29,6 +29,16 @@ annotations:
     - [ ] when a line should be added (tap on line icon), first the user must set the two endpoints of the line. then that line is created and henceforth editable.
     - [ ] annotations should be frame specific and also should be copyed along all other objects when a new frame is inserted.
 
+statistics:
+    - [ ] user can toggle on footwork and in-system statistics in the project settings
+    - [ ] footwork statistics shows for each frame the amount of distance each player travels, as small bars on the top side of the screen.
+    - [ ] the maximum footwork distance is 850cm and the minimum is 0cm.
+    - [ ] if turned on, the footwork statistics will also be depicted in the animation playback with showing the footwork of a certain frame during the playback of this frame.
+
+sharing:
+    - [ ]users can export each frame as a single image, or all frames as images appended to each other, to form a left to right or top to bottom succession.
+    - [ ]users can export the animation as a video file. the speed of the exported animation should match the last selected playback speed of the animation.
+    
 players:
     - [ ] the color of player objects should be editable.
     - [ ] the user should be able to additionally add a single character shown on the player object always (project specific).
@@ -48,7 +58,7 @@ timeline:
     - [ ] the user should be able to select a duration of the animation of a frame during editing a project. duration is frame specific.
 
 ## Fixes
-
+- [ ] the playback timeline divides the frame thumbnail into n thumbnails as in the editing timeline. but the first frame has no duration, only giving the start positions. therefore the playback timeline thumbnails should be n-1.
 - [ ] the ball path modifier menu buttons should be toggable to on and off (Iindicated by highlighted/non-highlighted button), not only on. MAke sure, that the ball path can be either set or hit, not both.
 - [ ] the go to previous and go to next frame in the boardscreen should be removed, since the user can already select the current frame directly from the timeline.
 - [ ] the speed adjuster bar should not vanish until the user actively stops the playback with the stop button.
