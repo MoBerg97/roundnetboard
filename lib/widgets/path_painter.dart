@@ -137,8 +137,8 @@ class PathPainter extends CustomPainter {
     // Paint objects are created per-segment in _drawFadedSegments so no
     // uniform paint is required here.
 
-    // faded path: twoFramesAgo → previousFrame (older path)
-    if (twoFramesAgo != null) {
+    // faded path: twoFramesAgo → previousFrame (older path) - only render if setting enabled
+    if (settings.showPreviousFrameLines && twoFramesAgo != null) {
       final p1Samples = _sampleSplinePoints([twoFramesAgo!.p1, ...previousFrame!.p1PathPoints, previousFrame!.p1]);
       final p2Samples = _sampleSplinePoints([twoFramesAgo!.p2, ...previousFrame!.p2PathPoints, previousFrame!.p2]);
       final p3Samples = _sampleSplinePoints([twoFramesAgo!.p3, ...previousFrame!.p3PathPoints, previousFrame!.p3]);

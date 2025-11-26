@@ -23,6 +23,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   late HistoryManager _history;
 
   bool _isPlaying = false;
+  bool _isPaused = false;
   bool _endedAtLastFrame = false;
   late Ticker _ticker;
   double _playbackT = 0.0;
@@ -135,7 +136,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   // removed unused _toLogicalPosition helper
 
   void _onTick(Duration elapsed) {
-    if (!_isPlaying) return;
+    if (!_isPlaying || _isPaused) return;
     final frames = widget.project.frames;
     // compute previous animated index so we can detect when it moves
     final prevAnimIndex = ((_playbackFrameIndex + _playbackT).clamp(0.0, (frames.length - 1).toDouble())).round();
@@ -179,11 +180,26 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   void _stopPlayback() {
     setState(() {
       _isPlaying = false;
+      _isPaused = false;
       _endedAtLastFrame = false;
       _playbackFrameIndex = 0;
       _playbackT = 0.0;
     });
     _ticker.stop();
+  }
+
+  void _pausePlayback() {
+    setState(() {
+      _isPaused = true;
+    });
+    _ticker.stop();
+  }
+
+  void _resumePlayback() {
+    setState(() {
+      _isPaused = false;
+    });
+    _ticker.start();
   }
 
   Frame? get _animatedFrame {
@@ -421,6 +437,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   void _placeBallHitAt(Offset tapPos, Size size) {
     final prev = _getPreviousFrame();
     if (prev == null) return;
+    
+    // Check if ball path distance is >= 30cm
+    final pathDistance = _calculateBallPathDistance(prev);
+    if (pathDistance < 30.0) {
+      // Silently ignore - path too short for hit
+      return;
+    }
+    
     // Build samples along path from prev.ball to currentFrame.ball
     final hasCtrl = currentFrame.ballPathPoints.isNotEmpty;
     final engine = hasCtrl
@@ -455,6 +479,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     } else {
       // ignore if too far from path
     }
+  }
+
+  double _calculateBallPathDistance(Frame prev) {
+    // Calculate the straight-line distance from prev.ball to currentFrame.ball (in cm)
+    return (currentFrame.ball - prev.ball).distance;
   }
 
   
@@ -872,48 +901,68 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    IconButton(
-                      tooltip: 'Enable Set',
-                      onPressed: () {
-                        if (_isPlaying || _endedAtLastFrame) return;
-                        setState(() {
-                          currentFrame.ballSet = true;
-                          currentFrame.ballHitT = null; // mutually exclusive
-                          _pendingBallMark = null;
-                        });
-                        _saveProject();
-                      },
-                      icon: SizedBox(
-                        width: 40,
-                        height: 28,
-                        child: CustomPaint(
-                          painter: _SetIconPainter(active: (currentFrame.ballSet ?? false)),
+                    Material(
+                      color: (currentFrame.ballSet ?? false) ? Colors.orange.withOpacity(0.2) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      child: IconButton(
+                        tooltip: 'Toggle Set',
+                        onPressed: () {
+                          if (_isPlaying || _endedAtLastFrame) return;
+                          setState(() {
+                            // Toggle: if set is active, turn it off; otherwise turn it on and disable hit
+                            if (currentFrame.ballSet ?? false) {
+                              currentFrame.ballSet = false;
+                            } else {
+                              currentFrame.ballSet = true;
+                              currentFrame.ballHitT = null; // mutually exclusive
+                            }
+                            _pendingBallMark = null;
+                          });
+                          _saveProject();
+                        },
+                        icon: SizedBox(
+                          width: 40,
+                          height: 28,
+                          child: CustomPaint(
+                            painter: _SetIconPainter(active: (currentFrame.ballSet ?? false)),
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 16),
-                    IconButton(
-                      tooltip: 'Enable Hit',
-                      onPressed: () {
-                        if (_isPlaying || _endedAtLastFrame) return;
-                        // default to midpoint; avoid control point collision
-                        final prev = _getPreviousFrame();
-                        if (prev != null) {
-                          final tMid = 0.5;
-                          final tAdjusted = _avoidControlPointOverlap(prev, tMid);
-                          setState(() {
-                            currentFrame.ballHitT = tAdjusted;
-                            currentFrame.ballSet = false; // mutually exclusive
-                            _pendingBallMark = 'hit';
-                          });
+                    Material(
+                      color: (currentFrame.ballHitT != null) ? Colors.yellow.withOpacity(0.2) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      child: IconButton(
+                        tooltip: 'Toggle Hit',
+                        onPressed: () {
+                          if (_isPlaying || _endedAtLastFrame) return;
+                          final prev = _getPreviousFrame();
+                          if (prev == null) return;
+                          
+                          // Toggle: if hit is active, turn it off; otherwise turn it on and disable set
+                          if (currentFrame.ballHitT != null) {
+                            setState(() {
+                              currentFrame.ballHitT = null;
+                              _pendingBallMark = null;
+                            });
+                          } else {
+                            final tMid = 0.5;
+                            final tAdjusted = _avoidControlPointOverlap(prev, tMid);
+                            setState(() {
+                              currentFrame.ballHitT = tAdjusted;
+                              currentFrame.ballSet = false; // mutually exclusive
+                              _pendingBallMark = 'hit';
+                            });
+                          }
                           _saveProject();
-                        }
-                      },
-                      icon: SizedBox(
-                        width: 40,
-                        height: 28,
-                        child: CustomPaint(
-                          painter: _HitIconPainter(active: (currentFrame.ballHitT != null)),
+                        },
+                        icon: SizedBox(
+                          width: 40,
+                          height: 28,
+                          child: CustomPaint(
+                            painter: _HitIconPainter(active: (currentFrame.ballHitT != null)),
+                          ),
                         ),
                       ),
                     ),
@@ -1202,6 +1251,15 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size(36,26)),
                                 child: const Icon(Icons.stop, size: 14),
                               ),
+                              const SizedBox(width: 4),
+                              ElevatedButton(
+                                onPressed: _isPaused ? _resumePlayback : _pausePlayback,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _isPaused ? Colors.green : Colors.orange,
+                                  minimumSize: const Size(36, 26),
+                                ),
+                                child: Icon(_isPaused ? Icons.play_arrow : Icons.pause, size: 14),
+                              ),
                               const SizedBox(width: 8),
                               Text("${_playbackFrameIndex + 1}/${widget.project.frames.length}", style: const TextStyle(fontSize: 11)),
                             ],
@@ -1254,36 +1312,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               minimumSize: const Size(36, 24),
                             ),
                             child: Icon((_isPlaying || _endedAtLastFrame) ? Icons.stop : Icons.play_arrow, size: 18),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            tooltip: "Previous frame",
-                            onPressed: (_isPlaying || _endedAtLastFrame)
-                                ? null
-                                : () {
-                                    final idx = widget.project.frames.indexOf(currentFrame);
-                                    if (idx > 0) {
-                                      setState(() => currentFrame = widget.project.frames[idx - 1]);
-                                      _scrollToSelectedFrame();
-                                    }
-                                  },
-                            icon: const Icon(Icons.skip_previous),
-                            iconSize: 18,
-                          ),
-                          const SizedBox(width: 2),
-                          IconButton(
-                            tooltip: "Next frame",
-                            onPressed: (_isPlaying || _endedAtLastFrame)
-                                ? null
-                                : () {
-                                    final idx = widget.project.frames.indexOf(currentFrame);
-                                    if (idx < widget.project.frames.length - 1) {
-                                      setState(() => currentFrame = widget.project.frames[idx + 1]);
-                                      _scrollToSelectedFrame();
-                                    }
-                                  },
-                            icon: const Icon(Icons.skip_next),
-                            iconSize: 18,
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton(
