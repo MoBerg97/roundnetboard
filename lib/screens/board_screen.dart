@@ -860,8 +860,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         ? widget.project.frames.last
         : (isPlayback ? _animatedFrame! : currentFrame);
     // Timeline maintains consistent height during state transitions to avoid layout shifts
-    // Playback: 80px (compact), End-state: 80px (with stop button), Editing: 120px (full controls)
-    final double timelineHeight = _isPlaying || _endedAtLastFrame ? 80.0 : 120.0;
+    // Playback: 120px (compact but with accessible controls), End-state: 120px (with stop button), Editing: 120px (full controls)
+    final double timelineHeight = 120.0;
     final int playbackAnimIndex = _isPlaying
       ? ((_playbackFrameIndex + _playbackT).clamp(0.0, (widget.project.frames.length - 1).toDouble())).round()
       : -1;
@@ -1083,7 +1083,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             ),
             AnimatedContainer(
               height: timelineHeight,
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 200),
               curve: Curves.easeInOut,
               color: Colors.grey[200],
               padding: const EdgeInsets.symmetric(vertical: 2),
@@ -1094,7 +1094,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     left: 0,
                     right: 0,
                     bottom: !(_isPlaying || _endedAtLastFrame) ? 56 : 0,
-                    height: !(_isPlaying || _endedAtLastFrame) ? (timelineHeight - 56 - 4) : timelineHeight - 4,
+                    height: !(_isPlaying || _endedAtLastFrame) ? (timelineHeight - 56 - 4) : (timelineHeight - 80),
                     child: AbsorbPointer(
                       absorbing: _isPlaying || _endedAtLastFrame,
                       child: ListView.builder(
@@ -1154,6 +1154,54 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       ),
                     ),
                   ),
+
+                  // Playback frame cursor overlay (shows current frame index during playback)
+                  if (_isPlaying)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: !(_isPlaying || _endedAtLastFrame) ? 56 : 0,
+                      height: !(_isPlaying || _endedAtLastFrame) ? (timelineHeight - 56 - 4) : (timelineHeight - 80),
+                      child: AbsorbPointer(
+                        absorbing: true,
+                        child: Container(
+                          color: Colors.transparent,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final frameCount = widget.project.frames.length;
+                              if (frameCount < 2) return const SizedBox.shrink();
+                              
+                              // Calculate cursor position: each frame thumbnail is 60px + 8px margins
+                              final itemExtent = 68.0; // 60 width + 2*4 margin
+                              final cursorX = _playbackFrameIndex * itemExtent + itemExtent / 2;
+                              
+                              return Stack(
+                                children: [
+                                  Positioned(
+                                    left: cursorX - 2,
+                                    top: 0,
+                                    bottom: 0,
+                                    child: Container(
+                                      width: 4,
+                                      decoration: BoxDecoration(
+                                        color: Colors.redAccent,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.redAccent.withOpacity(0.5),
+                                            blurRadius: 4,
+                                            spreadRadius: 1,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
 
                   // Playback controls overlayed at top
                   if (_isPlaying)
@@ -1253,7 +1301,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               ),
                               const SizedBox(width: 4),
                               ElevatedButton(
-                                onPressed: _isPaused ? _resumePlayback : _pausePlayback,
+                                onPressed: _endedAtLastFrame ? null : (_isPaused ? _resumePlayback : _pausePlayback),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _isPaused ? Colors.green : Colors.orange,
                                   minimumSize: const Size(36, 26),
@@ -1319,6 +1367,43 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             style: ElevatedButton.styleFrom(minimumSize: const Size(32, 24)),
                             child: const Icon(Icons.add, size: 18),
                           ),
+                          const SizedBox(width: 8),
+                          if (!(_isPlaying || _endedAtLastFrame))
+                            Expanded(
+                              flex: 0,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                child: SizedBox(
+                                  width: 120,
+                                  child: Row(
+                                    children: [
+                                      const Text("Duration:", style: TextStyle(fontSize: 11)),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: TextField(
+                                          decoration: InputDecoration(
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+                                            isDense: true,
+                                          ),
+                                          keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                          onChanged: (value) {
+                                            final d = double.tryParse(value);
+                                            if (d != null && d > 0) {
+                                              setState(() => currentFrame.duration = d);
+                                              _saveProject();
+                                            }
+                                          },
+                                          controller: TextEditingController(text: currentFrame.duration.toStringAsFixed(2)),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 2),
+                                      const Text("s", style: TextStyle(fontSize: 10)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
                           const SizedBox(width: 12),
                           IconButton(
                             icon: const Icon(Icons.undo),
