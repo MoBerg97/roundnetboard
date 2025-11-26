@@ -25,6 +25,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   bool _isPlaying = false;
   bool _isPaused = false;
   bool _endedAtLastFrame = false;
+  bool _scrubberMovedManually = false;
   late Ticker _ticker;
   double _playbackT = 0.0;
   double _playbackSpeed = 1.0;
@@ -149,9 +150,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       return;
     }
     
-    // Get current frame duration and calculate tick increment
-    final currentFrame = frames[_playbackFrameIndex];
-    final frameDuration = currentFrame.duration > 0 ? currentFrame.duration : 0.5; // Default to 0.5s if invalid
+    // Get next frame duration and calculate tick increment
+    // Duration[i] applies to the transition FROM frame i-1 TO frame i
+    // So we use the duration of the NEXT frame (frame at _playbackFrameIndex + 1)
+    final nextFrameIndex = (_playbackFrameIndex + 1).clamp(0, frames.length - 1);
+    final nextFrame = frames[nextFrameIndex];
+    // First frame has no duration (it's just starting position), so default to 0.5s
+    final frameDuration = nextFrameIndex > 0 ? (nextFrame.duration > 0 ? nextFrame.duration : 0.5) : 0.5;
     // Each tick represents 16.67ms (60fps), increment based on frame duration and playback speed
     final tickIncrement = (1.0 / (frameDuration * 60.0)) * _playbackSpeed;
     
@@ -178,6 +183,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     setState(() {
       _isPlaying = true;
       _endedAtLastFrame = false;
+      _scrubberMovedManually = false;
       _playbackFrameIndex = 0;
       _playbackT = 0.0;
     });
@@ -191,6 +197,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _isPlaying = false;
       _isPaused = false;
       _endedAtLastFrame = false;
+      _scrubberMovedManually = false;
       _playbackFrameIndex = 0;
       _playbackT = 0.0;
     });
@@ -213,6 +220,26 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   void _showDurationPicker() {
     final durations = [0.25, 0.5, 1.0, 2.0];
+    final isFirstFrame = widget.project.frames.indexOf(currentFrame) == 0;
+    
+    if (isFirstFrame) {
+      // First frame has no duration - show info dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("First Frame"),
+          content: const Text("The first frame defines starting positions only.\nIt has no duration for animation.\n\nSet duration for frame 2 instead."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -916,7 +943,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         : (isPlayback ? _animatedFrame! : currentFrame);
     // Timeline maintains consistent height during state transitions to avoid layout shifts
     // Playback: 160px (more space for timeline), End-state: 120px (with stop button), Editing: 120px (full controls)
-    final double timelineHeight = _isPlaying ? 160.0 : 120.0;
+    final double timelineHeight = 140.0;
     final int playbackAnimIndex = _isPlaying
       ? ((_playbackFrameIndex + _playbackT).clamp(0.0, (widget.project.frames.length - 1).toDouble())).round()
       : -1;
@@ -1144,20 +1171,22 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Stack(
                 children: [
-                  // Thumbnails ListView positioned at bottom when editing, full height when playing
+                  // Thumbnails ListView positioned at bottom
+                  // In edit mode: show all frames (0 to N)
+                  // In playback mode: skip first frame (1 to N)
                   Positioned(
                     left: 0,
                     right: 0,
-                    bottom: !(_isPlaying || _endedAtLastFrame) ? 56 : 40,
-                    height: !(_isPlaying || _endedAtLastFrame) ? (timelineHeight - 56 - 4) : (timelineHeight - 40 - 4),
+                    bottom: 40,
+                    height: (timelineHeight - 40 - 28),
                     child: AbsorbPointer(
                       absorbing: _isPlaying || _endedAtLastFrame,
                       child: ListView.builder(
                         controller: _timelineController,
                         scrollDirection: Axis.horizontal,
-                        itemCount: widget.project.frames.length,
+                        itemCount: _isPlaying ? widget.project.frames.length - 1 : widget.project.frames.length,
                         itemBuilder: (context, index) {
-                          final frame = widget.project.frames[index];
+                          final frame = _isPlaying ? widget.project.frames[index + 1] : widget.project.frames[index];
                           final isSelected = frame == currentFrame;
                           final isPlayingFrame = _isPlaying && index == playbackAnimIndex;
                           return GestureDetector(
@@ -1179,7 +1208,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     borderRadius: BorderRadius.circular(8),
                                     border: (_isPlaying) ? null : (isSelected ? Border.all(color: Colors.yellow, width: 3) : null),
                                   ),
-                                  child: Center(child: Text("${index + 1}")),
+                                  child: Center(child: Text("${_isPlaying ? index + 1 : index}")), // Playback: starts at 1, Edit: starts at 0
                                 ),
                                 if (isSelected && !(_isPlaying || _endedAtLastFrame))
                                   Positioned(
@@ -1211,12 +1240,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                   ),
 
                   // Playback frame cursor overlay (shows current frame index during playback)
-                  if (_isPlaying)
+                  if (_isPlaying || _endedAtLastFrame)
                     Positioned(
                       left: 0,
                       right: 0,
-                      bottom: !(_isPlaying || _endedAtLastFrame) ? 56 : 40,
-                      height: !(_isPlaying || _endedAtLastFrame) ? (timelineHeight - 56 - 4) : (timelineHeight - 40 - 4),
+                      bottom: 40,
+                      height: (timelineHeight - 40 - 28),
                       child: AbsorbPointer(
                         absorbing: true,
                         child: Container(
@@ -1226,9 +1255,25 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               final frameCount = widget.project.frames.length;
                               if (frameCount < 2) return const SizedBox.shrink();
                               
-                              // Calculate cursor position: each frame thumbnail is 60px + 8px margins
+                              // Calculate cursor position with interpolation and scroll offset
+                              // Skip first frame: timeline shows frames 1+ only
+                              // Frame i in timeline is at index i-1
+                              // Cursor at left of frame i when entering frame i (from frame i-1 animation ending)
+                              // Cursor at right of frame i when leaving frame i (entering frame i+1)
                               final itemExtent = 68.0; // 60 width + 2*4 margin
-                              final cursorX = _playbackFrameIndex * itemExtent + itemExtent / 2;
+                              
+                              // Map playback frame index to timeline index (offset by -1 to skip first frame)
+                              // At frame 0, we're at the boundary before frame 1 (timeline index -1, clamped)
+                              // At frame 1, we're showing frame 1 (timeline index 0)
+                              final interpolatedPosition = _playbackFrameIndex + _playbackT;
+                              final timelineIndex = interpolatedPosition - 1.0;
+                              final cursorWorldX = timelineIndex * itemExtent + itemExtent / 2;
+                              
+                              // Get scroll offset from timeline controller
+                              final scrollOffset = _timelineController.hasClients ? _timelineController.offset : 0.0;
+                              
+                              // Cursor position relative to the visible viewport
+                              final cursorX = cursorWorldX - scrollOffset;
                               
                               return Stack(
                                 children: [
@@ -1258,10 +1303,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       ),
                     ),
 
-                  // Playback controls overlayed at top (playback slider)
-                  if (_isPlaying)
+                  // Playback controls overlayed at top (playback slider / scrubber slider)
+                  if (_isPlaying || _endedAtLastFrame)
                     Positioned(
-                      top: 4,
+                      top: 0,
                       left: 12,
                       right: 12,
                       height: 30,
@@ -1277,6 +1322,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           final dx = (local.dx - leftPadding).clamp(0.0, available);
                           final frac = (available <= 0) ? 0.0 : (dx / available);
                           setState(() {
+                            // Mark that scrubber was manually moved
+                            _scrubberMovedManually = true;
+                            // If user scrubs back from end, pause the playback
+                            if (_endedAtLastFrame) {
+                              _isPaused = true;
+                              _endedAtLastFrame = false;
+                            }
                             final total = (widget.project.frames.length - 1).toDouble();
                             final globalPos = frac * total;
                             _playbackFrameIndex = globalPos.floor();
@@ -1285,6 +1337,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           _scrollToPlaybackFrame();
                         },
                         child: LayoutBuilder(builder: (context, constraints) {
+                          const scrubbersize = 20.0;
                           final leftPadding = 8.0;
                           final rightPadding = 8.0;
                           final width = constraints.maxWidth;
@@ -1300,7 +1353,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 Positioned(
                                   left: leftPadding,
                                   right: rightPadding,
-                                  top: 13,
+                                  top: 8,
                                   child: Container(
                                     height: 4,
                                     decoration: BoxDecoration(
@@ -1310,11 +1363,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   ),
                                 ),
                                 Positioned(
-                                  left: dotX - 5,
-                                  top: 9,
+                                  left: dotX - scrubbersize / 2,
+                                  top: 8 - (scrubbersize - 4) / 2,
                                   child: Container(
-                                    width: 10,
-                                    height: 10,
+                                    width: scrubbersize,
+                                    height: scrubbersize,
                                     decoration: BoxDecoration(
                                       color: Colors.blueAccent,
                                       shape: BoxShape.circle,
@@ -1330,12 +1383,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     ),
 
                   // Playback controls at bottom (speed slider + buttons)
-                  if (_isPlaying)
+                  if (_isPlaying || _endedAtLastFrame)
                     Positioned(
-                      bottom: 4,
+                      bottom: 0,
                       left: 12,
                       right: 12,
-                      height: 32,
+                      height: 40,
                       child: Row(
                         children: [
                           ElevatedButton(
@@ -1345,7 +1398,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           ),
                           const SizedBox(width: 4),
                           ElevatedButton(
-                            onPressed: _endedAtLastFrame ? null : (_isPaused ? _resumePlayback : _pausePlayback),
+                            onPressed: (_endedAtLastFrame && !_scrubberMovedManually) ? null : (_isPaused ? _resumePlayback : _pausePlayback),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _isPaused ? Colors.green : Colors.orange,
                               minimumSize: const Size(36, 26),
@@ -1354,17 +1407,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           ),
                           const SizedBox(width: 8),
                           SizedBox(
-                            width: 80,
+                            width: 200,
                             child: Slider(
                               value: _playbackSpeed,
                               min: 0.1,
-                              max: 3.0,
-                              divisions: 29,
+                              max: 2.0,
+                              divisions: 19,
                               label: "${_playbackSpeed.toStringAsFixed(1)}x",
                               onChanged: (v) => setState(() => _playbackSpeed = v),
                             ),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 2),
                           SizedBox(
                             width: 35,
                             child: Text(
@@ -1374,38 +1427,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             ),
                           ),
                           const Spacer(),
-                          Text(
-                            "${_playbackFrameIndex + 1}/${widget.project.frames.length}",
-                            style: const TextStyle(fontSize: 11),
-                          ),
                         ],
-                      ),
-                    ),
-
-                  // Playback finished badge
-                  if (_endedAtLastFrame)
-                    Positioned(
-                      top: 4,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.orange[100],
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.orange, width: 1),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('Playback Finished', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 9)),
-                            const SizedBox(width: 4),
-                            ElevatedButton(
-                              onPressed: _stopPlayback,
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size(28, 22), padding: EdgeInsets.zero),
-                              child: const Icon(Icons.stop, size: 11),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
 
@@ -1415,7 +1437,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       left: 0,
                       right: 0,
                       bottom: 0,
-                      height: 56,
+                      height: 40,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

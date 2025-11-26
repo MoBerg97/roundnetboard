@@ -9,14 +9,19 @@ less clutter:
     - [ ] adjust the hit and set symbols on the boardscreen (not the icons to toggle them):
         - [ ] set: instead of a circle, the current path is displayed as a line getting thicker in size from start towards the middle and thinner again from middle to end.
         - [ ] hit: the star icon should be more transparent and only grey color, no outline and a little bigger. it should slowly fade in the animation playback on its position after appearing under the ball.
-    - [ ] the ball path modifier icons should have no visual box (invisible box)
-    - [ ] the playback timeline should stay as is when the last frame is reached and playback stops. Then there should be all buttons greyed out except the stop button to indicate that only this one stays functinonal.
-    - [ ] the timeline can be a little lower in height.
+    - [ ] the ball path modifier menu should have no visible box container
+    - [x] the timeline can be a little lower in height.
+
+## Features
+
+project screen:
+    - [ ] project should be able to be duplicated and then get a ascending numerated suffix when the peoject name already exists in (). 
+    - [ ] users should be able to share projects including all frames and project specific settings. 
 
 intuitive actions:
     - [ ] when a user drags an object and stays holding that object for more than 1sec on about the same location (within 50px), a magnifying window (1.5x) showing the object and its surrounding 10% of displaymin = min(screenwidth,screenheight) is shown hovering 20% of displaymin above the location that user is holding.
     - [ ] the magnifying window is deactivated as soon as the user changed the position of the object over 50px in the last .5 seconds
-    - [ ] standard playback speed (at 1x) should be lower and made possible to be reducable to a higher degree, therefore increase to a lesser degree
+    - [x] standard playback speed (at 1x) should be lower and made possible to be reducable to a higher degree, therefore increase to a lesser degree
 
 court:
     - [ ] the court should be zoomable with two states, first state is as it currently is, showing at least 1.2 times servezone_radius around the center of the court. second zoom stage should be the whole court towards the outer boundary at 850cm radius around the center of court.
@@ -51,25 +56,23 @@ ball:
 timeline:
     - [ ] the insert frame thumbnail button should appear right next to the current frame in the timeline instead of below it, indicating that the next frame is created after the currently selected frame as a direct copy.
     - [ ] the delete current frame button should only appear when a frame is tapped again if already selected and then disappears again if it is tapped again.
-    - [ ] the timeline height compression and color fading should happen dynamically (linear transition), although the transition should be very fast (200ms)
-    - [ ] during playback a cursor should appear in the timeline visually indicating the current point in time of the playback. This should be checked to be in accordance with the timing of the frames.
-    - [ ] the timeline should have a pause button.
-    - [ ] the speed adjustment slider should be a slightly transparent slider without background box (only slider control point as dot and slider bar) sitting on top of the timeline with the bar in vertical direction.
-    - [ ] the user should be able to select a duration of the animation of a frame during editing a project. duration is frame specific.
+    - [x] during playback a cursor should appear in the timeline visually indicating the current point in time of the playback. This should be checked to be in accordance with the timing of the frames.
+    - [x] the timeline should have a pause button.
+    - [x] the speed adjustment slider should be a slightly transparent slider without background box (only slider control point as dot and slider bar) sitting on top of the timeline with the bar in vertical direction.
+    - [x] the user should be able to select a duration of the animation of a frame during editing a project. duration is frame specific.
 
 ## Fixes
-- [ ] the playback timeline divides the frame thumbnail into n thumbnails as in the editing timeline. but the first frame has no duration, only giving the start positions. therefore the playback timeline thumbnails should be n-1.
+- [ ] the playback timeline divides the frame thumbnail into n thumbnails as in the editing timeline. but the first frame has no duration, only giving the start positions. therefore the cursor of the thumbnail should start at time 0 at the left hand side of the thumbnail of frame 1
 - [ ] the ball path modifier menu buttons should be toggable to on and off (Iindicated by highlighted/non-highlighted button), not only on. MAke sure, that the ball path can be either set or hit, not both.
-- [ ] the go to previous and go to next frame in the boardscreen should be removed, since the user can already select the current frame directly from the timeline.
-- [ ] the speed adjuster bar should not vanish until the user actively stops the playback with the stop button.
+- [x] the go to previous and go to next frame in the boardscreen should be removed, since the user can already select the current frame directly from the timeline.
 - [x] the hit animation is animated too short and is too small. It should be the size of the normal ball size times 0.3
 - [ ] instead of tap-and-holding the ball path to trigger the ball set hit icons to appear, the icons should appear when the ball at its current position is tapped.
 - [x] the hit control point is only draggable once after creation. Instead i want the user to be able to drag it any time (triggers when tapped <30cm from middle point of star)
 - [x] the hit control point is dragged by a user, but the actual point of the ball on the path is not corresponding to the tapped location.
 - [x] the dragging od the hit control point is still not on the actual position of the hit control point on screen. There is a bug, showing that the dragging position is shifted vertically in y direciton by a fixed amount.
-- [ ] the hit can only be toggled on when the current frames ball path is of a distance greater than 30cm
+- [x] the hit can only be toggled on when the current frames ball path is of a distance greater than 30cm
 - [x] when a frame is selected as current frame in the boardscreen, the timeline should automatically visually scroll to show the selected frame.
-- [ ] NOT FUNCTIONAL: older lines of previous frame can be set to be not displayed in current frame as a setting in the settings menu of the board screen (three dots in app bar)
+- [x] NOT FUNCTIONAL: older lines of previous frame can be set to be not displayed in current frame as a setting in the settings menu of the board screen (three dots in app bar)
 
 ## Else
 
