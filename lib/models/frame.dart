@@ -59,6 +59,13 @@ class Frame extends HiveObject {
   bool? ballSet;
 
   // --------------------------
+  // Frame duration (seconds)
+  // --------------------------
+  // Duration from this frame to the next frame during playback
+  @HiveField(16)
+  double duration;
+
+  // --------------------------
   // Constructor
   // --------------------------
   Frame({
@@ -78,6 +85,7 @@ class Frame extends HiveObject {
     List<Offset>? ballPathPoints,
     this.ballHitT,
     this.ballSet,
+    this.duration = 0.5,
   })  : p1PathPoints = p1PathPoints ?? [],
         p2PathPoints = p2PathPoints ?? [],
         p3PathPoints = p3PathPoints ?? [],
@@ -104,6 +112,7 @@ class Frame extends HiveObject {
         ballPathPoints: List.from(ballPathPoints),
         ballHitT: ballHitT,
         ballSet: ballSet,
+        duration: duration,
       );
 
   // --------------------------
