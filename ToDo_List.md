@@ -41,8 +41,8 @@ statistics:
 - [ ] if turned on, the footwork statistics will also be depicted in the animation playback with showing the footwork of a certain frame during the playback of this frame.
  
 sharing:
-- [ ]users can export each frame as a single image, or all frames as images appended to each other, to form a left to right or top to bottom succession.
-- [ ]users can export the animation as a video file. the speed of the exported animation should match the last selected playback speed of the animation.
+- [ ] users can export each frame as a single image, or all frames as images appended to each other, to form a left to right or top to bottom succession.
+- [ ] users can export the animation as a video file. the speed of the exported animation should match the last selected playback speed of the animation.
     
 players:
 - [ ] the color of player objects should be editable.
