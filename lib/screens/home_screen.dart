@@ -48,10 +48,13 @@ class HomeScreen extends StatelessWidget {
                       _renameProject(context, box, index, project);
                     } else if (value == 'delete') {
                       box.deleteAt(index);
+                    } else if (value == 'duplicate') {
+                      _duplicateProject(context, box, project);
                     }
                   },
                   itemBuilder: (context) => [
                     const PopupMenuItem(value: 'rename', child: Text('Rename')),
+                    const PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
                     const PopupMenuItem(value: 'delete', child: Text('Delete')),
                   ],
                 ),
@@ -120,6 +123,32 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _duplicateProject(BuildContext context, Box<AnimationProject> box, AnimationProject project) {
+    // Find a unique name with numerated suffix
+    String newName = project.name;
+    int suffix = 1;
+
+    while (box.values.any((p) => p.name == newName)) {
+      newName = "${project.name} ($suffix)";
+      suffix++;
+    }
+
+    // Create deep copy of the project
+    final duplicatedFrames = project.frames.map((f) => f.copy()).toList();
+    final duplicatedProject = AnimationProject(
+      name: newName,
+      frames: duplicatedFrames,
+      settings: project.settings?.copy(),
+    );
+
+    // Add to box
+    box.add(duplicatedProject);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Project duplicated as "$newName"')),
     );
   }
 }

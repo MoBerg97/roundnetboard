@@ -57,6 +57,17 @@ class Settings extends HiveObject {
   // Store last used screen size for conversion
   static Size _lastScreenSize = const Size(0, 0);
   static void setScreenSize(Size size) => _lastScreenSize = size;
+
+  /// Create a deep copy of settings
+  Settings copy() => Settings(
+        playbackSpeed: playbackSpeed,
+        outerCircleRadiusCm: outerCircleRadiusCm,
+        innerCircleRadiusCm: innerCircleRadiusCm,
+        netCircleRadiusCm: netCircleRadiusCm,
+        outerBoundsRadiusCm: outerBoundsRadiusCm,
+        referenceRadiusCm: referenceRadiusCm,
+        showPreviousFrameLines: showPreviousFrameLines,
+      );
 }
 
 extension SettingsMap on Settings {

@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'dart:ui';
+import 'annotation.dart';
 
 part 'frame.g.dart';
 
@@ -66,6 +67,12 @@ class Frame extends HiveObject {
   double duration;
 
   // --------------------------
+  // Frame-specific annotations (lines, circles, etc.)
+  // --------------------------
+  @HiveField(17)
+  List<Annotation> annotations;
+
+  // --------------------------
   // Constructor
   // --------------------------
   Frame({
@@ -86,11 +93,13 @@ class Frame extends HiveObject {
     this.ballHitT,
     this.ballSet,
     this.duration = 0.5,
+    List<Annotation>? annotations,
   })  : p1PathPoints = p1PathPoints ?? [],
         p2PathPoints = p2PathPoints ?? [],
         p3PathPoints = p3PathPoints ?? [],
         p4PathPoints = p4PathPoints ?? [],
-        ballPathPoints = ballPathPoints ?? [];
+        ballPathPoints = ballPathPoints ?? [],
+        annotations = annotations ?? [];
 
   // --------------------------
   // Copy frame (deep copy)
@@ -113,6 +122,7 @@ class Frame extends HiveObject {
         ballHitT: ballHitT,
         ballSet: ballSet,
         duration: duration,
+        annotations: annotations.map((a) => a.copy()).toList(),
       );
 
   // --------------------------

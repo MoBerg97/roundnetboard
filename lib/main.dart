@@ -6,7 +6,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'models/offset_adapter.dart';
 import 'models/frame.dart';
 import 'models/animation_project.dart';
-import 'models/settings.dart'; 
+import 'models/settings.dart';
+import 'models/annotation.dart';
 import 'screens/home_screen.dart';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -40,8 +41,10 @@ void main() async {
   // Register adapters (order/typeIds must match what you used above)
   Hive.registerAdapter(OffsetAdapter());            // typeId = 0 (manual)
   Hive.registerAdapter(FrameAdapter());             // typeId = 1 (generated)
+  Hive.registerAdapter(AnnotationAdapter());        // typeId = 2 (generated)
   Hive.registerAdapter(AnimationProjectAdapter());  // typeId = 3 (generated)
   Hive.registerAdapter(SettingsAdapter());          // typeId = 4 (generated)
+  Hive.registerAdapter(AnnotationTypeAdapter());    // typeId = 5 (generated)
 
   // Open Hive boxes
   await Hive.openBox<AnimationProject>('projects');

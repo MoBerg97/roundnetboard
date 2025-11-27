@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install release APK",
+      "type": "shell",
+      "command": "flutter build apk --release && adb install -r build/app/outputs/flutter-apk/app-release.apk",
+      "problemMatcher": []
+    }
+  ]
+}
