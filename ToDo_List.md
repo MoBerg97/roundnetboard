@@ -33,6 +33,8 @@ annotations:
 - [ ] add a line annotation tool, that also is editable in color, user can manually edit the end points of the line.
 - [ ] when a line should be added (tap on line icon), first the user must set the two endpoints of the line. then that line is created and henceforth editable.
 - [ ] annotations should be frame specific and also should be copyed along all other objects when a new frame is inserted.
+- [ ] annotations should only be permament (saved per frame) when added in the annotation mode in the editing board screen.
+- [ ] annotations that are added in the animation playback are only temporarely visible during this playback until the current playback is left (going back to the editing screen or back to project overview)
 
 statistics:
 - [ ] user can toggle on footwork and in-system statistics in the project settings
@@ -63,10 +65,10 @@ timeline:
 
 ## Fixes
 - [ ] the playback timeline divides the frame thumbnail into n thumbnails as in the editing timeline. but the first frame has no duration, only giving the start positions. therefore the cursor of the thumbnail should start at time 0 at the left hand side of the thumbnail of frame 1
-- [ ] the ball path modifier menu buttons should be toggable to on and off (Iindicated by highlighted/non-highlighted button), not only on. MAke sure, that the ball path can be either set or hit, not both.
+- [x] the ball path modifier menu buttons should be toggable to on and off (Iindicated by highlighted/non-highlighted button), not only on. MAke sure, that the ball path can be either set or hit, not both.
 - [x] the go to previous and go to next frame in the boardscreen should be removed, since the user can already select the current frame directly from the timeline.
 - [x] the hit animation is animated too short and is too small. It should be the size of the normal ball size times 0.3
-- [ ] instead of tap-and-holding the ball path to trigger the ball set hit icons to appear, the icons should appear when the ball at its current position is tapped.
+- [x] instead of tap-and-holding the ball path to trigger the ball set hit icons to appear, the icons should appear when the ball at its current position is tapped.
 - [x] the hit control point is only draggable once after creation. Instead i want the user to be able to drag it any time (triggers when tapped <30cm from middle point of star)
 - [x] the hit control point is dragged by a user, but the actual point of the ball on the path is not corresponding to the tapped location.
 - [x] the dragging od the hit control point is still not on the actual position of the hit control point on screen. There is a bug, showing that the dragging position is shifted vertically in y direciton by a fixed amount.

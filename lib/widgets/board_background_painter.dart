@@ -10,7 +10,7 @@ class BoardBackgroundPainter extends CustomPainter {
 
   Offset _boardCenter() {
     const double appBarHeight = kToolbarHeight;
-    const double timelineHeight = 120;
+    const double timelineHeight = 140; // Match timeline height in board_screen.dart
     final usableHeight = screenSize.height - appBarHeight - timelineHeight;
     final offsetTop = appBarHeight;
     final cx = screenSize.width / 2;

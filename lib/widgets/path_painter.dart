@@ -21,7 +21,7 @@ class PathPainter extends CustomPainter {
 
   Offset _boardCenter(Size size) {
     const double appBarHeight = kToolbarHeight;
-    const double timelineHeight = 120;
+    const double timelineHeight = 140; // Match timeline height in board_screen.dart
     final usableHeight = size.height - appBarHeight - timelineHeight;
     final offsetTop = appBarHeight;
     final cx = size.width / 2;

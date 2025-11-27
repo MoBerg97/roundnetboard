@@ -33,13 +33,15 @@ class FrameAdapter extends TypeAdapter<Frame> {
       ballPathPoints: (fields[13] as List?)?.cast<Offset>(),
       ballHitT: fields[14] as double?,
       ballSet: fields[15] as bool?,
+      duration: fields[16] as double,
+      annotations: (fields[17] as List?)?.cast<Annotation>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Frame obj) {
     writer
-      ..writeByte(16)
+      ..writeByte(18)
       ..writeByte(0)
       ..write(obj.p1)
       ..writeByte(1)
@@ -71,7 +73,11 @@ class FrameAdapter extends TypeAdapter<Frame> {
       ..writeByte(14)
       ..write(obj.ballHitT)
       ..writeByte(15)
-      ..write(obj.ballSet);
+      ..write(obj.ballSet)
+      ..writeByte(16)
+      ..write(obj.duration)
+      ..writeByte(17)
+      ..write(obj.annotations);
   }
 
   @override

@@ -5,6 +5,8 @@ import '../models/animation_project.dart';
 import '../models/frame.dart';
 import '../widgets/path_painter.dart';
 import '../widgets/board_background_painter.dart';
+import '../models/annotation.dart';
+import '../widgets/annotation_painter.dart';
 import '../models/settings.dart';
 import '../utils/path_engine.dart';
 import 'settings_screen.dart';
@@ -16,6 +18,8 @@ class BoardScreen extends StatefulWidget {
   @override
   State<BoardScreen> createState() => _BoardScreenState();
 }
+
+enum AnnotationTool { none, line, circle }
 
 class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin {
   late Frame currentFrame;
@@ -33,6 +37,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   String? _pendingBallMark; // 'hit' | 'set'
   bool _showModifierMenu = false;
+  // Annotation mode + tools
+  bool _annotationMode = false;
+  AnnotationTool _activeAnnotationTool = AnnotationTool.none;
+  bool _eraserMode = false;
+  final List<Offset> _pendingAnnotationPoints = [];
+  Color _annotationColor = Colors.red; // Default to red
+  final List<Annotation> _stagedAnnotations = [];
+  final List<Annotation> _erasingAnnotations = []; // Annotations being touched by eraser for preview
+  // For drag-to-draw line preview
+  Offset? _currentDragPos; // Current position during drag for live preview
   
 
   final Map<String, Offset> _dragStartLogical = {};
@@ -118,7 +132,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   Offset _boardCenter(Size size) {
     const double appBarHeight = kToolbarHeight;
-    const double timelineHeight = 120;
+    const double timelineHeight = 140; // Match the timeline height in build()
     final usableHeight = size.height - appBarHeight - timelineHeight;
     final cx = size.width / 2;
     final cy = appBarHeight + usableHeight / 2;
@@ -132,6 +146,15 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           _settings.cmToLogical(cmPos.dx, size),
           _settings.cmToLogical(cmPos.dy, size),
         );
+  }
+
+  // Convert a screen position (pixels) to cm logical coordinates used by the model
+  Offset _screenToCm(Offset screenPos, Size size) {
+    final center = _boardCenter(size);
+    final logical = screenPos - center;
+    final scalePerCm = _settings.cmToLogical(1.0, size);
+    if (scalePerCm == 0) return Offset.zero;
+    return Offset(logical.dx / scalePerCm, logical.dy / scalePerCm);
   }
 
   // removed unused _toLogicalPosition helper
@@ -322,6 +345,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       p3PathPoints: [],
       p4PathPoints: [],
       ballPathPoints: [],
+      annotations: fB.annotations, // Include annotations from current frame (frame B)
     );
   }
 
@@ -483,6 +507,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   void _handleBoardTap(Offset tapPos, Size size) {
     if (_isPlaying) return;
+    // If in annotation mode, ignore taps (drawing uses drag instead)
+    if (_annotationMode) {
+      return;
+    }
+
     final prev = _getPreviousFrame();
     if (prev == null) return;
     if (_pendingBallMark == 'hit') {
@@ -514,6 +543,120 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (tryAdd("P3", prev.p3, currentFrame.p3, currentFrame.p3PathPoints)) return;
     if (tryAdd("P4", prev.p4, currentFrame.p4, currentFrame.p4PathPoints)) return;
     if (tryAdd("BALL", prev.ball, currentFrame.ball, currentFrame.ballPathPoints)) return;
+  }
+
+  /// Handle drag start for line drawing
+  void _handleAnnotationDragStart(DragStartDetails details, Size size) {
+    if (_isPlaying || _eraserMode) return;
+    if (_activeAnnotationTool != AnnotationTool.line) return;
+    
+    // Get board position relative to the board widget to avoid coordinate offset
+    final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
+    final localPos = box.globalToLocal(details.globalPosition);
+    final cmPos = _screenToCm(localPos, size);
+    setState(() {
+      _pendingAnnotationPoints.clear();
+      _pendingAnnotationPoints.add(cmPos);
+      _currentDragPos = cmPos;
+    });
+  }
+
+  /// Handle drag update for live line preview and erasing
+  void _handleAnnotationDragUpdate(DragUpdateDetails details, Size size) {
+    if (_isPlaying) return;
+    
+    final currentPos = details.globalPosition;
+    // Get board position relative to the board widget
+    final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
+    final localPos = box.globalToLocal(currentPos);
+    final cmPos = _screenToCm(localPos, size);
+
+    if (_eraserMode) {
+      // Update erasing annotations list for preview (don't delete yet)
+      setState(() {
+        _erasingAnnotations.clear();
+        for (final ann in currentFrame.annotations) {
+          if (_isAnnotationTouched(ann, cmPos, size)) {
+            _erasingAnnotations.add(ann);
+          }
+        }
+      });
+    } else if (_activeAnnotationTool == AnnotationTool.line && _pendingAnnotationPoints.isNotEmpty) {
+      // Update preview position for line drag
+      setState(() {
+        _currentDragPos = cmPos;
+      });
+    }
+  }
+
+  /// Check if a dragging touch intersects with an annotation
+  bool _isAnnotationTouched(Annotation ann, Offset touchCmPos, Size size) {
+    const touchRadius = 20.0; // cm radius for touch detection
+    
+    if (ann.type == AnnotationType.line && ann.points.length >= 2) {
+      final start = ann.points[0];
+      final end = ann.points[1];
+      // Check distance from touch point to line segment
+      final dist = _distanceToLineSegment(touchCmPos, start, end);
+      return dist <= touchRadius;
+    } else if (ann.type == AnnotationType.circle && ann.points.length >= 2) {
+      final center = ann.points[0];
+      final radiusPoint = ann.points[1];
+      final radius = (radiusPoint - center).distance;
+      final distToCenter = (touchCmPos - center).distance;
+      // Check if touch is near the circle
+      final circleWidth = 10.0; // cm width of the circle line
+      return (distToCenter - radius).abs() <= (touchRadius + circleWidth / 2);
+    }
+    return false;
+  }
+
+  /// Calculate distance from a point to a line segment
+  double _distanceToLineSegment(Offset p, Offset a, Offset b) {
+    final ap = p - a;
+    final ab = b - a;
+    final abDot = ab.dx * ab.dx + ab.dy * ab.dy;
+    if (abDot == 0) return ap.distance;
+    
+    final t = ((ap.dx * ab.dx + ap.dy * ab.dy) / abDot).clamp(0.0, 1.0);
+    final closest = a + Offset(ab.dx * t, ab.dy * t);
+    return (p - closest).distance;
+  }
+
+  /// Handle drag end for committing line or finishing erase
+  void _handleAnnotationDragEnd(DragEndDetails details, Size size) {
+    if (_isPlaying) return;
+    
+    if (_eraserMode) {
+      // Commit erased annotations and save project
+      setState(() {
+        currentFrame.annotations.removeWhere((ann) => _erasingAnnotations.contains(ann));
+        _erasingAnnotations.clear();
+      });
+      _saveProject();
+      return;
+    }
+    
+    if (_activeAnnotationTool == AnnotationTool.line && _pendingAnnotationPoints.isNotEmpty && _currentDragPos != null) {
+      final start = _pendingAnnotationPoints[0];
+      final end = _currentDragPos!;
+      
+      if ((end - start).distance > 10) { // Only create if drag distance > 10cm
+        final ann = Annotation(type: AnnotationType.line, color: _annotationColor, points: [start, end]);
+        setState(() {
+          currentFrame.annotations.add(ann);
+          _pendingAnnotationPoints.clear();
+          _currentDragPos = null;
+        });
+        _saveProject();
+      } else {
+        // Drag too short, discard
+        setState(() {
+          _pendingAnnotationPoints.clear();
+          _currentDragPos = null;
+        });
+      }
+    }
   }
 
   void _placeBallHitAt(Offset tapPos, Size size) {
@@ -958,6 +1101,23 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             onPressed: () => Navigator.of(context).pop(),
           ),
           actions: [
+            if (!_isPlaying && !_endedAtLastFrame)
+              IconButton(
+                icon: Icon(
+                  Icons.draw,
+                  color: _annotationMode ? _annotationColor : Colors.red, // Show color based on mode
+                ),
+                tooltip: _annotationMode ? 'Exit Annotation Mode' : 'Enter Annotation Mode',
+                onPressed: () {
+                  setState(() {
+                    _annotationMode = !_annotationMode;
+                    if (!_annotationMode) {
+                      _activeAnnotationTool = AnnotationTool.none;
+                      _pendingAnnotationPoints.clear();
+                    }
+                  });
+                },
+              ),
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () async {
@@ -973,95 +1133,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             ),
           ],
         ),
-        body: Column(
+        body: Stack(
           children: [
-            if (_showModifierMenu)
-              Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                alignment: Alignment.center,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Material(
-                      color: (currentFrame.ballSet ?? false) ? Colors.orange.withOpacity(0.2) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      child: IconButton(
-                        tooltip: 'Toggle Set',
-                        onPressed: () {
-                          if (_isPlaying || _endedAtLastFrame) return;
-                          setState(() {
-                            // Toggle: if set is active, turn it off; otherwise turn it on and disable hit
-                            if (currentFrame.ballSet ?? false) {
-                              currentFrame.ballSet = false;
-                            } else {
-                              currentFrame.ballSet = true;
-                              currentFrame.ballHitT = null; // mutually exclusive
-                            }
-                            _pendingBallMark = null;
-                          });
-                          _saveProject();
-                        },
-                        icon: SizedBox(
-                          width: 40,
-                          height: 28,
-                          child: CustomPaint(
-                            painter: _SetIconPainter(active: (currentFrame.ballSet ?? false)),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Material(
-                      color: (currentFrame.ballHitT != null) ? Colors.yellow.withOpacity(0.2) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      child: IconButton(
-                        tooltip: 'Toggle Hit',
-                        onPressed: () {
-                          if (_isPlaying || _endedAtLastFrame) return;
-                          final prev = _getPreviousFrame();
-                          if (prev == null) return;
-                          
-                          // Toggle: if hit is active, turn it off; otherwise turn it on and disable set
-                          if (currentFrame.ballHitT != null) {
-                            setState(() {
-                              currentFrame.ballHitT = null;
-                              _pendingBallMark = null;
-                            });
-                          } else {
-                            final tMid = 0.5;
-                            final tAdjusted = _avoidControlPointOverlap(prev, tMid);
-                            setState(() {
-                              currentFrame.ballHitT = tAdjusted;
-                              currentFrame.ballSet = false; // mutually exclusive
-                              _pendingBallMark = 'hit';
-                            });
-                          }
-                          _saveProject();
-                        },
-                        icon: SizedBox(
-                          width: 40,
-                          height: 28,
-                          child: CustomPaint(
-                            painter: _HitIconPainter(active: (currentFrame.ballHitT != null)),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _showModifierMenu = false;
-                          _pendingBallMark = null;
-                        });
-                      },
-                      child: const Text('Close'),
-                    ),
-                  ],
-                ),
-              ),
-            Expanded(
+            // Main board area fills entire body
+            Positioned.fill(
               child: AbsorbPointer(
                 absorbing: _isPlaying || _endedAtLastFrame,
                 child: Container(
@@ -1087,7 +1162,18 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             settings: _settings,
                           ),
                         ),
-                      // Full-board tap handler placed below interactive entities so that
+                      // Draw annotations for the current frame and any staged previews
+                      AnnotationPainter(
+                        annotations: frameToShow.annotations,
+                        tempAnnotations: _stagedAnnotations.isNotEmpty ? _stagedAnnotations : null,
+                        erasingAnnotations: _erasingAnnotations.isNotEmpty ? _erasingAnnotations : null,
+                        dragPreviewLine: _annotationMode && _pendingAnnotationPoints.isNotEmpty && _currentDragPos != null
+                            ? [_pendingAnnotationPoints.first, _currentDragPos!]
+                            : null,
+                        settings: _settings,
+                        screenSize: screenSize,
+                      ),
+                      // Full-board tap & drag handler placed below interactive entities so that
                       // entity GestureDetectors (players, ball, control points) receive
                       // gestures first. If they don't handle the gesture, this fills in.
                       Positioned.fill(
@@ -1102,6 +1188,53 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   _handleBoardTap(details.localPosition, screenSize);
                                 });
                               }
+                            }
+                          },
+                          onPanStart: (details) {
+                            if (!(_isPlaying || _endedAtLastFrame) && _annotationMode) {
+                              _handleAnnotationDragStart(details, screenSize);
+                            }
+                          },
+                          onPanUpdate: (details) {
+                            if (!(_isPlaying || _endedAtLastFrame) && _annotationMode) {
+                              _handleAnnotationDragUpdate(details, screenSize);
+                            }
+                          },
+                          onPanEnd: (details) {
+                            if (!(_isPlaying || _endedAtLastFrame) && _annotationMode) {
+                              _handleAnnotationDragEnd(details, screenSize);
+                            }
+                          },
+                          behavior: HitTestBehavior.translucent,
+                          child: Container(),
+                        ),
+                      ),
+                        child: GestureDetector(
+                          onTapUp: (details) {
+                            if (!(_isPlaying || _endedAtLastFrame)) {
+                              if (_pendingBallMark == 'hit') {
+                                _placeBallHitAt(details.localPosition, screenSize);
+                              } else {
+                                // Defer to next frame to avoid setState during build
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  _handleBoardTap(details.localPosition, screenSize);
+                                });
+                              }
+                            }
+                          },
+                          onPanStart: (details) {
+                            if (!(_isPlaying || _endedAtLastFrame) && _annotationMode) {
+                              _handleAnnotationDragStart(details, screenSize);
+                            }
+                          },
+                          onPanUpdate: (details) {
+                            if (!(_isPlaying || _endedAtLastFrame) && _annotationMode) {
+                              _handleAnnotationDragUpdate(details, screenSize);
+                            }
+                          },
+                          onPanEnd: (details) {
+                            if (!(_isPlaying || _endedAtLastFrame) && _annotationMode) {
+                              _handleAnnotationDragEnd(details, screenSize);
                             }
                           },
                           behavior: HitTestBehavior.translucent,
