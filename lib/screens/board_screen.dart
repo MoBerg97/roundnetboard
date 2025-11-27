@@ -505,6 +505,50 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     debugPrint("Project saved with ${widget.project.frames.length} frames");
   }
 
+  void _showColorPicker() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Color'),
+        content: SizedBox(
+          height: 200,
+          child: GridView.count(
+            crossAxisCount: 4,
+            children: [
+              Colors.red,
+              Colors.blue,
+              Colors.green,
+              Colors.yellow,
+              Colors.orange,
+              Colors.purple,
+              Colors.pink,
+              Colors.cyan,
+              Colors.teal,
+              Colors.lime,
+              Colors.indigo,
+              Colors.brown,
+            ]
+                .map((color) => GestureDetector(
+                      onTap: () {
+                        setState(() => _annotationColor = color);
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: _annotationColor == color ? Border.all(color: Colors.black, width: 2) : null,
+                        ),
+                      ),
+                    ))
+                .toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _handleBoardTap(Offset tapPos, Size size) {
     if (_isPlaying) return;
     // If in annotation mode, ignore taps (drawing uses drag instead)
@@ -1133,10 +1177,90 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             ),
           ],
         ),
-        body: Stack(
+        body: Column(
           children: [
-            // Main board area fills entire body
-            Positioned.fill(
+            // Annotation toolbar (shown when in annotation mode)
+            if (_annotationMode)
+              Container(
+                height: 56,
+                color: Colors.grey[300],
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    // Line tool
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      tooltip: 'Line Tool',
+                      isSelected: _activeAnnotationTool == AnnotationTool.line,
+                      onPressed: () {
+                        setState(() {
+                          _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.line ? AnnotationTool.none : AnnotationTool.line;
+                          _eraserMode = false;
+                        });
+                      },
+                    ),
+                    // Circle tool
+                    IconButton(
+                      icon: const Icon(Icons.circle_outlined),
+                      tooltip: 'Circle Tool',
+                      isSelected: _activeAnnotationTool == AnnotationTool.circle,
+                      onPressed: () {
+                        setState(() {
+                          _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.circle ? AnnotationTool.none : AnnotationTool.circle;
+                          _eraserMode = false;
+                        });
+                      },
+                    ),
+                    // Eraser tool
+                    IconButton(
+                      icon: const Icon(Icons.auto_delete),
+                      tooltip: 'Eraser Tool',
+                      isSelected: _eraserMode,
+                      onPressed: () {
+                        setState(() {
+                          _eraserMode = !_eraserMode;
+                          if (_eraserMode) {
+                            _activeAnnotationTool = AnnotationTool.none;
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    // Color picker
+                    GestureDetector(
+                      onTap: () {
+                        _showColorPicker();
+                      },
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: _annotationColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.black, width: 2),
+                        ),
+                        child: const Icon(Icons.palette, size: 16, color: Colors.white),
+                      ),
+                    ),
+                    const Spacer(),
+                    // Close annotation mode
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      tooltip: 'Exit Annotation Mode',
+                      onPressed: () {
+                        setState(() {
+                          _annotationMode = false;
+                          _activeAnnotationTool = AnnotationTool.none;
+                          _pendingAnnotationPoints.clear();
+                          _eraserMode = false;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            // Main board area fills available space
+            Expanded(
               child: AbsorbPointer(
                 absorbing: _isPlaying || _endedAtLastFrame,
                 child: Container(
@@ -1177,38 +1301,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       // entity GestureDetectors (players, ball, control points) receive
                       // gestures first. If they don't handle the gesture, this fills in.
                       Positioned.fill(
-                        child: GestureDetector(
-                          onTapUp: (details) {
-                            if (!(_isPlaying || _endedAtLastFrame)) {
-                              if (_pendingBallMark == 'hit') {
-                                _placeBallHitAt(details.localPosition, screenSize);
-                              } else {
-                                // Defer to next frame to avoid setState during build
-                                WidgetsBinding.instance.addPostFrameCallback((_) {
-                                  _handleBoardTap(details.localPosition, screenSize);
-                                });
-                              }
-                            }
-                          },
-                          onPanStart: (details) {
-                            if (!(_isPlaying || _endedAtLastFrame) && _annotationMode) {
-                              _handleAnnotationDragStart(details, screenSize);
-                            }
-                          },
-                          onPanUpdate: (details) {
-                            if (!(_isPlaying || _endedAtLastFrame) && _annotationMode) {
-                              _handleAnnotationDragUpdate(details, screenSize);
-                            }
-                          },
-                          onPanEnd: (details) {
-                            if (!(_isPlaying || _endedAtLastFrame) && _annotationMode) {
-                              _handleAnnotationDragEnd(details, screenSize);
-                            }
-                          },
-                          behavior: HitTestBehavior.translucent,
-                          child: Container(),
-                        ),
-                      ),
                         child: GestureDetector(
                           onTapUp: (details) {
                             if (!(_isPlaying || _endedAtLastFrame)) {
