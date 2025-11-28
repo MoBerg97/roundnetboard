@@ -1188,13 +1188,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.add_circle, size: 18),
-                      label: const Text('Enable Set'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: (currentFrame.ballSet ?? false) ? Colors.orange : null,
-                      ),
-                      onPressed: () {
+                    // Set button with custom icon
+                    GestureDetector(
+                      onTap: () {
                         setState(() {
                           currentFrame.ballSet = true;
                           currentFrame.ballHitT = null;
@@ -1202,15 +1198,50 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         });
                         _saveProject();
                       },
-                    ),
-                    const SizedBox(width: 16),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.flash_on, size: 18),
-                      label: const Text('Enable Hit'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: (currentFrame.ballHitT != null) ? Colors.yellow[700] : null,
+                      child: Container(
+                        width: 80,
+                        height: 40+4,
+                        margin: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: (currentFrame.ballSet ?? false) 
+                              ? Colors.orange.withOpacity(0.3) 
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: (currentFrame.ballSet ?? false) 
+                                ? Colors.orange 
+                                : Colors.grey,
+                            width: 2,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CustomPaint(
+                              size: const Size(24, 24),
+                              painter: _SetIconPainter(active: currentFrame.ballSet ?? false),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Set',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: (currentFrame.ballSet ?? false) 
+                                    ? Colors.orange 
+                                    : Colors.grey[700],
+                                fontWeight: (currentFrame.ballSet ?? false)
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      onPressed: () {
+                    ),
+                    
+                    // Hit button with custom icon
+                    GestureDetector(
+                      onTap: () {
                         final prev = _getPreviousFrame();
                         if (prev != null) {
                           final tMid = 0.5;
@@ -1223,8 +1254,50 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           _saveProject();
                         }
                       },
+                      child: Container(
+                        width: 80,
+                        height: 40+4,
+                        margin: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: (currentFrame.ballHitT != null) 
+                              ? Colors.yellow[700]!.withOpacity(0.3) 
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: (currentFrame.ballHitT != null) 
+                                ? Colors.yellow[700]! 
+                                : Colors.grey,
+                            width: 2,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CustomPaint(
+                              size: const Size(24, 24),
+                              painter: _HitIconPainter(active: currentFrame.ballHitT != null),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Hit',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: (currentFrame.ballHitT != null) 
+                                    ? Colors.yellow[900] 
+                                    : Colors.grey[700],
+                                fontWeight: (currentFrame.ballHitT != null)
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
+                    
                     const SizedBox(width: 16),
+                    
+                    // Close button
                     TextButton(
                       onPressed: () {
                         setState(() {
