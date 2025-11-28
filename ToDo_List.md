@@ -2,7 +2,7 @@
 
 ## Design
 
-less clutter:
+main aspects: less clutter
 
 - [ ] make path control points less invisible, therefore the path editable from any point (snaps control point to current touched position of path if a path is touched). This means that instead of creating the ball path on double tap; the user should instantly drag the snapped path control point if a point on path (with 10cm buffer) is touched and hold.
 - [x] lines preview fade from end (alpha 0) to start position (alpha 0.5) of current path
@@ -12,12 +12,16 @@ less clutter:
   - [ ] hit: the star icon should be more transparent and only grey color, no outline and a little bigger. it should slowly fade in the animation playback on its position after appearing under the ball.
 - [ ] the ball path modifier menu should have no visible box container
 - [x] the timeline can be a little lower in height.
+- [ ] the eraser tool icon should be an actual eraser icon (not trash can icon)
+- [ ] get rid of circle points at start and end points of lines
+- [ ] the annotations should fade in and fade out dynamically in animation playback.
+
 
 ## Features
 
 project screen:
 
-- [ ] project should be able to be duplicated and then get a ascending numerated suffix when the peoject name already exists in (). 
+- [x] project should be able to be duplicated and then get a ascending numerated suffix when the peoject name already exists in (). 
 - [ ] users should be able to share projects including all frames and project specific settings. 
 
 intuitive actions:
@@ -25,6 +29,7 @@ intuitive actions:
 - [ ] when a user drags an object and stays holding that object for more than 1sec on about the same location (within 50px), a magnifying window (1.5x) showing the object and its surrounding 10% of displaymin = min(screenwidth,screenheight) is shown hovering 20% of displaymin above the location that user is holding.
 - [ ] the magnifying window is deactivated as soon as the user changed the position of the object over 50px in the last .5 seconds
 - [x] standard playback speed (at 1x) should be lower and made possible to be reducable to a higher degree, therefore increase to a lesser degree
+- [ ] start line point adding can also be drag and drop (create at position where ACTION_UP triggers)
 
 court:
 
@@ -33,13 +38,14 @@ court:
 
 annotations:
 
-- [ ] there should be a foldable menu for annotations that provides frame specific annotations.
+- [x] there should be a foldable menu for annotations that provides frame specific annotations.
 - [ ] the annotations should be selectable from a variety of icons indicating the annotation to add.
-- [ ] add a line annotation tool, that also is editable in color, user can manually edit the end points of the line.
-- [ ] when a line should be added (tap on line icon), first the user must set the two endpoints of the line. then that line is created and henceforth editable.
-- [ ] annotations should be frame specific and also should be copyed along all other objects when a new frame is inserted.
+- [x] add a line annotation tool, that also is editable in color, user can manually edit the end points of the line.
+- [x] annotations should be frame specific and also should be copyed along all other objects when a new frame is inserted.
 - [ ] annotations should only be permament (saved per frame) when added in the annotation mode in the editing board screen.
-- [ ] annotations that are added in the animation playback are only temporarely visible during this playback until the current playback is left (going back to the editing screen or back to project overview)
+- [ ] annotations that are added in paused mode in the animation playback are only temporarely visible during this playback until the current playback is left (going back to the editing screen or back to project overview)
+- [ ] add a trash can icon to erase all annotations of a frame. this should pop up a user confirmation before deleting all annotations.
+- [ ] the trash confirmation should ask if all annotations (across all frames) or only for a single frame should be done
 
 statistics:
 
@@ -77,12 +83,16 @@ timeline:
 
 ### HOTFIX
 
-- [ ] clicking on the color picker icon produces an app crashing error.
-- [ ] the ball path modifier menu does not appear upon tapping the ball.
+no critical issues at the moment.
 
 ### Other fixes
 
-- [ ] the playback timeline divides the frame thumbnail into n thumbnails as in the editing timeline. but the first frame has no duration, only giving the start positions. therefore the cursor of the thumbnail should start at time 0 at the left hand side of the thumbnail of frame 1
+- [ ] after the animaiton reached the end, the scrubber is not accessible anymore (touching it leaves playback view) and the edit timeline instantly shows up. instead only the stop button should make the screen switch back to editing mode.
+- [ ] the undo and redo history should also track annotation edits (creation, deletion, etc).
+- [ ] the eraser tool should show no preview of which annotations to delete, instead annotations touched during tapping or dragging of the eraser tool (10px radius) are instantly deleted.
+- [ ] the numerated suffix does not supply increasing numbers in brackets. Instead each copy gets another (1) suffix resulting in e.g. framename (1) (1) (1)
+- [ ] the annotations are not copied and displayed in a new frame when this is added. 
+- [x] the playback timeline divides the frame thumbnail into n thumbnails as in the editing timeline. but the first frame has no duration, only giving the start positions. therefore the cursor of the thumbnail should start at time 0 at the left hand side of the thumbnail of frame 1
 - [x] the ball path modifier menu buttons should be toggable to on and off (Iindicated by highlighted/non-highlighted button), not only on. MAke sure, that the ball path can be either set or hit, not both.
 - [x] the go to previous and go to next frame in the boardscreen should be removed, since the user can already select the current frame directly from the timeline.
 - [x] the hit animation is animated too short and is too small. It should be the size of the normal ball size times 0.3
