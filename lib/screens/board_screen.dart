@@ -1177,220 +1177,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             ),
           ],
         ),
-        body: Column(
+        body: Stack(
           children: [
-            // Ball modifier menu (shown when ball is tapped)
-            if (_showModifierMenu)
-              Container(
-                height: 56,
-                color: Colors.orange[100],
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Set button with custom icon
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          currentFrame.ballSet = true;
-                          currentFrame.ballHitT = null;
-                          _showModifierMenu = false;
-                        });
-                        _saveProject();
-                      },
-                      child: Container(
-                        width: 80,
-                        height: 40+4,
-                        margin: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: (currentFrame.ballSet ?? false) 
-                              ? Colors.orange.withOpacity(0.3) 
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: (currentFrame.ballSet ?? false) 
-                                ? Colors.orange 
-                                : Colors.grey,
-                            width: 2,
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CustomPaint(
-                              size: const Size(24, 24),
-                              painter: _SetIconPainter(active: currentFrame.ballSet ?? false),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Set',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: (currentFrame.ballSet ?? false) 
-                                    ? Colors.orange 
-                                    : Colors.grey[700],
-                                fontWeight: (currentFrame.ballSet ?? false)
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    
-                    // Hit button with custom icon
-                    GestureDetector(
-                      onTap: () {
-                        final prev = _getPreviousFrame();
-                        if (prev != null) {
-                          final tMid = 0.5;
-                          final tAdjusted = _avoidControlPointOverlap(prev, tMid);
-                          setState(() {
-                            currentFrame.ballHitT = tAdjusted;
-                            currentFrame.ballSet = false;
-                            _showModifierMenu = false;
-                          });
-                          _saveProject();
-                        }
-                      },
-                      child: Container(
-                        width: 80,
-                        height: 40+4,
-                        margin: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: (currentFrame.ballHitT != null) 
-                              ? Colors.yellow[700]!.withOpacity(0.3) 
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: (currentFrame.ballHitT != null) 
-                                ? Colors.yellow[700]! 
-                                : Colors.grey,
-                            width: 2,
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CustomPaint(
-                              size: const Size(24, 24),
-                              painter: _HitIconPainter(active: currentFrame.ballHitT != null),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Hit',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: (currentFrame.ballHitT != null) 
-                                    ? Colors.yellow[900] 
-                                    : Colors.grey[700],
-                                fontWeight: (currentFrame.ballHitT != null)
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    
-                    const SizedBox(width: 16),
-                    
-                    // Close button
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _showModifierMenu = false;
-                        });
-                      },
-                      child: const Text('Close'),
-                    ),
-                  ],
-                ),
-              ),
-            // Annotation toolbar (shown when in annotation mode)
-            if (_annotationMode)
-              Container(
-                height: 56,
-                color: Colors.grey[300],
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  children: [
-                    // Line tool
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      tooltip: 'Line Tool',
-                      isSelected: _activeAnnotationTool == AnnotationTool.line,
-                      onPressed: () {
-                        setState(() {
-                          _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.line ? AnnotationTool.none : AnnotationTool.line;
-                          _eraserMode = false;
-                        });
-                      },
-                    ),
-                    // Circle tool
-                    IconButton(
-                      icon: const Icon(Icons.circle_outlined),
-                      tooltip: 'Circle Tool',
-                      isSelected: _activeAnnotationTool == AnnotationTool.circle,
-                      onPressed: () {
-                        setState(() {
-                          _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.circle ? AnnotationTool.none : AnnotationTool.circle;
-                          _eraserMode = false;
-                        });
-                      },
-                    ),
-                    // Eraser tool
-                    IconButton(
-                      icon: const Icon(Icons.auto_delete),
-                      tooltip: 'Eraser Tool',
-                      isSelected: _eraserMode,
-                      onPressed: () {
-                        setState(() {
-                          _eraserMode = !_eraserMode;
-                          if (_eraserMode) {
-                            _activeAnnotationTool = AnnotationTool.none;
-                          }
-                        });
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    // Color picker
-                    GestureDetector(
-                      onTap: () {
-                        _showColorPicker();
-                      },
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: _annotationColor,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.black, width: 2),
-                        ),
-                        child: const Icon(Icons.palette, size: 16, color: Colors.white),
-                      ),
-                    ),
-                    const Spacer(),
-                    // Close annotation mode
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      tooltip: 'Exit Annotation Mode',
-                      onPressed: () {
-                        setState(() {
-                          _annotationMode = false;
-                          _activeAnnotationTool = AnnotationTool.none;
-                          _pendingAnnotationPoints.clear();
-                          _eraserMode = false;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            // Main board area fills available space
-            Expanded(
+            // Layer 1 (bottom): Board - stays fixed
+            Positioned.fill(
+              bottom: 140, // Leave room for timeline
               child: AbsorbPointer(
                 absorbing: _isPlaying || _endedAtLastFrame,
                 child: Container(
@@ -1427,9 +1218,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         settings: _settings,
                         screenSize: screenSize,
                       ),
-                      // Full-board tap & drag handler placed below interactive entities so that
-                      // entity GestureDetectors (players, ball, control points) receive
-                      // gestures first. If they don't handle the gesture, this fills in.
+                      // Full-board tap & drag handler
                       Positioned.fill(
                         child: GestureDetector(
                           onTapUp: (details) {
@@ -1437,7 +1226,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               if (_pendingBallMark == 'hit') {
                                 _placeBallHitAt(details.localPosition, screenSize);
                               } else {
-                                // Defer to next frame to avoid setState during build
                                 WidgetsBinding.instance.addPostFrameCallback((_) {
                                   _handleBoardTap(details.localPosition, screenSize);
                                 });
@@ -1473,7 +1261,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         scale: isPlayback ? _ballScaleAt(_playbackT) : 1.0,
                         starOpacity: 0.0,
                       ),
-                      // playback persistent hit star (positioned at hit path position)
                       if (isPlayback) ...[
                         (() {
                           final info = _playbackHitStarInfo(screenSize);
@@ -1482,7 +1269,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             final opacity = (info['opacity'] as double?) ?? 1.0;
                             return Positioned(
                               left: pos.dx - 12,
-                                top: pos.dy - 12,
+                              top: pos.dy - 12,
                               child: Opacity(
                                 opacity: opacity,
                                 child: CustomPaint(
@@ -1495,7 +1282,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           return const SizedBox.shrink();
                         })(),
                       ],
-                      // Set preview: slightly transparent max-size ball at midpoint when editing
                       if (!isPlayback && (currentFrame.ballSet ?? false))
                         _buildSetPreview(screenSize),
                       if (!(_isPlaying || _endedAtLastFrame)) ...[
@@ -1510,7 +1296,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         if (currentFrame.ballPathPoints.isNotEmpty)
                           ..._buildPathControlPoints(currentFrame.ballPathPoints, prev != null ? prev.ball : currentFrame.ball, currentFrame.ball, screenSize, "BALL"),
                       ],
-                      
                       if (currentFrame.ballHitT != null && !(_isPlaying || _endedAtLastFrame))
                         _buildHitMarker(currentFrame.ballHitT!, screenSize),
                     ],
@@ -1518,356 +1303,567 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 ),
               ),
             ),
-            AnimatedContainer(
-              height: timelineHeight,
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              color: Colors.grey[200],
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Stack(
-                children: [
-                  // Thumbnails ListView positioned at bottom
-                  // In edit mode: show all frames (0 to N)
-                  // In playback mode: skip first frame (1 to N)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 40,
-                    height: (timelineHeight - 40 - 28),
-                    child: AbsorbPointer(
-                      absorbing: _isPlaying || _endedAtLastFrame,
-                      child: ListView.builder(
-                        controller: _timelineController,
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _isPlaying ? widget.project.frames.length - 1 : widget.project.frames.length,
-                        itemBuilder: (context, index) {
-                          final frame = _isPlaying ? widget.project.frames[index + 1] : widget.project.frames[index];
-                          final isSelected = frame == currentFrame;
-                          final isPlayingFrame = _isPlaying && index == playbackAnimIndex;
-                          return GestureDetector(
-                            onTap: () {
-                              if (!(_isPlaying || _endedAtLastFrame)) {
-                                setState(() => currentFrame = frame);
-                                _scrollToSelectedFrame();
-                              }
-                            },
-                            child: Stack(
-                              children: [
-                                Container(
-                                  width: 60,
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                                  decoration: BoxDecoration(
-                                    color: _isPlaying
-                                        ? Colors.grey[400]
-                                        : (isSelected ? Colors.blueAccent : Colors.grey[400]),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: (_isPlaying) ? null : (isSelected ? Border.all(color: Colors.yellow, width: 3) : null),
-                                  ),
-                                  child: Center(child: Text("${_isPlaying ? index + 1 : index}")), // Playback: starts at 1, Edit: starts at 0
-                                ),
-                                if (isSelected && !(_isPlaying || _endedAtLastFrame))
-                                  Positioned(
-                                    top: 2,
-                                    right: 2,
-                                    child: GestureDetector(
-                                      onTap: () => _confirmDeleteFrame(frame),
-                                      child: Container(
-                                        width: 18,
-                                        height: 18,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.remove,
-                                          size: 12,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-
-                  // Playback frame cursor overlay (shows current frame index during playback)
-                  if (_isPlaying || _endedAtLastFrame)
+            
+            // Layer 2: Timeline - fixed at bottom
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 140,
+              child: AnimatedContainer(
+                height: 140,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                color: Colors.grey[200],
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Stack(
+                  children: [
+                    // Thumbnails ListView positioned at bottom
+                    // In edit mode: show all frames (0 to N)
+                    // In playback mode: skip first frame (1 to N)
                     Positioned(
                       left: 0,
                       right: 0,
                       bottom: 40,
                       height: (timelineHeight - 40 - 28),
                       child: AbsorbPointer(
-                        absorbing: true,
-                        child: Container(
-                          color: Colors.transparent,
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              final frameCount = widget.project.frames.length;
-                              if (frameCount < 2) return const SizedBox.shrink();
-                              
-                              // Calculate cursor position with interpolation and scroll offset
-                              // Skip first frame: timeline shows frames 1+ only
-                              // Frame i in timeline is at index i-1
-                              // Cursor at left of frame i when entering frame i (from frame i-1 animation ending)
-                              // Cursor at right of frame i when leaving frame i (entering frame i+1)
-                              final itemExtent = 68.0; // 60 width + 2*4 margin
-                              
-                              // Map playback frame index to timeline index (offset by -1 to skip first frame)
-                              // At frame 0, we're at the boundary before frame 1 (timeline index -1, clamped)
-                              // At frame 1, we're showing frame 1 (timeline index 0)
-                              final interpolatedPosition = _playbackFrameIndex + _playbackT;
-                              final timelineIndex = interpolatedPosition - 1.0;
-                              final cursorWorldX = timelineIndex * itemExtent + itemExtent / 2;
-                              
-                              // Get scroll offset from timeline controller
-                              final scrollOffset = _timelineController.hasClients ? _timelineController.offset : 0.0;
-                              
-                              // Cursor position relative to the visible viewport
-                              final cursorX = cursorWorldX - scrollOffset;
-                              
-                              return Stack(
+                        absorbing: _isPlaying || _endedAtLastFrame,
+                        child: ListView.builder(
+                          controller: _timelineController,
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _isPlaying ? widget.project.frames.length - 1 : widget.project.frames.length,
+                          itemBuilder: (context, index) {
+                            final frame = _isPlaying ? widget.project.frames[index + 1] : widget.project.frames[index];
+                            final isSelected = frame == currentFrame;
+                            final isPlayingFrame = _isPlaying && index == playbackAnimIndex;
+                            return GestureDetector(
+                              onTap: () {
+                                if (!(_isPlaying || _endedAtLastFrame)) {
+                                  setState(() => currentFrame = frame);
+                                  _scrollToSelectedFrame();
+                                }
+                              },
+                              child: Stack(
                                 children: [
-                                  Positioned(
-                                    left: cursorX - 2,
-                                    top: 0,
-                                    bottom: 0,
-                                    child: Container(
-                                      width: 4,
-                                      decoration: BoxDecoration(
-                                        color: Colors.redAccent,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.redAccent.withOpacity(0.5),
-                                            blurRadius: 4,
-                                            spreadRadius: 1,
+                                  Container(
+                                    width: 60,
+                                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                                    decoration: BoxDecoration(
+                                      color: _isPlaying
+                                          ? Colors.grey[400]
+                                          : (isSelected ? Colors.blueAccent : Colors.grey[400]),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: (_isPlaying) ? null : (isSelected ? Border.all(color: Colors.yellow, width: 3) : null),
+                                    ),
+                                    child: Center(child: Text("${_isPlaying ? index + 1 : index}")), // Playback: starts at 1, Edit: starts at 0
+                                  ),
+                                  if (isSelected && !(_isPlaying || _endedAtLastFrame))
+                                    Positioned(
+                                      top: 2,
+                                      right: 2,
+                                      child: GestureDetector(
+                                        onTap: () => _confirmDeleteFrame(frame),
+                                        child: Container(
+                                          width: 18,
+                                          height: 18,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
                                           ),
-                                        ],
+                                          child: const Icon(
+                                            Icons.remove,
+                                            size: 12,
+                                            color: Colors.white,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
                                 ],
-                              );
-                            },
-                          ),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ),
 
-                  // Playback controls overlayed at top (playback slider / scrubber slider)
-                  if (_isPlaying || _endedAtLastFrame)
-                    Positioned(
-                      top: 0,
-                      left: 12,
-                      right: 12,
-                      height: 30,
-                      child: GestureDetector(
-                        onHorizontalDragUpdate: (details) {
-                          if (widget.project.frames.length < 2) return;
-                          RenderBox? box = context.findRenderObject() as RenderBox?;
-                          if (box == null) return;
-                          final local = box.globalToLocal(details.globalPosition);
-                          final leftPadding = 8.0;
-                          final rightPadding = 8.0;
-                          final available = box.size.width - leftPadding - rightPadding;
-                          final dx = (local.dx - leftPadding).clamp(0.0, available);
-                          final frac = (available <= 0) ? 0.0 : (dx / available);
-                          setState(() {
-                            // Mark that scrubber was manually moved
-                            _scrubberMovedManually = true;
-                            // If user scrubs back from end, pause the playback
-                            if (_endedAtLastFrame) {
-                              _isPaused = true;
-                              _endedAtLastFrame = false;
-                            }
-                            final total = (widget.project.frames.length - 1).toDouble();
-                            final globalPos = frac * total;
-                            _playbackFrameIndex = globalPos.floor();
-                            _playbackT = globalPos - _playbackFrameIndex;
-                          });
-                          _scrollToPlaybackFrame();
-                        },
-                        child: LayoutBuilder(builder: (context, constraints) {
-                          const scrubbersize = 20.0;
-                          final leftPadding = 8.0;
-                          final rightPadding = 8.0;
-                          final width = constraints.maxWidth;
-                          final available = (width - leftPadding - rightPadding).clamp(0.0, double.infinity);
-                          final frac = widget.project.frames.length > 1
-                              ? ((_playbackFrameIndex + _playbackT) / (widget.project.frames.length - 1).toDouble()).clamp(0.0, 1.0)
-                              : 0.0;
-                          final dotX = leftPadding + frac * available;
-                          return SizedBox(
-                            height: 30,
-                            child: Stack(
-                              children: [
-                                Positioned(
-                                  left: leftPadding,
-                                  right: rightPadding,
-                                  top: 8,
-                                  child: Container(
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[400],
-                                      borderRadius: BorderRadius.circular(2),
+                    // Playback frame cursor overlay (shows current frame index during playback)
+                    if (_isPlaying || _endedAtLastFrame)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 40,
+                        height: (timelineHeight - 40 - 28),
+                        child: AbsorbPointer(
+                          absorbing: true,
+                          child: Container(
+                            color: Colors.transparent,
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final frameCount = widget.project.frames.length;
+                                if (frameCount < 2) return const SizedBox.shrink();
+                                
+                                // Calculate cursor position with interpolation and scroll offset
+                                // Skip first frame: timeline shows frames 1+ only
+                                // Frame i in timeline is at index i-1
+                                // Cursor at left of frame i when entering frame i (from frame i-1 animation ending)
+                                // Cursor at right of frame i when leaving frame i (entering frame i+1)
+                                final itemExtent = 68.0; // 60 width + 2*4 margin
+                                
+                                // Map playback frame index to timeline index (offset by -1 to skip first frame)
+                                // At frame 0, we're at the boundary before frame 1 (timeline index -1, clamped)
+                                // At frame 1, we're showing frame 1 (timeline index 0)
+                                final interpolatedPosition = _playbackFrameIndex + _playbackT;
+                                final timelineIndex = interpolatedPosition - 1.0;
+                                final cursorWorldX = timelineIndex * itemExtent + itemExtent / 2;
+                                
+                                // Get scroll offset from timeline controller
+                                final scrollOffset = _timelineController.hasClients ? _timelineController.offset : 0.0;
+                                
+                                // Cursor position relative to the visible viewport
+                                final cursorX = cursorWorldX - scrollOffset;
+                                
+                                return Stack(
+                                  children: [
+                                    Positioned(
+                                      left: cursorX - 2,
+                                      top: 0,
+                                      bottom: 0,
+                                      child: Container(
+                                        width: 4,
+                                        decoration: BoxDecoration(
+                                          color: Colors.redAccent,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.redAccent.withOpacity(0.5),
+                                              blurRadius: 4,
+                                              spreadRadius: 1,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // Playback controls overlayed at top (playback slider / scrubber slider)
+                    if (_isPlaying || _endedAtLastFrame)
+                      Positioned(
+                        top: 0,
+                        left: 12,
+                        right: 12,
+                        height: 30,
+                        child: GestureDetector(
+                          onHorizontalDragUpdate: (details) {
+                            if (widget.project.frames.length < 2) return;
+                            RenderBox? box = context.findRenderObject() as RenderBox?;
+                            if (box == null) return;
+                            final local = box.globalToLocal(details.globalPosition);
+                            final leftPadding = 8.0;
+                            final rightPadding = 8.0;
+                            final available = box.size.width - leftPadding - rightPadding;
+                            final dx = (local.dx - leftPadding).clamp(0.0, available);
+                            final frac = (available <= 0) ? 0.0 : (dx / available);
+                            setState(() {
+                              // Mark that scrubber was manually moved
+                              _scrubberMovedManually = true;
+                              // If user scrubs back from end, pause the playback
+                              if (_endedAtLastFrame) {
+                                _isPaused = true;
+                                _endedAtLastFrame = false;
+                              }
+                              final total = (widget.project.frames.length - 1).toDouble();
+                              final globalPos = frac * total;
+                              _playbackFrameIndex = globalPos.floor();
+                              _playbackT = globalPos - _playbackFrameIndex;
+                            });
+                            _scrollToPlaybackFrame();
+                          },
+                          child: LayoutBuilder(builder: (context, constraints) {
+                            const scrubbersize = 20.0;
+                            final leftPadding = 8.0;
+                            final rightPadding = 8.0;
+                            final width = constraints.maxWidth;
+                            final available = (width - leftPadding - rightPadding).clamp(0.0, double.infinity);
+                            final frac = widget.project.frames.length > 1
+                                ? ((_playbackFrameIndex + _playbackT) / (widget.project.frames.length - 1).toDouble()).clamp(0.0, 1.0)
+                                : 0.0;
+                            final dotX = leftPadding + frac * available;
+                            return SizedBox(
+                              height: 30,
+                              child: Stack(
+                                children: [
+                                  Positioned(
+                                    left: leftPadding,
+                                    right: rightPadding,
+                                    top: 8,
+                                    child: Container(
+                                      height: 4,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[400],
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
                                     ),
                                   ),
-                                ),
-                                Positioned(
-                                  left: dotX - scrubbersize / 2,
-                                  top: 8 - (scrubbersize - 4) / 2,
-                                  child: Container(
-                                    width: scrubbersize,
-                                    height: scrubbersize,
-                                    decoration: BoxDecoration(
-                                      color: Colors.blueAccent,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 2, offset: const Offset(0, 1))],
+                                  Positioned(
+                                    left: dotX - scrubbersize / 2,
+                                    top: 8 - (scrubbersize - 4) / 2,
+                                    child: Container(
+                                      width: scrubbersize,
+                                      height: scrubbersize,
+                                      decoration: BoxDecoration(
+                                        color: Colors.blueAccent,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 2, offset: const Offset(0, 1))],
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
+                                ],
+                              ),
+                            );
+                          }),
+                        ),
                       ),
-                    ),
 
-                  // Playback controls at bottom (speed slider + buttons)
-                  if (_isPlaying || _endedAtLastFrame)
-                    Positioned(
-                      bottom: 0,
-                      left: 12,
-                      right: 12,
-                      height: 40,
-                      child: Row(
-                        children: [
-                          ElevatedButton(
-                            onPressed: _stopPlayback,
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size(36, 26)),
-                            child: const Icon(Icons.stop, size: 14),
-                          ),
-                          const SizedBox(width: 4),
-                          ElevatedButton(
-                            onPressed: (_endedAtLastFrame && !_scrubberMovedManually) ? null : (_isPaused ? _resumePlayback : _pausePlayback),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _isPaused ? Colors.green : Colors.orange,
-                              minimumSize: const Size(36, 26),
+                    // Playback controls at bottom (speed slider + buttons)
+                    if (_isPlaying || _endedAtLastFrame)
+                      Positioned(
+                        bottom: 0,
+                        left: 12,
+                        right: 12,
+                        height: 40,
+                        child: Row(
+                          children: [
+                            ElevatedButton(
+                              onPressed: _stopPlayback,
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size(36, 26)),
+                              child: const Icon(Icons.stop, size: 14),
                             ),
-                            child: Icon(_isPaused ? Icons.play_arrow : Icons.pause, size: 14),
-                          ),
-                          const SizedBox(width: 8),
-                          SizedBox(
-                            width: 200,
-                            child: Slider(
-                              value: _playbackSpeed,
-                              min: 0.1,
-                              max: 2.0,
-                              divisions: 19,
-                              label: "${_playbackSpeed.toStringAsFixed(1)}x",
-                              onChanged: (v) => setState(() => _playbackSpeed = v),
+                            const SizedBox(width: 4),
+                            ElevatedButton(
+                              onPressed: (_endedAtLastFrame && !_scrubberMovedManually) ? null : (_isPaused ? _resumePlayback : _pausePlayback),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _isPaused ? Colors.green : Colors.orange,
+                                minimumSize: const Size(36, 26),
+                              ),
+                              child: Icon(_isPaused ? Icons.play_arrow : Icons.pause, size: 14),
                             ),
-                          ),
-                          const SizedBox(width: 2),
-                          SizedBox(
-                            width: 35,
-                            child: Text(
-                              "${_playbackSpeed.toStringAsFixed(1)}x",
-                              style: const TextStyle(fontSize: 10),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                          const Spacer(),
-                        ],
-                      ),
-                    ),
-
-                  // Edit controls (bottom, editing mode only)
-                  if (!(_isPlaying || _endedAtLastFrame))
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      height: 40,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ElevatedButton(
-                            onPressed: (_isPlaying || _endedAtLastFrame) ? _stopPlayback : _startPlayback,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: (_isPlaying || _endedAtLastFrame) ? Colors.red : Colors.green,
-                              minimumSize: const Size(36, 24),
-                            ),
-                            child: Icon((_isPlaying || _endedAtLastFrame) ? Icons.stop : Icons.play_arrow, size: 18),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: (_isPlaying || _endedAtLastFrame) ? null : _insertFrameAfterCurrent,
-                            style: ElevatedButton.styleFrom(minimumSize: const Size(32, 24)),
-                            child: const Icon(Icons.add, size: 18),
-                          ),
-                          const SizedBox(width: 8),
-                          if (!(_isPlaying || _endedAtLastFrame))
-                            Expanded(
-                              flex: 0,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                child: IconButton(
-                                  icon: const Icon(Icons.schedule),
-                                  tooltip: "Set frame duration (${currentFrame.duration.toStringAsFixed(2)}s)",
-                                  iconSize: 18,
-                                  onPressed: () => _showDurationPicker(),
-                                ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 200,
+                              child: Slider(
+                                value: _playbackSpeed,
+                                min: 0.1,
+                                max: 2.0,
+                                divisions: 19,
+                                label: "${_playbackSpeed.toStringAsFixed(1)}x",
+                                onChanged: (v) => setState(() => _playbackSpeed = v),
                               ),
                             ),
-                          const SizedBox(width: 12),
-                          IconButton(
-                            icon: const Icon(Icons.undo),
-                            tooltip: "Undo",
-                            iconSize: 18,
-                            onPressed: (_isPlaying || _endedAtLastFrame)
-                                ? null
-                                : (_history.canUndo
-                                    ? () {
-                                        final idx = _history.undo();
-                                        if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
-                                          setState(() => currentFrame = widget.project.frames[idx]);
-                                          _scrollToSelectedFrame();
-                                        } else {
-                                          setState(() {});
-                                        }
-                                      }
-                                    : null),
-                          ),
-                          const SizedBox(width: 4),
-                          IconButton(
-                            icon: const Icon(Icons.redo),
-                            tooltip: "Redo",
-                            iconSize: 18,
-                            onPressed: (_isPlaying || _endedAtLastFrame)
-                                ? null
-                                : (_history.canRedo
-                                    ? () {
-                                        final idx = _history.redo();
-                                        if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
-                                          setState(() => currentFrame = widget.project.frames[idx]);
-                                          _scrollToSelectedFrame();
-                                        } else {
-                                          setState(() {});
-                                        }
-                                      }
-                                    : null),
-                          ),
-                        ],
+                            const SizedBox(width: 2),
+                            SizedBox(
+                              width: 35,
+                              child: Text(
+                                "${_playbackSpeed.toStringAsFixed(1)}x",
+                                style: const TextStyle(fontSize: 10),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            const Spacer(),
+                          ],
+                        ),
                       ),
-                    ),
-                ],
+
+                    // Edit controls (bottom, editing mode only)
+                    if (!(_isPlaying || _endedAtLastFrame))
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: 40,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton(
+                              onPressed: (_isPlaying || _endedAtLastFrame) ? _stopPlayback : _startPlayback,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: (_isPlaying || _endedAtLastFrame) ? Colors.red : Colors.green,
+                                minimumSize: const Size(36, 24),
+                              ),
+                              child: Icon((_isPlaying || _endedAtLastFrame) ? Icons.stop : Icons.play_arrow, size: 18),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: (_isPlaying || _endedAtLastFrame) ? null : _insertFrameAfterCurrent,
+                              style: ElevatedButton.styleFrom(minimumSize: const Size(32, 24)),
+                              child: const Icon(Icons.add, size: 18),
+                            ),
+                            const SizedBox(width: 8),
+                            if (!(_isPlaying || _endedAtLastFrame))
+                              Expanded(
+                                flex: 0,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.schedule),
+                                    tooltip: "Set frame duration (${currentFrame.duration.toStringAsFixed(2)}s)",
+                                    iconSize: 18,
+                                    onPressed: () => _showDurationPicker(),
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(width: 12),
+                            IconButton(
+                              icon: const Icon(Icons.undo),
+                              tooltip: "Undo",
+                              iconSize: 18,
+                              onPressed: (_isPlaying || _endedAtLastFrame)
+                                  ? null
+                                  : (_history.canUndo
+                                      ? () {
+                                          final idx = _history.undo();
+                                          if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
+                                            setState(() => currentFrame = widget.project.frames[idx]);
+                                            _scrollToSelectedFrame();
+                                          } else {
+                                            setState(() {});
+                                          }
+                                        }
+                                      : null),
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.redo),
+                              tooltip: "Redo",
+                              iconSize: 18,
+                              onPressed: (_isPlaying || _endedAtLastFrame)
+                                  ? null
+                                  : (_history.canRedo
+                                      ? () {
+                                          final idx = _history.redo();
+                                          if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
+                                            setState(() => currentFrame = widget.project.frames[idx]);
+                                            _scrollToSelectedFrame();
+                                          } else {
+                                            setState(() {});
+                                          }
+                                        }
+                                      : null),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
+            
+            // Layer 3 (top): Ball Modifier Menu - overlay at top
+            if (_showModifierMenu && !_annotationMode)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 56,
+                child: Container(
+                  color: Colors.orange[100],
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Set button
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            currentFrame.ballSet = true;
+                            currentFrame.ballHitT = null;
+                            _showModifierMenu = false;
+                          });
+                          _saveProject();
+                        },
+                        child: Container(
+                          width: 80,
+                          height: 44,
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: (currentFrame.ballSet ?? false) 
+                                ? Colors.orange.withOpacity(0.3) 
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: (currentFrame.ballSet ?? false) 
+                                  ? Colors.orange 
+                                  : Colors.grey,
+                              width: 2,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CustomPaint(
+                                size: const Size(24, 24),
+                                painter: _SetIconPainter(active: currentFrame.ballSet ?? false),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Set',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: (currentFrame.ballSet ?? false) 
+                                      ? Colors.orange 
+                                      : Colors.grey[700],
+                                  fontWeight: (currentFrame.ballSet ?? false)
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Hit button
+                      GestureDetector(
+                        onTap: () {
+                          final prev = _getPreviousFrame();
+                          if (prev != null) {
+                            final tMid = 0.5;
+                            final tAdjusted = _avoidControlPointOverlap(prev, tMid);
+                            setState(() {
+                              currentFrame.ballHitT = tAdjusted;
+                              currentFrame.ballSet = false;
+                              _showModifierMenu = false;
+                            });
+                            _saveProject();
+                          }
+                        },
+                        child: Container(
+                          width: 80,
+                          height: 44,
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: (currentFrame.ballHitT != null) 
+                                ? Colors.yellow[700]!.withOpacity(0.3) 
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: (currentFrame.ballHitT != null) 
+                                  ? Colors.yellow[700]! 
+                                  : Colors.grey,
+                              width: 2,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CustomPaint(
+                                size: const Size(24, 24),
+                                painter: _HitIconPainter(active: currentFrame.ballHitT != null),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Hit',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: (currentFrame.ballHitT != null) 
+                                      ? Colors.yellow[900] 
+                                      : Colors.grey[700],
+                                  fontWeight: (currentFrame.ballHitT != null)
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      TextButton(
+                        onPressed: () => setState(() => _showModifierMenu = false),
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            
+            // Layer 4 (top): Annotation Toolbar - overlay at top
+            if (_annotationMode && !_showModifierMenu)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 56,
+                child: Container(
+                  color: Colors.grey[300],
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        tooltip: 'Line Tool',
+                        color: _activeAnnotationTool == AnnotationTool.line 
+                            ? _annotationColor 
+                            : Colors.grey,
+                        onPressed: () => setState(() {
+                          _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.line 
+                              ? AnnotationTool.none 
+                              : AnnotationTool.line;
+                          _eraserMode = false;
+                        }),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.circle_outlined),
+                        tooltip: 'Circle Tool',
+                        color: _activeAnnotationTool == AnnotationTool.circle 
+                            ? _annotationColor 
+                            : Colors.grey,
+                        onPressed: () => setState(() {
+                          _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.circle 
+                              ? AnnotationTool.none 
+                              : AnnotationTool.circle;
+                          _eraserMode = false;
+                        }),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.auto_delete),
+                        tooltip: 'Eraser',
+                        color: _eraserMode ? Colors.red : Colors.grey,
+                        onPressed: () => setState(() {
+                          _eraserMode = !_eraserMode;
+                          if (_eraserMode) _activeAnnotationTool = AnnotationTool.none;
+                        }),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: _showColorPicker,
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: _annotationColor,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black, width: 2),
+                          ),
+                          child: const Icon(Icons.palette, size: 16, color: Colors.white),
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => setState(() {
+                          _annotationMode = false;
+                          _activeAnnotationTool = AnnotationTool.none;
+                          _eraserMode = false;
+                        }),
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
