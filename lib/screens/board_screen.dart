@@ -530,8 +530,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             ]
                 .map((color) => GestureDetector(
                       onTap: () {
-                        setState(() => _annotationColor = color);
                         Navigator.pop(context);
+                        setState(() => _annotationColor = color);
                       },
                       child: Container(
                         margin: const EdgeInsets.all(4),
@@ -1179,6 +1179,63 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         ),
         body: Column(
           children: [
+            // Ball modifier menu (shown when ball is tapped)
+            if (_showModifierMenu)
+              Container(
+                height: 56,
+                color: Colors.orange[100],
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.add_circle, size: 18),
+                      label: const Text('Enable Set'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: (currentFrame.ballSet ?? false) ? Colors.orange : null,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          currentFrame.ballSet = true;
+                          currentFrame.ballHitT = null;
+                          _showModifierMenu = false;
+                        });
+                        _saveProject();
+                      },
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.flash_on, size: 18),
+                      label: const Text('Enable Hit'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: (currentFrame.ballHitT != null) ? Colors.yellow[700] : null,
+                      ),
+                      onPressed: () {
+                        final prev = _getPreviousFrame();
+                        if (prev != null) {
+                          final tMid = 0.5;
+                          final tAdjusted = _avoidControlPointOverlap(prev, tMid);
+                          setState(() {
+                            currentFrame.ballHitT = tAdjusted;
+                            currentFrame.ballSet = false;
+                            _showModifierMenu = false;
+                          });
+                          _saveProject();
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 16),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _showModifierMenu = false;
+                        });
+                      },
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              ),
             // Annotation toolbar (shown when in annotation mode)
             if (_annotationMode)
               Container(
