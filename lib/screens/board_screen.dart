@@ -1414,7 +1414,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 // At frame 1, we're showing frame 1 (timeline index 0)
                                 final interpolatedPosition = _playbackFrameIndex + _playbackT;
                                 final timelineIndex = interpolatedPosition - 1.0;
-                                final cursorWorldX = timelineIndex * itemExtent + itemExtent / 2;
+                                final thumbnailWidth = 60.0;
+                                final cursorWorldX = timelineIndex * itemExtent + itemExtent / 2 + (thumbnailWidth * 0.5);
                                 
                                 // Get scroll offset from timeline controller
                                 final scrollOffset = _timelineController.hasClients ? _timelineController.offset : 0.0;
