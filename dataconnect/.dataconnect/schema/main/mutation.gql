@@ -1,0 +1,562 @@
+extend type Mutation {
+  """
+  ✨ Insert a single `Animation` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  animation_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Animation_Data!
+  ): Animation_KeyOutput! @fdc_generated(from: "Animation", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `AnimationFrame` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  animationFrame_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: AnimationFrame_Data!
+  ): AnimationFrame_KeyOutput! @fdc_generated(from: "AnimationFrame", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Board` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  board_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Board_Data!
+  ): Board_KeyOutput! @fdc_generated(from: "Board", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `BoardElement` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  boardElement_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: BoardElement_Data!
+  ): BoardElement_KeyOutput! @fdc_generated(from: "BoardElement", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `User` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  user_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: User_Data!
+  ): User_KeyOutput! @fdc_generated(from: "User", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert `Animation` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  animation_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Animation_Data!]!
+  ): [Animation_KeyOutput!]! @fdc_generated(from: "Animation", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `AnimationFrame` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  animationFrame_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [AnimationFrame_Data!]!
+  ): [AnimationFrame_KeyOutput!]! @fdc_generated(from: "AnimationFrame", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Board` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  board_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Board_Data!]!
+  ): [Board_KeyOutput!]! @fdc_generated(from: "Board", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `BoardElement` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  boardElement_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [BoardElement_Data!]!
+  ): [BoardElement_KeyOutput!]! @fdc_generated(from: "BoardElement", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `User` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  user_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [User_Data!]!
+  ): [User_KeyOutput!]! @fdc_generated(from: "User", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert or update a single `Animation` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Animation`.
+  """
+  animation_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Animation_Data!
+  ): Animation_KeyOutput! @fdc_generated(from: "Animation", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `AnimationFrame` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AnimationFrame`.
+  """
+  animationFrame_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: AnimationFrame_Data!
+  ): AnimationFrame_KeyOutput! @fdc_generated(from: "AnimationFrame", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Board` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Board`.
+  """
+  board_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Board_Data!
+  ): Board_KeyOutput! @fdc_generated(from: "Board", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `BoardElement` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `BoardElement`.
+  """
+  boardElement_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: BoardElement_Data!
+  ): BoardElement_KeyOutput! @fdc_generated(from: "BoardElement", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `User` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `User`.
+  """
+  user_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: User_Data!
+  ): User_KeyOutput! @fdc_generated(from: "User", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update `Animation` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Animation`.
+  """
+  animation_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Animation_Data!]!
+  ): [Animation_KeyOutput!]! @fdc_generated(from: "Animation", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `AnimationFrame` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AnimationFrame`.
+  """
+  animationFrame_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [AnimationFrame_Data!]!
+  ): [AnimationFrame_KeyOutput!]! @fdc_generated(from: "AnimationFrame", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Board` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Board`.
+  """
+  board_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Board_Data!]!
+  ): [Board_KeyOutput!]! @fdc_generated(from: "Board", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `BoardElement` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `BoardElement`.
+  """
+  boardElement_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [BoardElement_Data!]!
+  ): [BoardElement_KeyOutput!]! @fdc_generated(from: "BoardElement", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `User` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `User`.
+  """
+  user_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [User_Data!]!
+  ): [User_KeyOutput!]! @fdc_generated(from: "User", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Update a single `Animation` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Animation` or `null` if not found.
+  """
+  animation_update(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Animation_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Animation_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Animation_Data!
+  ): Animation_KeyOutput @fdc_generated(from: "Animation", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `AnimationFrame` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `AnimationFrame` or `null` if not found.
+  """
+  animationFrame_update(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: AnimationFrame_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AnimationFrame_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: AnimationFrame_Data!
+  ): AnimationFrame_KeyOutput @fdc_generated(from: "AnimationFrame", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Board` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Board` or `null` if not found.
+  """
+  board_update(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Board_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Board_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Board_Data!
+  ): Board_KeyOutput @fdc_generated(from: "Board", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `BoardElement` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `BoardElement` or `null` if not found.
+  """
+  boardElement_update(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: BoardElement_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: BoardElement_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: BoardElement_Data!
+  ): BoardElement_KeyOutput @fdc_generated(from: "BoardElement", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `User` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `User` or `null` if not found.
+  """
+  user_update(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: User_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: User_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: User_Data!
+  ): User_KeyOutput @fdc_generated(from: "User", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update `Animation` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  animation_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Animation_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Animation_Data!
+  ): Int! @fdc_generated(from: "Animation", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `AnimationFrame` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  animationFrame_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: AnimationFrame_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: AnimationFrame_Data!
+  ): Int! @fdc_generated(from: "AnimationFrame", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Board` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  board_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Board_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Board_Data!
+  ): Int! @fdc_generated(from: "Board", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `BoardElement` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  boardElement_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: BoardElement_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: BoardElement_Data!
+  ): Int! @fdc_generated(from: "BoardElement", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `User` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  user_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: User_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: User_Data!
+  ): Int! @fdc_generated(from: "User", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Delete a single `Animation` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  animation_delete(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Animation_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Animation_FirstRow
+  ): Animation_KeyOutput @fdc_generated(from: "Animation", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `AnimationFrame` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  animationFrame_delete(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: AnimationFrame_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AnimationFrame_FirstRow
+  ): AnimationFrame_KeyOutput @fdc_generated(from: "AnimationFrame", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Board` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  board_delete(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Board_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Board_FirstRow
+  ): Board_KeyOutput @fdc_generated(from: "Board", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `BoardElement` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  boardElement_delete(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: BoardElement_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: BoardElement_FirstRow
+  ): BoardElement_KeyOutput @fdc_generated(from: "BoardElement", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `User` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  user_delete(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: User_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: User_FirstRow
+  ): User_KeyOutput @fdc_generated(from: "User", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete `Animation` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  animation_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Animation_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Animation", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `AnimationFrame` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  animationFrame_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: AnimationFrame_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "AnimationFrame", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Board` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  board_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Board_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Board", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `BoardElement` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  boardElement_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: BoardElement_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "BoardElement", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `User` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  user_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: User_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "User", purpose: DELETE_MULTIPLE)
+}

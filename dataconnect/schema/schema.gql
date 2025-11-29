@@ -1,0 +1,42 @@
+type User @table {
+  username: String!
+  email: String!
+  createdAt: Timestamp!
+  displayName: String
+  profilePictureUrl: String
+}
+
+type Board @table {
+  name: String!
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+  description: String
+  isPublic: Boolean
+  owner: User
+}
+
+type BoardElement @table {
+  board: Board
+  type: String!
+  xPosition: Float!
+  yPosition: Float!
+  color: String!
+  size: Float
+  text: String
+  playerNumber: Int
+  pathCoordinates: String # Consider a more structured type if possible, or JSON string
+}
+
+type Animation @table {
+  board: Board
+  name: String!
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+  description: String
+}
+
+type AnimationFrame @table {
+  animation: Animation
+  frameNumber: Int!
+  boardElementStates: String # JSON string to store element states
+}
