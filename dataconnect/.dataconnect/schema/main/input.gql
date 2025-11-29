@@ -1,0 +1,1661 @@
+"""
+✨ `Animation_KeyOutput` returns the primary key fields of table type `Animation`.
+
+It has the same format as `Animation_Key`, but is only used as mutation return value.
+"""
+scalar Animation_KeyOutput
+"""
+✨ `AnimationFrame_KeyOutput` returns the primary key fields of table type `AnimationFrame`.
+
+It has the same format as `AnimationFrame_Key`, but is only used as mutation return value.
+"""
+scalar AnimationFrame_KeyOutput
+"""
+✨ `Board_KeyOutput` returns the primary key fields of table type `Board`.
+
+It has the same format as `Board_Key`, but is only used as mutation return value.
+"""
+scalar Board_KeyOutput
+"""
+✨ `BoardElement_KeyOutput` returns the primary key fields of table type `BoardElement`.
+
+It has the same format as `BoardElement_Key`, but is only used as mutation return value.
+"""
+scalar BoardElement_KeyOutput
+"""
+✨ `User_KeyOutput` returns the primary key fields of table type `User`.
+
+It has the same format as `User_Key`, but is only used as mutation return value.
+"""
+scalar User_KeyOutput
+"""
+✨ Generated data input type for table 'Animation'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Animation_Data {
+  """
+  ✨ Generated from Field `Animation`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Animation`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Animation`.`boardId` of type `UUID`
+  """
+  boardId: UUID
+  """
+  ✨ `_expr` server value variant of `boardId` (✨ Generated from Field `Animation`.`boardId` of type `UUID`)
+  """
+  boardId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Animation`.`board` of type `Board`
+  """
+  board: Board_Key
+  """
+  ✨ Generated from Field `Animation`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Animation`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Animation`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Animation`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Animation`.`description` of type `String`
+  """
+  description: String
+  """
+  ✨ `_expr` server value variant of `description` (✨ Generated from Field `Animation`.`description` of type `String`)
+  """
+  description_expr: String_Expr
+  """
+  ✨ Generated from Field `Animation`.`name` of type `String!`
+  """
+  name: String
+  """
+  ✨ `_expr` server value variant of `name` (✨ Generated from Field `Animation`.`name` of type `String!`)
+  """
+  name_expr: String_Expr
+  """
+  ✨ Generated from Field `Animation`.`updatedAt` of type `Timestamp!`
+  """
+  updatedAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `updatedAt` (✨ Generated from Field `Animation`.`updatedAt` of type `Timestamp!`)
+  """
+  updatedAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `updatedAt` (✨ Generated from Field `Animation`.`updatedAt` of type `Timestamp!`)
+  """
+  updatedAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `updatedAt` (✨ Generated from Field `Animation`.`updatedAt` of type `Timestamp!`)
+  """
+  updatedAt_update: [Timestamp_Update!]
+}
+"""
+✨ Generated filter input type for table 'Animation'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Animation_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Animation_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Animation_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Animation_Filter!]
+  """
+  ✨ Generated from Field `Animation`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `Animation`.`boardId` of type `UUID`
+  """
+  boardId: UUID_Filter
+  """
+  ✨ Generated from Field `Animation`.`board` of type `Board`
+  """
+  board: Board_Filter
+  """
+  ✨ Generated from Field `Animation`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Animation`.`description` of type `String`
+  """
+  description: String_Filter
+  """
+  ✨ Generated from Field `Animation`.`name` of type `String!`
+  """
+  name: String_Filter
+  """
+  ✨ Generated from Field `Animation`.`updatedAt` of type `Timestamp!`
+  """
+  updatedAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Animation`.`animationFrames_on_animation` of type `[AnimationFrame!]!`
+  """
+  animationFrames_on_animation: AnimationFrame_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'Animation'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Animation_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Animation_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Animation_Filter
+}
+"""
+✨ Generated having input type for table 'Animation'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Animation_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Animation_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Animation_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Animation_Having!]
+  """
+  ✨ Generated from Field `Animation`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Animation`.`boardId_count` of type `Int!`
+  """
+  boardId_count: Int_Filter
+  """
+  ✨ Generated from Field `Animation`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Animation`.`description_count` of type `Int!`
+  """
+  description_count: Int_Filter
+  """
+  ✨ Generated from Field `Animation`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Animation`.`name_count` of type `Int!`
+  """
+  name_count: Int_Filter
+  """
+  ✨ Generated from Field `Animation`.`updatedAt_count` of type `Int!`
+  """
+  updatedAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Animation`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Animation`.`updatedAt_min` of type `Timestamp`
+  """
+  updatedAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Animation`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `Animation`.`updatedAt_max` of type `Timestamp`
+  """
+  updatedAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Animation'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Animation_Key {
+  """
+  ✨ Generated from Field `Animation`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Animation`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'Animation'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Animation_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Animation_Filter
+}
+"""
+✨ Generated order input type for table 'Animation'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Animation_Order {
+  """
+  ✨ Generated from Field `Animation`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`boardId` of type `UUID`
+  """
+  boardId: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`board` of type `Board`
+  """
+  board: Board_Order
+  """
+  ✨ Generated from Field `Animation`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`description` of type `String`
+  """
+  description: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`name` of type `String!`
+  """
+  name: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`updatedAt` of type `Timestamp!`
+  """
+  updatedAt: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`boardId_count` of type `Int!`
+  """
+  boardId_count: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`description_count` of type `Int!`
+  """
+  description_count: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`name_count` of type `Int!`
+  """
+  name_count: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`updatedAt_count` of type `Int!`
+  """
+  updatedAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`updatedAt_min` of type `Timestamp`
+  """
+  updatedAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+  """
+  ✨ Generated from Field `Animation`.`updatedAt_max` of type `Timestamp`
+  """
+  updatedAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'AnimationFrame'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input AnimationFrame_Data {
+  """
+  ✨ Generated from Field `AnimationFrame`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `AnimationFrame`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `AnimationFrame`.`animationId` of type `UUID`
+  """
+  animationId: UUID
+  """
+  ✨ `_expr` server value variant of `animationId` (✨ Generated from Field `AnimationFrame`.`animationId` of type `UUID`)
+  """
+  animationId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `AnimationFrame`.`animation` of type `Animation`
+  """
+  animation: Animation_Key
+  """
+  ✨ Generated from Field `AnimationFrame`.`boardElementStates` of type `String`
+  """
+  boardElementStates: String
+  """
+  ✨ `_expr` server value variant of `boardElementStates` (✨ Generated from Field `AnimationFrame`.`boardElementStates` of type `String`)
+  """
+  boardElementStates_expr: String_Expr
+  """
+  ✨ Generated from Field `AnimationFrame`.`frameNumber` of type `Int!`
+  """
+  frameNumber: Int
+  """
+  ✨ `_expr` server value variant of `frameNumber` (✨ Generated from Field `AnimationFrame`.`frameNumber` of type `Int!`)
+  """
+  frameNumber_expr: Int_Expr
+  """
+  ✨ `_update` server value variant of `frameNumber` (✨ Generated from Field `AnimationFrame`.`frameNumber` of type `Int!`)
+  """
+  frameNumber_update: [Int_Update!]
+}
+"""
+✨ Generated filter input type for table 'AnimationFrame'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input AnimationFrame_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [AnimationFrame_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: AnimationFrame_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [AnimationFrame_Filter!]
+  """
+  ✨ Generated from Field `AnimationFrame`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `AnimationFrame`.`animationId` of type `UUID`
+  """
+  animationId: UUID_Filter
+  """
+  ✨ Generated from Field `AnimationFrame`.`animation` of type `Animation`
+  """
+  animation: Animation_Filter
+  """
+  ✨ Generated from Field `AnimationFrame`.`boardElementStates` of type `String`
+  """
+  boardElementStates: String_Filter
+  """
+  ✨ Generated from Field `AnimationFrame`.`frameNumber` of type `Int!`
+  """
+  frameNumber: Int_Filter
+}
+"""
+✨ Generated first-row input type for table 'AnimationFrame'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input AnimationFrame_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [AnimationFrame_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: AnimationFrame_Filter
+}
+"""
+✨ Generated having input type for table 'AnimationFrame'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input AnimationFrame_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [AnimationFrame_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: AnimationFrame_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [AnimationFrame_Having!]
+  """
+  ✨ Generated from Field `AnimationFrame`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `AnimationFrame`.`animationId_count` of type `Int!`
+  """
+  animationId_count: Int_Filter
+  """
+  ✨ Generated from Field `AnimationFrame`.`boardElementStates_count` of type `Int!`
+  """
+  boardElementStates_count: Int_Filter
+  """
+  ✨ Generated from Field `AnimationFrame`.`frameNumber_count` of type `Int!`
+  """
+  frameNumber_count: Int_Filter
+  """
+  ✨ Generated from Field `AnimationFrame`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `AnimationFrame`.`frameNumber_sum` of type `Int`
+  """
+  frameNumber_sum: Int_Filter
+  """
+  ✨ Generated from Field `AnimationFrame`.`frameNumber_avg` of type `Float`
+  """
+  frameNumber_avg: Float_Filter
+  """
+  ✨ Generated from Field `AnimationFrame`.`frameNumber_min` of type `Int`
+  """
+  frameNumber_min: Int_Filter
+  """
+  ✨ Generated from Field `AnimationFrame`.`frameNumber_max` of type `Int`
+  """
+  frameNumber_max: Int_Filter
+}
+"""
+✨ Generated key input type for table 'AnimationFrame'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input AnimationFrame_Key {
+  """
+  ✨ Generated from Field `AnimationFrame`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `AnimationFrame`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'AnimationFrame'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input AnimationFrame_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: AnimationFrame_Filter
+}
+"""
+✨ Generated order input type for table 'AnimationFrame'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input AnimationFrame_Order {
+  """
+  ✨ Generated from Field `AnimationFrame`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `AnimationFrame`.`animationId` of type `UUID`
+  """
+  animationId: OrderDirection
+  """
+  ✨ Generated from Field `AnimationFrame`.`animation` of type `Animation`
+  """
+  animation: Animation_Order
+  """
+  ✨ Generated from Field `AnimationFrame`.`boardElementStates` of type `String`
+  """
+  boardElementStates: OrderDirection
+  """
+  ✨ Generated from Field `AnimationFrame`.`frameNumber` of type `Int!`
+  """
+  frameNumber: OrderDirection
+  """
+  ✨ Generated from Field `AnimationFrame`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `AnimationFrame`.`animationId_count` of type `Int!`
+  """
+  animationId_count: OrderDirection
+  """
+  ✨ Generated from Field `AnimationFrame`.`boardElementStates_count` of type `Int!`
+  """
+  boardElementStates_count: OrderDirection
+  """
+  ✨ Generated from Field `AnimationFrame`.`frameNumber_count` of type `Int!`
+  """
+  frameNumber_count: OrderDirection
+  """
+  ✨ Generated from Field `AnimationFrame`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `AnimationFrame`.`frameNumber_sum` of type `Int`
+  """
+  frameNumber_sum: OrderDirection
+  """
+  ✨ Generated from Field `AnimationFrame`.`frameNumber_avg` of type `Float`
+  """
+  frameNumber_avg: OrderDirection
+  """
+  ✨ Generated from Field `AnimationFrame`.`frameNumber_min` of type `Int`
+  """
+  frameNumber_min: OrderDirection
+  """
+  ✨ Generated from Field `AnimationFrame`.`frameNumber_max` of type `Int`
+  """
+  frameNumber_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'Board'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Board_Data {
+  """
+  ✨ Generated from Field `Board`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Board`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Board`.`ownerId` of type `UUID`
+  """
+  ownerId: UUID
+  """
+  ✨ `_expr` server value variant of `ownerId` (✨ Generated from Field `Board`.`ownerId` of type `UUID`)
+  """
+  ownerId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Board`.`owner` of type `User`
+  """
+  owner: User_Key
+  """
+  ✨ Generated from Field `Board`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Board`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Board`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Board`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Board`.`description` of type `String`
+  """
+  description: String
+  """
+  ✨ `_expr` server value variant of `description` (✨ Generated from Field `Board`.`description` of type `String`)
+  """
+  description_expr: String_Expr
+  """
+  ✨ Generated from Field `Board`.`isPublic` of type `Boolean`
+  """
+  isPublic: Boolean
+  """
+  ✨ `_expr` server value variant of `isPublic` (✨ Generated from Field `Board`.`isPublic` of type `Boolean`)
+  """
+  isPublic_expr: Boolean_Expr
+  """
+  ✨ Generated from Field `Board`.`name` of type `String!`
+  """
+  name: String
+  """
+  ✨ `_expr` server value variant of `name` (✨ Generated from Field `Board`.`name` of type `String!`)
+  """
+  name_expr: String_Expr
+  """
+  ✨ Generated from Field `Board`.`updatedAt` of type `Timestamp!`
+  """
+  updatedAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `updatedAt` (✨ Generated from Field `Board`.`updatedAt` of type `Timestamp!`)
+  """
+  updatedAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `updatedAt` (✨ Generated from Field `Board`.`updatedAt` of type `Timestamp!`)
+  """
+  updatedAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `updatedAt` (✨ Generated from Field `Board`.`updatedAt` of type `Timestamp!`)
+  """
+  updatedAt_update: [Timestamp_Update!]
+}
+"""
+✨ Generated filter input type for table 'Board'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Board_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Board_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Board_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Board_Filter!]
+  """
+  ✨ Generated from Field `Board`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `Board`.`ownerId` of type `UUID`
+  """
+  ownerId: UUID_Filter
+  """
+  ✨ Generated from Field `Board`.`owner` of type `User`
+  """
+  owner: User_Filter
+  """
+  ✨ Generated from Field `Board`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Board`.`description` of type `String`
+  """
+  description: String_Filter
+  """
+  ✨ Generated from Field `Board`.`isPublic` of type `Boolean`
+  """
+  isPublic: Boolean_Filter
+  """
+  ✨ Generated from Field `Board`.`name` of type `String!`
+  """
+  name: String_Filter
+  """
+  ✨ Generated from Field `Board`.`updatedAt` of type `Timestamp!`
+  """
+  updatedAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Board`.`animations_on_board` of type `[Animation!]!`
+  """
+  animations_on_board: Animation_ListFilter
+  """
+  ✨ Generated from Field `Board`.`boardElements_on_board` of type `[BoardElement!]!`
+  """
+  boardElements_on_board: BoardElement_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'Board'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Board_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Board_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Board_Filter
+}
+"""
+✨ Generated having input type for table 'Board'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Board_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Board_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Board_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Board_Having!]
+  """
+  ✨ Generated from Field `Board`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Board`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Board`.`description_count` of type `Int!`
+  """
+  description_count: Int_Filter
+  """
+  ✨ Generated from Field `Board`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Board`.`isPublic_count` of type `Int!`
+  """
+  isPublic_count: Int_Filter
+  """
+  ✨ Generated from Field `Board`.`name_count` of type `Int!`
+  """
+  name_count: Int_Filter
+  """
+  ✨ Generated from Field `Board`.`ownerId_count` of type `Int!`
+  """
+  ownerId_count: Int_Filter
+  """
+  ✨ Generated from Field `Board`.`updatedAt_count` of type `Int!`
+  """
+  updatedAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Board`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Board`.`updatedAt_min` of type `Timestamp`
+  """
+  updatedAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Board`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `Board`.`updatedAt_max` of type `Timestamp`
+  """
+  updatedAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Board'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Board_Key {
+  """
+  ✨ Generated from Field `Board`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Board`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'Board'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Board_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Board_Filter
+}
+"""
+✨ Generated order input type for table 'Board'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Board_Order {
+  """
+  ✨ Generated from Field `Board`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`ownerId` of type `UUID`
+  """
+  ownerId: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`owner` of type `User`
+  """
+  owner: User_Order
+  """
+  ✨ Generated from Field `Board`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`description` of type `String`
+  """
+  description: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`isPublic` of type `Boolean`
+  """
+  isPublic: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`name` of type `String!`
+  """
+  name: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`updatedAt` of type `Timestamp!`
+  """
+  updatedAt: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`description_count` of type `Int!`
+  """
+  description_count: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`isPublic_count` of type `Int!`
+  """
+  isPublic_count: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`name_count` of type `Int!`
+  """
+  name_count: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`ownerId_count` of type `Int!`
+  """
+  ownerId_count: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`updatedAt_count` of type `Int!`
+  """
+  updatedAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`updatedAt_min` of type `Timestamp`
+  """
+  updatedAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+  """
+  ✨ Generated from Field `Board`.`updatedAt_max` of type `Timestamp`
+  """
+  updatedAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'BoardElement'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input BoardElement_Data {
+  """
+  ✨ Generated from Field `BoardElement`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `BoardElement`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `BoardElement`.`boardId` of type `UUID`
+  """
+  boardId: UUID
+  """
+  ✨ `_expr` server value variant of `boardId` (✨ Generated from Field `BoardElement`.`boardId` of type `UUID`)
+  """
+  boardId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `BoardElement`.`board` of type `Board`
+  """
+  board: Board_Key
+  """
+  ✨ Generated from Field `BoardElement`.`color` of type `String!`
+  """
+  color: String
+  """
+  ✨ `_expr` server value variant of `color` (✨ Generated from Field `BoardElement`.`color` of type `String!`)
+  """
+  color_expr: String_Expr
+  """
+  ✨ Generated from Field `BoardElement`.`pathCoordinates` of type `String`
+  """
+  pathCoordinates: String
+  """
+  ✨ `_expr` server value variant of `pathCoordinates` (✨ Generated from Field `BoardElement`.`pathCoordinates` of type `String`)
+  """
+  pathCoordinates_expr: String_Expr
+  """
+  ✨ Generated from Field `BoardElement`.`playerNumber` of type `Int`
+  """
+  playerNumber: Int
+  """
+  ✨ `_expr` server value variant of `playerNumber` (✨ Generated from Field `BoardElement`.`playerNumber` of type `Int`)
+  """
+  playerNumber_expr: Int_Expr
+  """
+  ✨ `_update` server value variant of `playerNumber` (✨ Generated from Field `BoardElement`.`playerNumber` of type `Int`)
+  """
+  playerNumber_update: [Int_Update!]
+  """
+  ✨ Generated from Field `BoardElement`.`size` of type `Float`
+  """
+  size: Float
+  """
+  ✨ `_expr` server value variant of `size` (✨ Generated from Field `BoardElement`.`size` of type `Float`)
+  """
+  size_expr: Float_Expr
+  """
+  ✨ `_update` server value variant of `size` (✨ Generated from Field `BoardElement`.`size` of type `Float`)
+  """
+  size_update: [Float_Update!]
+  """
+  ✨ Generated from Field `BoardElement`.`text` of type `String`
+  """
+  text: String
+  """
+  ✨ `_expr` server value variant of `text` (✨ Generated from Field `BoardElement`.`text` of type `String`)
+  """
+  text_expr: String_Expr
+  """
+  ✨ Generated from Field `BoardElement`.`type` of type `String!`
+  """
+  type: String
+  """
+  ✨ `_expr` server value variant of `type` (✨ Generated from Field `BoardElement`.`type` of type `String!`)
+  """
+  type_expr: String_Expr
+  """
+  ✨ Generated from Field `BoardElement`.`xPosition` of type `Float!`
+  """
+  xPosition: Float
+  """
+  ✨ `_expr` server value variant of `xPosition` (✨ Generated from Field `BoardElement`.`xPosition` of type `Float!`)
+  """
+  xPosition_expr: Float_Expr
+  """
+  ✨ `_update` server value variant of `xPosition` (✨ Generated from Field `BoardElement`.`xPosition` of type `Float!`)
+  """
+  xPosition_update: [Float_Update!]
+  """
+  ✨ Generated from Field `BoardElement`.`yPosition` of type `Float!`
+  """
+  yPosition: Float
+  """
+  ✨ `_expr` server value variant of `yPosition` (✨ Generated from Field `BoardElement`.`yPosition` of type `Float!`)
+  """
+  yPosition_expr: Float_Expr
+  """
+  ✨ `_update` server value variant of `yPosition` (✨ Generated from Field `BoardElement`.`yPosition` of type `Float!`)
+  """
+  yPosition_update: [Float_Update!]
+}
+"""
+✨ Generated filter input type for table 'BoardElement'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input BoardElement_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [BoardElement_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: BoardElement_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [BoardElement_Filter!]
+  """
+  ✨ Generated from Field `BoardElement`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`boardId` of type `UUID`
+  """
+  boardId: UUID_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`board` of type `Board`
+  """
+  board: Board_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`color` of type `String!`
+  """
+  color: String_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`pathCoordinates` of type `String`
+  """
+  pathCoordinates: String_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`playerNumber` of type `Int`
+  """
+  playerNumber: Int_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`size` of type `Float`
+  """
+  size: Float_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`text` of type `String`
+  """
+  text: String_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`type` of type `String!`
+  """
+  type: String_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`xPosition` of type `Float!`
+  """
+  xPosition: Float_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`yPosition` of type `Float!`
+  """
+  yPosition: Float_Filter
+}
+"""
+✨ Generated first-row input type for table 'BoardElement'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input BoardElement_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [BoardElement_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: BoardElement_Filter
+}
+"""
+✨ Generated having input type for table 'BoardElement'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input BoardElement_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [BoardElement_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: BoardElement_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [BoardElement_Having!]
+  """
+  ✨ Generated from Field `BoardElement`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`boardId_count` of type `Int!`
+  """
+  boardId_count: Int_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`color_count` of type `Int!`
+  """
+  color_count: Int_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`pathCoordinates_count` of type `Int!`
+  """
+  pathCoordinates_count: Int_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`playerNumber_count` of type `Int!`
+  """
+  playerNumber_count: Int_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`size_count` of type `Int!`
+  """
+  size_count: Int_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`text_count` of type `Int!`
+  """
+  text_count: Int_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`type_count` of type `Int!`
+  """
+  type_count: Int_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`xPosition_count` of type `Int!`
+  """
+  xPosition_count: Int_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`yPosition_count` of type `Int!`
+  """
+  yPosition_count: Int_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`playerNumber_sum` of type `Int`
+  """
+  playerNumber_sum: Int_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`size_sum` of type `Float`
+  """
+  size_sum: Float_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`xPosition_sum` of type `Float`
+  """
+  xPosition_sum: Float_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`yPosition_sum` of type `Float`
+  """
+  yPosition_sum: Float_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`playerNumber_avg` of type `Float`
+  """
+  playerNumber_avg: Float_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`size_avg` of type `Float`
+  """
+  size_avg: Float_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`xPosition_avg` of type `Float`
+  """
+  xPosition_avg: Float_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`yPosition_avg` of type `Float`
+  """
+  yPosition_avg: Float_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`playerNumber_min` of type `Int`
+  """
+  playerNumber_min: Int_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`size_min` of type `Float`
+  """
+  size_min: Float_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`xPosition_min` of type `Float`
+  """
+  xPosition_min: Float_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`yPosition_min` of type `Float`
+  """
+  yPosition_min: Float_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`playerNumber_max` of type `Int`
+  """
+  playerNumber_max: Int_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`size_max` of type `Float`
+  """
+  size_max: Float_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`xPosition_max` of type `Float`
+  """
+  xPosition_max: Float_Filter
+  """
+  ✨ Generated from Field `BoardElement`.`yPosition_max` of type `Float`
+  """
+  yPosition_max: Float_Filter
+}
+"""
+✨ Generated key input type for table 'BoardElement'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input BoardElement_Key {
+  """
+  ✨ Generated from Field `BoardElement`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `BoardElement`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'BoardElement'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input BoardElement_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: BoardElement_Filter
+}
+"""
+✨ Generated order input type for table 'BoardElement'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input BoardElement_Order {
+  """
+  ✨ Generated from Field `BoardElement`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`boardId` of type `UUID`
+  """
+  boardId: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`board` of type `Board`
+  """
+  board: Board_Order
+  """
+  ✨ Generated from Field `BoardElement`.`color` of type `String!`
+  """
+  color: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`pathCoordinates` of type `String`
+  """
+  pathCoordinates: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`playerNumber` of type `Int`
+  """
+  playerNumber: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`size` of type `Float`
+  """
+  size: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`text` of type `String`
+  """
+  text: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`type` of type `String!`
+  """
+  type: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`xPosition` of type `Float!`
+  """
+  xPosition: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`yPosition` of type `Float!`
+  """
+  yPosition: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`boardId_count` of type `Int!`
+  """
+  boardId_count: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`color_count` of type `Int!`
+  """
+  color_count: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`pathCoordinates_count` of type `Int!`
+  """
+  pathCoordinates_count: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`playerNumber_count` of type `Int!`
+  """
+  playerNumber_count: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`size_count` of type `Int!`
+  """
+  size_count: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`text_count` of type `Int!`
+  """
+  text_count: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`type_count` of type `Int!`
+  """
+  type_count: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`xPosition_count` of type `Int!`
+  """
+  xPosition_count: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`yPosition_count` of type `Int!`
+  """
+  yPosition_count: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`playerNumber_sum` of type `Int`
+  """
+  playerNumber_sum: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`size_sum` of type `Float`
+  """
+  size_sum: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`xPosition_sum` of type `Float`
+  """
+  xPosition_sum: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`yPosition_sum` of type `Float`
+  """
+  yPosition_sum: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`playerNumber_avg` of type `Float`
+  """
+  playerNumber_avg: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`size_avg` of type `Float`
+  """
+  size_avg: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`xPosition_avg` of type `Float`
+  """
+  xPosition_avg: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`yPosition_avg` of type `Float`
+  """
+  yPosition_avg: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`playerNumber_min` of type `Int`
+  """
+  playerNumber_min: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`size_min` of type `Float`
+  """
+  size_min: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`xPosition_min` of type `Float`
+  """
+  xPosition_min: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`yPosition_min` of type `Float`
+  """
+  yPosition_min: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`playerNumber_max` of type `Int`
+  """
+  playerNumber_max: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`size_max` of type `Float`
+  """
+  size_max: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`xPosition_max` of type `Float`
+  """
+  xPosition_max: OrderDirection
+  """
+  ✨ Generated from Field `BoardElement`.`yPosition_max` of type `Float`
+  """
+  yPosition_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'User'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input User_Data {
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `User`.`displayName` of type `String`
+  """
+  displayName: String
+  """
+  ✨ `_expr` server value variant of `displayName` (✨ Generated from Field `User`.`displayName` of type `String`)
+  """
+  displayName_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`email` of type `String!`
+  """
+  email: String
+  """
+  ✨ `_expr` server value variant of `email` (✨ Generated from Field `User`.`email` of type `String!`)
+  """
+  email_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`profilePictureUrl` of type `String`
+  """
+  profilePictureUrl: String
+  """
+  ✨ `_expr` server value variant of `profilePictureUrl` (✨ Generated from Field `User`.`profilePictureUrl` of type `String`)
+  """
+  profilePictureUrl_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`username` of type `String!`
+  """
+  username: String
+  """
+  ✨ `_expr` server value variant of `username` (✨ Generated from Field `User`.`username` of type `String!`)
+  """
+  username_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'User'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input User_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [User_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: User_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [User_Filter!]
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`displayName` of type `String`
+  """
+  displayName: String_Filter
+  """
+  ✨ Generated from Field `User`.`email` of type `String!`
+  """
+  email: String_Filter
+  """
+  ✨ Generated from Field `User`.`profilePictureUrl` of type `String`
+  """
+  profilePictureUrl: String_Filter
+  """
+  ✨ Generated from Field `User`.`username` of type `String!`
+  """
+  username: String_Filter
+  """
+  ✨ Generated from Field `User`.`boards_on_owner` of type `[Board!]!`
+  """
+  boards_on_owner: Board_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'User'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input User_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [User_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: User_Filter
+}
+"""
+✨ Generated having input type for table 'User'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input User_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [User_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: User_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [User_Having!]
+  """
+  ✨ Generated from Field `User`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`displayName_count` of type `Int!`
+  """
+  displayName_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`email_count` of type `Int!`
+  """
+  email_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`profilePictureUrl_count` of type `Int!`
+  """
+  profilePictureUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`username_count` of type `Int!`
+  """
+  username_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'User'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input User_Key {
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'User'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input User_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: User_Filter
+}
+"""
+✨ Generated order input type for table 'User'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input User_Order {
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `User`.`displayName` of type `String`
+  """
+  displayName: OrderDirection
+  """
+  ✨ Generated from Field `User`.`email` of type `String!`
+  """
+  email: OrderDirection
+  """
+  ✨ Generated from Field `User`.`profilePictureUrl` of type `String`
+  """
+  profilePictureUrl: OrderDirection
+  """
+  ✨ Generated from Field `User`.`username` of type `String!`
+  """
+  username: OrderDirection
+  """
+  ✨ Generated from Field `User`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`displayName_count` of type `Int!`
+  """
+  displayName_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`email_count` of type `Int!`
+  """
+  email_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`profilePictureUrl_count` of type `Int!`
+  """
+  profilePictureUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`username_count` of type `Int!`
+  """
+  username_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}
