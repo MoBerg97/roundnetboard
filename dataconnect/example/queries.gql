@@ -1,0 +1,34 @@
+mutation CreatePost($text: String!) @auth(level: USER) {
+  post: post_insert(data: {
+    text: $text,
+    createdAt_expr: "request.time",
+    userUid_expr: "auth.uid"
+  })
+}
+
+query ListPosts @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users.") {
+  posts(orderBy: [{createdAt: DESC}]) {
+    id
+    text
+    createdAt
+    user {
+      uid
+      displayName
+    }
+  }
+}
+
+mutation UpdatePost($id: UUID!, $text: String) @auth(level: USER) {
+  post: post_update(key: {id: $id}, data: {
+    text: $text,
+    updatedAt_expr: "request.time"
+  })
+}
+
+query GetUserPosts @auth(level: USER) {
+  posts(where: {userUid: {eq_expr: "auth.uid"}}) {
+    id
+    text
+    createdAt
+  }
+}

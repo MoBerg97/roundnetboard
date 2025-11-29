@@ -1,0 +1,673 @@
+extend type Animation {
+  """
+  ✨ List `AnimationFrame` objects in a one-to-many relationship (where `AnimationFrame`.`animation` is this object).
+  """
+  animationFrames_on_animation(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: AnimationFrame_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [AnimationFrame_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: AnimationFrame_Having
+  ): [AnimationFrame!]! @fdc_generated(from: "AnimationFrame.animation", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "Animation", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `Animation` table.
+  """
+  _count: Int! @fdc_generated(from: "Animation.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Animation` table where the `boardId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  boardId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Animation.boardId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Animation` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Animation.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Animation` table where the `description` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  description_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Animation.description", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Animation` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Animation.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Animation` table where the `name` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  name_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Animation.name", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Animation` table where the `updatedAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  updatedAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Animation.updatedAt", purpose: QUERY_COUNT)
+  """
+  ✨ Minimum of the `createdAt` field in the `Animation` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "Animation.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `updatedAt` field in the `Animation` table.
+  """
+  updatedAt_min: Timestamp @fdc_generated(from: "Animation.updatedAt", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `createdAt` field in the `Animation` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "Animation.createdAt", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `updatedAt` field in the `Animation` table.
+  """
+  updatedAt_max: Timestamp @fdc_generated(from: "Animation.updatedAt", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "Animation.id", purpose: GLOBAL_ID)
+}
+extend type AnimationFrame {
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "AnimationFrame", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `AnimationFrame` table.
+  """
+  _count: Int! @fdc_generated(from: "AnimationFrame.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AnimationFrame` table where the `animationId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  animationId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AnimationFrame.animationId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AnimationFrame` table where the `boardElementStates` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  boardElementStates_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AnimationFrame.boardElementStates", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AnimationFrame` table where the `frameNumber` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  frameNumber_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AnimationFrame.frameNumber", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `AnimationFrame` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "AnimationFrame.id", purpose: QUERY_COUNT)
+  """
+  ✨ Sum the `frameNumber` field in the `AnimationFrame` table.
+  """
+  frameNumber_sum(
+    """
+    Set to true to sum the distinct values.
+    """
+    distinct: Boolean = false
+  ): Int @fdc_generated(from: "AnimationFrame.frameNumber", purpose: QUERY_SUM)
+  """
+  ✨ Average the `frameNumber` field in the `AnimationFrame` table.
+  """
+  frameNumber_avg(
+    """
+    Set to true to average the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "AnimationFrame.frameNumber", purpose: QUERY_AVG)
+  """
+  ✨ Minimum of the `frameNumber` field in the `AnimationFrame` table.
+  """
+  frameNumber_min: Int @fdc_generated(from: "AnimationFrame.frameNumber", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `frameNumber` field in the `AnimationFrame` table.
+  """
+  frameNumber_max: Int @fdc_generated(from: "AnimationFrame.frameNumber", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "AnimationFrame.id", purpose: GLOBAL_ID)
+}
+extend type Board {
+  """
+  ✨ List `Animation` objects in a one-to-many relationship (where `Animation`.`board` is this object).
+  """
+  animations_on_board(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Animation_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Animation_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Animation_Having
+  ): [Animation!]! @fdc_generated(from: "Animation.board", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `BoardElement` objects in a one-to-many relationship (where `BoardElement`.`board` is this object).
+  """
+  boardElements_on_board(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: BoardElement_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [BoardElement_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: BoardElement_Having
+  ): [BoardElement!]! @fdc_generated(from: "BoardElement.board", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "Board", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `Board` table.
+  """
+  _count: Int! @fdc_generated(from: "Board.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Board` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Board.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Board` table where the `description` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  description_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Board.description", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Board` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Board.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Board` table where the `isPublic` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  isPublic_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Board.isPublic", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Board` table where the `name` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  name_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Board.name", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Board` table where the `ownerId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  ownerId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Board.ownerId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Board` table where the `updatedAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  updatedAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Board.updatedAt", purpose: QUERY_COUNT)
+  """
+  ✨ Minimum of the `createdAt` field in the `Board` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "Board.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `updatedAt` field in the `Board` table.
+  """
+  updatedAt_min: Timestamp @fdc_generated(from: "Board.updatedAt", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `createdAt` field in the `Board` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "Board.createdAt", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `updatedAt` field in the `Board` table.
+  """
+  updatedAt_max: Timestamp @fdc_generated(from: "Board.updatedAt", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "Board.id", purpose: GLOBAL_ID)
+}
+extend type BoardElement {
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "BoardElement", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `BoardElement` table.
+  """
+  _count: Int! @fdc_generated(from: "BoardElement.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `BoardElement` table where the `boardId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  boardId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "BoardElement.boardId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `BoardElement` table where the `color` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  color_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "BoardElement.color", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `BoardElement` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "BoardElement.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `BoardElement` table where the `pathCoordinates` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  pathCoordinates_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "BoardElement.pathCoordinates", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `BoardElement` table where the `playerNumber` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  playerNumber_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "BoardElement.playerNumber", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `BoardElement` table where the `size` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  size_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "BoardElement.size", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `BoardElement` table where the `text` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  text_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "BoardElement.text", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `BoardElement` table where the `type` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  type_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "BoardElement.type", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `BoardElement` table where the `xPosition` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  xPosition_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "BoardElement.xPosition", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `BoardElement` table where the `yPosition` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  yPosition_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "BoardElement.yPosition", purpose: QUERY_COUNT)
+  """
+  ✨ Sum the `playerNumber` field in the `BoardElement` table.
+  """
+  playerNumber_sum(
+    """
+    Set to true to sum the distinct values.
+    """
+    distinct: Boolean = false
+  ): Int @fdc_generated(from: "BoardElement.playerNumber", purpose: QUERY_SUM)
+  """
+  ✨ Sum the `size` field in the `BoardElement` table.
+  """
+  size_sum(
+    """
+    Set to true to sum the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "BoardElement.size", purpose: QUERY_SUM)
+  """
+  ✨ Sum the `xPosition` field in the `BoardElement` table.
+  """
+  xPosition_sum(
+    """
+    Set to true to sum the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "BoardElement.xPosition", purpose: QUERY_SUM)
+  """
+  ✨ Sum the `yPosition` field in the `BoardElement` table.
+  """
+  yPosition_sum(
+    """
+    Set to true to sum the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "BoardElement.yPosition", purpose: QUERY_SUM)
+  """
+  ✨ Average the `playerNumber` field in the `BoardElement` table.
+  """
+  playerNumber_avg(
+    """
+    Set to true to average the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "BoardElement.playerNumber", purpose: QUERY_AVG)
+  """
+  ✨ Average the `size` field in the `BoardElement` table.
+  """
+  size_avg(
+    """
+    Set to true to average the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "BoardElement.size", purpose: QUERY_AVG)
+  """
+  ✨ Average the `xPosition` field in the `BoardElement` table.
+  """
+  xPosition_avg(
+    """
+    Set to true to average the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "BoardElement.xPosition", purpose: QUERY_AVG)
+  """
+  ✨ Average the `yPosition` field in the `BoardElement` table.
+  """
+  yPosition_avg(
+    """
+    Set to true to average the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "BoardElement.yPosition", purpose: QUERY_AVG)
+  """
+  ✨ Minimum of the `playerNumber` field in the `BoardElement` table.
+  """
+  playerNumber_min: Int @fdc_generated(from: "BoardElement.playerNumber", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `size` field in the `BoardElement` table.
+  """
+  size_min: Float @fdc_generated(from: "BoardElement.size", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `xPosition` field in the `BoardElement` table.
+  """
+  xPosition_min: Float @fdc_generated(from: "BoardElement.xPosition", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `yPosition` field in the `BoardElement` table.
+  """
+  yPosition_min: Float @fdc_generated(from: "BoardElement.yPosition", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `playerNumber` field in the `BoardElement` table.
+  """
+  playerNumber_max: Int @fdc_generated(from: "BoardElement.playerNumber", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `size` field in the `BoardElement` table.
+  """
+  size_max: Float @fdc_generated(from: "BoardElement.size", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `xPosition` field in the `BoardElement` table.
+  """
+  xPosition_max: Float @fdc_generated(from: "BoardElement.xPosition", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `yPosition` field in the `BoardElement` table.
+  """
+  yPosition_max: Float @fdc_generated(from: "BoardElement.yPosition", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "BoardElement.id", purpose: GLOBAL_ID)
+}
+extend type User {
+  """
+  ✨ List `Board` objects in a one-to-many relationship (where `Board`.`owner` is this object).
+  """
+  boards_on_owner(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Board_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Board_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Board_Having
+  ): [Board!]! @fdc_generated(from: "Board.owner", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "User", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `User` table.
+  """
+  _count: Int! @fdc_generated(from: "User.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `displayName` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  displayName_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.displayName", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `email` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  email_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.email", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `profilePictureUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  profilePictureUrl_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.profilePictureUrl", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `User` table where the `username` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  username_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "User.username", purpose: QUERY_COUNT)
+  """
+  ✨ Minimum of the `createdAt` field in the `User` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "User.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `createdAt` field in the `User` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "User.createdAt", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "User.id", purpose: GLOBAL_ID)
+}

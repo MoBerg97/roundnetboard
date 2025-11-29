@@ -1,0 +1,54 @@
+mutation CreateSeedData @transaction @auth(level: NO_ACCESS) {
+  user_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      username: "demouser1",
+      email: "demouser1@example.com",
+      createdAt: "2024-04-29T12:00:00Z"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      username: "demouser2",
+      email: "demouser2@example.com",
+      createdAt: "2024-04-29T13:00:00Z"
+    }
+  ])
+  board_insertMany(data: [
+    {
+      id: "650e8400-e29b-41d4-a716-446655440002",
+      ownerId: "550e8400-e29b-41d4-a716-446655440000",
+      name: "Demo Board 1",
+      description: "Example board for demouser1",
+      isPublic: true,
+      createdAt: "2024-04-29T14:00:00Z",
+      updatedAt: "2024-04-29T14:00:00Z"
+    },
+    {
+      id: "750e8400-e29b-41d4-a716-446655440003",
+      ownerId: "550e8400-e29b-41d4-a716-446655440001",
+      name: "Demo Board 2",
+      description: "Example board for demouser2",
+      isPublic: false,
+      createdAt: "2024-04-29T15:00:00Z",
+      updatedAt: "2024-04-29T15:00:00Z"
+    }
+  ])
+  boardElement_insertMany(data: [
+    {
+      boardId: "650e8400-e29b-41d4-a716-446655440002",
+      color: "red",
+      type: "circle",
+      xPosition: 100.0,
+      yPosition: 100.0,
+      size: 50.0
+    },
+    {
+      boardId: "750e8400-e29b-41d4-a716-446655440003",
+      color: "blue",
+      type: "square",
+      xPosition: 50.0,
+      yPosition: 50.0,
+      size: 25.0
+    }
+  ])
+}
