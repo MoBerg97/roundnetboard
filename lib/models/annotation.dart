@@ -29,13 +29,13 @@ class Annotation extends HiveObject {
     Color? color,
     required this.points,
   }) {
-    colorValue = (color ?? Colors.white).value;
+    colorValue = (color ?? Colors.white).toARGB32();
   }
 
   // Empty constructor for Hive
   Annotation.empty() {
     type = AnnotationType.line;
-    colorValue = Colors.white.value;
+    colorValue = Colors.white.toARGB32();
     points = [];
   }
 
@@ -43,7 +43,7 @@ class Annotation extends HiveObject {
   Color get color => Color(colorValue);
 
   /// Set color
-  set color(Color value) => colorValue = value.value;
+  set color(Color value) => colorValue = value.toARGB32();
 
   /// Copy annotation
   Annotation copy() => Annotation(
@@ -57,4 +57,18 @@ class Annotation extends HiveObject {
     if (type != AnnotationType.circle || points.length < 2) return null;
     return (points[1] - points[0]).distance;
   }
+}
+
+extension AnnotationMap on Annotation {
+  Map<String, dynamic> toMap() => {
+        'type': type.name,
+        'colorValue': colorValue,
+        'points': points.map((o) => [o.dx, o.dy]).toList(),
+      };
+
+  static Annotation fromMap(Map<String, dynamic> m) => Annotation(
+        type: AnnotationType.values.firstWhere((e) => e.name == m['type']),
+        color: Color(m['colorValue'] as int),
+        points: (m['points'] as List).map((e) => Offset(e[0] as double, e[1] as double)).toList(),
+      );
 }
