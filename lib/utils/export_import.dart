@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../models/animation_project.dart';
 
 class ProjectIO {
@@ -17,6 +18,38 @@ class ProjectIO {
     final contents = await file.readAsString();
     final map = json.decode(contents) as Map<String, dynamic>;
     return AnimationProjectMap.fromMap(map);
+  }
+
+  /// Export project to JSON with user-selected save location
+  static Future<File?> exportToJsonWithPicker(AnimationProject project) async {
+    final map = project.toMap();
+    final jsonStr = const JsonEncoder.withIndent('  ').convert(map);
+    final safeName = project.name.replaceAll(RegExp(r'[^a-zA-Z0-9_-]+'), '_');
+    
+    // Convert JSON string to bytes for Android/iOS compatibility
+    final bytes = utf8.encode(jsonStr);
+    
+    // Let user choose save location
+    final outputPath = await FilePicker.platform.saveFile(
+      dialogTitle: 'Save Project',
+      fileName: '$safeName.json',
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+      bytes: bytes,
+    );
+
+    if (outputPath == null) {
+      // User cancelled
+      return null;
+    }
+
+    // On desktop platforms, we still need to write the file
+    // On mobile, the bytes parameter handles the writing
+    final file = File(outputPath);
+    if (!await file.exists()) {
+      await file.writeAsBytes(bytes);
+    }
+    return file;
   }
 }
 

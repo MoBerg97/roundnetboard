@@ -64,6 +64,13 @@ players:
 - [ ] the color of player objects should be editable.
 - [ ] the user should be able to additionally add a single character shown on the player object always (project specific).
 - [ ] the user should be able to delete players and add players. The color of the added player object should match the color of the last tapped player object.
+- [ ] player objects can have frame specific body postures ( resembled by changing greaphical representation) and introducing a rotational component of player objects
+  - [ ] set (L/R): arm reaching out in front of player on of the side
+  - [ ] hit (L/R): arm is with 90degree elbow bend on is going out of one of the sided of the player
+    - [ ] animation of swinging arm right before the end of the frames duration and only starting when ball is within proximity of the player during a tick
+  - [ ] half defense (L/R): (funnel) one arm reaching out a side of the playerwith 120 degree elbow bend
+  - [ ] full defense (L/R): both arms reach out the sides of a player with 120 degree elbow bends.
+
 
 ball:
 
