@@ -197,6 +197,10 @@ extension FrameMap on Frame {
         'p3PathPoints': p3PathPoints.map((o) => [o.dx, o.dy]).toList(),
         'p4PathPoints': p4PathPoints.map((o) => [o.dx, o.dy]).toList(),
         'ballPathPoints': ballPathPoints.map((o) => [o.dx, o.dy]).toList(),
+        'duration': duration,
+        'ballHitT': ballHitT,
+        'ballSet': ballSet,
+        'annotations': annotations.map((a) => a.toMap()).toList(),
       };
 
   static Frame fromMap(Map<String, dynamic> m) => Frame(
@@ -214,5 +218,11 @@ extension FrameMap on Frame {
         p3PathPoints: (m['p3PathPoints'] as List).map((e) => Offset(e[0], e[1])).toList(),
         p4PathPoints: (m['p4PathPoints'] as List).map((e) => Offset(e[0], e[1])).toList(),
         ballPathPoints: (m['ballPathPoints'] as List).map((e) => Offset(e[0], e[1])).toList(),
+        duration: (m['duration'] ?? 0.5).toDouble(),
+        ballHitT: m['ballHitT'] != null ? (m['ballHitT'] as num).toDouble() : null,
+        ballSet: m['ballSet'] as bool?,
+        annotations: (m['annotations'] as List? ?? [])
+            .map((e) => AnnotationMap.fromMap(Map<String, dynamic>.from(e)))
+            .toList(),
       );
 }
