@@ -1,8 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:file_picker/file_picker.dart';
 import '../models/animation_project.dart';
 import '../models/settings.dart';
+import '../utils/share_helper.dart';
+import '../utils/export_import.dart';
 import 'board_screen.dart';
+import 'help_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -50,11 +55,17 @@ class HomeScreen extends StatelessWidget {
                       box.deleteAt(index);
                     } else if (value == 'duplicate') {
                       _duplicateProject(context, box, project);
+                    } else if (value == 'export') {
+                      _exportProject(context, project);
+                    } else if (value == 'share') {
+                      _shareProject(context, project);
                     }
                   },
                   itemBuilder: (context) => [
                     const PopupMenuItem(value: 'rename', child: Text('Rename')),
                     const PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
+                    const PopupMenuItem(value: 'export', child: Text('Export JSON')),
+                    const PopupMenuItem(value: 'share', child: Text('Share Project')),
                     const PopupMenuItem(value: 'delete', child: Text('Delete')),
                   ],
                 ),
@@ -63,9 +74,21 @@ class HomeScreen extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _addProject(context, projectBox),
-        child: const Icon(Icons.add),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'import',
+            onPressed: () => _importProject(context, projectBox),
+            child: const Icon(Icons.file_upload),
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton(
+            heroTag: 'add',
+            onPressed: () => _addProject(context, projectBox),
+            child: const Icon(Icons.add),
+          ),
+        ],
       ),
     );
   }
@@ -150,5 +173,82 @@ class HomeScreen extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Project duplicated as "$newName"')),
     );
+  }
+
+  Future<void> _exportProject(BuildContext context, AnimationProject project) async {
+    try {
+      final file = await ProjectIO.exportToJsonWithPicker(project);
+      
+      if (file == null) {
+        // User cancelled the save dialog
+        return;
+      }
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Project exported to:\n${file.path}'),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _shareProject(BuildContext context, AnimationProject project) async {
+    try {
+      await ShareHelper.shareProject(project);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Share failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _importProject(BuildContext context, Box<AnimationProject> box) async {
+    try {
+      // Pick a JSON file
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        final importedProject = await ProjectIO.importFromJsonFile(file);
+
+        // Find unique name if project name already exists
+        String newName = importedProject.name;
+        int suffix = 1;
+        while (box.values.any((p) => p.name == newName)) {
+          newName = "${importedProject.name} ($suffix)";
+          suffix++;
+        }
+        importedProject.name = newName;
+
+        // Add to box
+        box.add(importedProject);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Project imported as "$newName"')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Import failed: $e')),
+        );
+      }
+    }
   }
 }
