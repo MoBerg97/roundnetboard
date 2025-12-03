@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'config/app_theme.dart';
 import 'models/offset_adapter.dart';
 import 'models/frame.dart';
 import 'models/animation_project.dart';
@@ -68,10 +69,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Roundnet Tactical Board',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        useMaterial3: true, // optional, looks more modern
-      ),
+      theme: AppTheme.lightTheme(),
       home: const HomeScreen(),
     );
   }
