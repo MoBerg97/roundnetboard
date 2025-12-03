@@ -1,8 +1,155 @@
 {
 	"folders": [
 		{
+			"name": "📦 RoundnetBoard (Root)",
 			"path": "."
+		},
+		{
+			"name": "📱 lib (Source Code)",
+			"path": "lib"
+		},
+		{
+			"name": "🧪 test (Unit Tests)",
+			"path": "test"
+		},
+		{
+			"name": "📝 docs (Documentation)",
+			"path": "docs"
+		},
+		{
+			"name": "🏗️ build (APK/AAB for Play Console)",
+			"path": "build"
+		},
+		{
+			"name": "🤖 android (Android Platform)",
+			"path": "android"
+		},
+		{
+			"name": "🍎 ios (iOS Platform)",
+			"path": "ios"
+		},
+		{
+			"name": "🌐 web (Web Platform)",
+			"path": "web"
+		},
+		{
+			"name": "🪟 windows (Windows Platform)",
+			"path": "windows"
+		},
+		{
+			"name": "🐧 linux (Linux Platform)",
+			"path": "linux"
+		},
+		{
+			"name": "🍏 macos (macOS Platform)",
+			"path": "macos"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"dart.lineLength": 120,
+		"editor.formatOnSave": true,
+		"editor.rulers": [
+			120
+		],
+		"files.exclude": {
+			"**/.dart_tool": true,
+			"**/.git": true,
+			"**/.firebase": true
+		},
+		"search.exclude": {
+			"**/.dart_tool": true,
+			"**/.firebase": true,
+			"**/pubspec.lock": true,
+			"**/.flutter-plugins-dependencies": true
+		},
+		"[dart]": {
+			"editor.formatOnSave": true,
+			"editor.formatOnType": true,
+			"editor.selectionHighlight": false,
+			"editor.suggest.snippetsPreventQuickSuggestions": false,
+			"editor.suggestSelection": "first",
+			"editor.tabCompletion": "onlySnippets",
+			"editor.wordBasedSuggestions": "off"
+		}
+	},
+	"extensions": {
+		"recommendations": [
+			"Dart-Code.dart-code",
+			"Dart-Code.flutter"
+		]
+	},
+	"//": "=== WORKSPACE STRUCTURE GUIDE FOR AI ASSISTANTS ===",
+	"projectInfo": {
+		"name": "RoundnetBoard",
+		"type": "Flutter Mobile/Desktop Application",
+		"description": "Roundnet (Spikeball) animation and playbook tool for coaches and players",
+		"mainLanguage": "Dart",
+		"framework": "Flutter",
+		"platforms": [
+			"Android",
+			"iOS",
+			"Web",
+			"Windows",
+			"Linux",
+			"macOS"
+		]
+	},
+	"directoryGuide": {
+		"lib/": "Main source code - models, screens, widgets, utilities",
+		"lib/models/": "Data models (AnimationProject, Frame, Annotation, Settings) with Hive & JSON serialization",
+		"lib/screens/": "UI screens (HomeScreen, BoardScreen, HelpScreen)",
+		"lib/widgets/": "Reusable UI components and custom painters",
+		"lib/utils/": "Utilities (export_import.dart, share_helper.dart, undo_redo.dart)",
+		"test/": "Unit and widget tests",
+		"docs/": "⭐ Project documentation - feature lists, guides, technical docs",
+		"build/": "⚠️ IMPORTANT: Build artifacts - APK/AAB files for Play Console uploads",
+		"build/app/outputs/": "Android build outputs - look here for release APK/AAB files",
+		"build/app/outputs/apk/release/": "Release APK files for distribution",
+		"build/app/outputs/bundle/release/": "Release AAB (Android App Bundle) for Play Store",
+		"android/": "Android native configuration (build.gradle, AndroidManifest.xml)",
+		"ios/": "iOS native configuration (Info.plist, Runner.xcodeproj)",
+		"web/": "Web platform files (index.html)",
+		"windows/": "Windows desktop platform",
+		"linux/": "Linux desktop platform",
+		"macos/": "macOS desktop platform"
+	},
+	"buildCommands": {
+		"buildReleaseAPK": "flutter build apk --release",
+		"buildReleaseAAB": "flutter build appbundle --release",
+		"buildDebugAPK": "flutter build apk --debug",
+		"runOnDevice": "flutter run",
+		"runTests": "flutter test",
+		"analyzeCode": "flutter analyze"
+	},
+	"keyFiles": {
+		"pubspec.yaml": "Dependencies and project configuration",
+		"lib/main.dart": "Application entry point",
+		"lib/models/animation_project.dart": "Core project data model with JSON serialization",
+		"lib/screens/home_screen.dart": "Projects list with import/export/share functionality",
+		"lib/screens/board_screen.dart": "Main animation editor and playback",
+		"lib/screens/help_screen.dart": "User help guide with feature documentation",
+		"lib/utils/export_import.dart": "Project JSON export/import with file picker",
+		"lib/utils/share_helper.dart": "Project sharing via share_plus",
+		"android/app/build.gradle.kts": "Android build configuration",
+		"android/app/google-services.json": "Firebase configuration (if using Firebase)"
+	},
+	"documentationFiles": {
+		"README.md": "⭐ Project overview and setup instructions",
+		"dart-n-flutter.instructions.md": "⭐ Dart/Flutter development guidelines",
+		"docs/ToDo_List.md": "⭐⭐ Feature roadmap, bug tracking, and implementation checklist - CHECK HERE FOR PLANNED WORK",
+		"docs/SHARING_IMPLEMENTATION.md": "⭐⭐ Technical documentation for sharing features implementation",
+		"docs/USER_GUIDE_SHARING.md": "⭐ End-user guide for sharing and importing projects"
+	},
+	"dataFlow": {
+		"persistence": "Hive database (local NoSQL storage)",
+		"serialization": "JSON format for import/export/sharing",
+		"sharing": "share_plus package for cross-platform file sharing",
+		"fileOperations": "file_picker for import/export file selection"
+	},
+	"importantNotes": {
+		"playConsoleUploads": "Find release builds in build/app/outputs/bundle/release/ (AAB) or build/app/outputs/apk/release/ (APK)",
+		"testingChanges": "Always run 'flutter test' before committing",
+		"codingStandards": "120 character line length, format on save enabled",
+		"jsonSerialization": "All models support toMap()/fromMap() for complete project sharing"
+	}
 }

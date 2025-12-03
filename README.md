@@ -1,16 +1,11 @@
 # roundnetboard
 
-A new Flutter project.
+RoundnetBoard is an application for fellow players, coaches or roundnet interested people to theorycraft tactics or visualize complex play patterns. Finally, you can animate strategic plays and communicate the principles of the sport in a intuitive and roundnet adapted way.
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+Download the application on the Google Play Store or access the web app.
 
-A few resources to get you started if this is your first Flutter project:
+### Documentation
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Find the documentation on how to share projects in the docs folder.
