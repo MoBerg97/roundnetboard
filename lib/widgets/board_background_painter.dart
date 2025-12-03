@@ -38,16 +38,20 @@ class BoardBackgroundPainter extends CustomPainter {
 
     final step = 6.0;
     for (double dx = -netRadius; dx <= netRadius; dx += step) {
-      final dy = (netRadius * netRadius - dx * dx) > 0
-          ? math.sqrt(netRadius * netRadius - dx * dx)
-          : 0;
-      canvas.drawLine(center + Offset(dx.toDouble(), -dy.toDouble()), center + Offset(dx.toDouble(), dy.toDouble()), netPaint);
+      final dy = (netRadius * netRadius - dx * dx) > 0 ? math.sqrt(netRadius * netRadius - dx * dx) : 0;
+      canvas.drawLine(
+        center + Offset(dx.toDouble(), -dy.toDouble()),
+        center + Offset(dx.toDouble(), dy.toDouble()),
+        netPaint,
+      );
     }
     for (double dy = -netRadius; dy <= netRadius; dy += step) {
-      final dx = (netRadius * netRadius - dy * dy) > 0
-          ? math.sqrt(netRadius * netRadius - dy * dy)
-          : 0;
-      canvas.drawLine(center + Offset(-dx.toDouble(), dy.toDouble()), center + Offset(dx.toDouble(), dy.toDouble()), netPaint);
+      final dx = (netRadius * netRadius - dy * dy) > 0 ? math.sqrt(netRadius * netRadius - dy * dy) : 0;
+      canvas.drawLine(
+        center + Offset(-dx.toDouble(), dy.toDouble()),
+        center + Offset(dx.toDouble(), dy.toDouble()),
+        netPaint,
+      );
     }
 
     // --- Inner + Outer circles ---
