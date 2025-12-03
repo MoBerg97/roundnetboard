@@ -19,7 +19,7 @@ void main() async {
   // -------------------------
   // 🚨 Initialize Firebase & Crashlytics
   // -------------------------
-  
+
   await Firebase.initializeApp();
 
   // Pass all uncaught errors from the framework to Crashlytics
@@ -31,7 +31,6 @@ void main() async {
     return true;
   };
 
-
   // -------------------------
   // 🗄 Initialize Hive
   // -------------------------
@@ -39,17 +38,17 @@ void main() async {
   await Hive.initFlutter();
 
   // Register adapters (order/typeIds must match what you used above)
-  Hive.registerAdapter(OffsetAdapter());            // typeId = 0 (manual)
-  Hive.registerAdapter(FrameAdapter());             // typeId = 1 (generated)
-  Hive.registerAdapter(AnnotationAdapter());        // typeId = 2 (generated)
-  Hive.registerAdapter(AnimationProjectAdapter());  // typeId = 3 (generated)
-  Hive.registerAdapter(SettingsAdapter());          // typeId = 4 (generated)
-  Hive.registerAdapter(AnnotationTypeAdapter());    // typeId = 5 (generated)
+  Hive.registerAdapter(OffsetAdapter()); // typeId = 0 (manual)
+  Hive.registerAdapter(FrameAdapter()); // typeId = 1 (generated)
+  Hive.registerAdapter(AnnotationAdapter()); // typeId = 2 (generated)
+  Hive.registerAdapter(AnimationProjectAdapter()); // typeId = 3 (generated)
+  Hive.registerAdapter(SettingsAdapter()); // typeId = 4 (generated)
+  Hive.registerAdapter(AnnotationTypeAdapter()); // typeId = 5 (generated)
 
   // Open Hive boxes
   await Hive.openBox<AnimationProject>('projects');
   final projectsBox = Hive.box<AnimationProject>('projects');
-  
+
   // Migration: ensure each project has settings
   for (int i = 0; i < projectsBox.length; i++) {
     final p = projectsBox.getAt(i);
@@ -61,16 +60,11 @@ void main() async {
   runApp(const MyApp());
 }
 
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Roundnet Tactical Board',
-      theme: AppTheme.lightTheme(),
-      home: const HomeScreen(),
-    );
+    return MaterialApp(title: 'Roundnet Tactical Board', theme: AppTheme.lightTheme(), home: const HomeScreen());
   }
 }
