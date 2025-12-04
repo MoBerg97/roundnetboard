@@ -603,6 +603,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       builder: (context) => AlertDialog(
         title: const Text('Select Color'),
         content: SizedBox(
+          width: 280,
           height: 200,
           child: GridView.count(
             crossAxisCount: 4,
