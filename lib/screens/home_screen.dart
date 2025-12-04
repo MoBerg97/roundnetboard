@@ -1,13 +1,11 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:file_picker/file_picker.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
 import '../models/animation_project.dart';
 import '../services/project_service.dart';
+import '../services/export_service.dart';
 import '../utils/share_helper.dart';
-import '../utils/export_import.dart';
 import 'board_screen.dart';
 import 'help_screen.dart';
 
@@ -153,7 +151,7 @@ class HomeScreen extends StatelessWidget {
         children: [
           FloatingActionButton(
             heroTag: 'import',
-            backgroundColor: AppTheme.secondaryBlue,
+            backgroundColor: AppTheme.primaryBlue,
             tooltip: 'Import Project',
             onPressed: () => _importProject(context, projectBox),
             child: const Icon(Icons.file_upload),
@@ -274,16 +272,17 @@ class HomeScreen extends StatelessWidget {
 
   Future<void> _exportProject(BuildContext context, AnimationProject project) async {
     try {
-      final file = await ProjectIO.exportToJsonWithPicker(project);
+      final exportService = ExportService();
+      final filePath = await exportService.exportToJson(project);
 
-      if (file == null) {
+      if (filePath == null) {
         // User cancelled the save dialog
         return;
       }
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Project exported to:\n${file.path}'), duration: const Duration(seconds: 4)),
+          SnackBar(content: Text('Project exported to:\n$filePath'), duration: const Duration(seconds: 4)),
         );
       }
     } catch (e) {
@@ -305,28 +304,26 @@ class HomeScreen extends StatelessWidget {
 
   Future<void> _importProject(BuildContext context, Box<AnimationProject> box) async {
     try {
-      // Pick a JSON file
-      final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
+      final exportService = ExportService();
+      final projectService = ProjectService(box);
 
-      if (result != null && result.files.single.path != null) {
-        final file = File(result.files.single.path!);
-        final importedProject = await ProjectIO.importFromJsonFile(file);
+      // Pick and import JSON file
+      final importedProject = await exportService.importFromJson();
 
-        // Find unique name if project name already exists
-        String newName = importedProject.name;
-        int suffix = 1;
-        while (box.values.any((p) => p.name == newName)) {
-          newName = "${importedProject.name} ($suffix)";
-          suffix++;
-        }
-        importedProject.name = newName;
+      if (importedProject == null) {
+        // User cancelled
+        return;
+      }
 
-        // Add to box
-        box.add(importedProject);
+      // Find unique name if project name already exists
+      final newName = projectService.generateUniqueName(importedProject.name);
+      importedProject.name = newName;
 
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Project imported as "$newName"')));
-        }
+      // Add to box
+      box.add(importedProject);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Project imported as "$newName"')));
       }
     } catch (e) {
       if (context.mounted) {
