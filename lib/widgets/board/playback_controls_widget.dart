@@ -61,8 +61,8 @@ class PlaybackControlsWidget extends StatelessWidget {
               // EDIT: Size, color, icon, shape
               // ─────────────────────────────────────────────────────────────
               SizedBox(
-                width: 40, // ← EDIT: Button width
-                height: 32, // ← EDIT: Button height
+                width: 48, // ← EDIT: Button width
+                height: 48, // ← EDIT: Button height
                 child: ElevatedButton(
                   onPressed: isPlaying ? onStop : null,
                   style: ElevatedButton.styleFrom(
@@ -89,7 +89,7 @@ class PlaybackControlsWidget extends StatelessWidget {
               // ─────────────────────────────────────────────────────────────
               SizedBox(
                 width: 48, // ← EDIT: Button width
-                height: 36, // ← EDIT: Button height
+                height: 48, // ← EDIT: Button height
                 child: ElevatedButton(
                   onPressed: isPlaying ? (isPaused ? onPlay : onPause) : onPlay,
                   style: ElevatedButton.styleFrom(
@@ -106,7 +106,7 @@ class PlaybackControlsWidget extends StatelessWidget {
                         ? Icons
                               .play_arrow // ← EDIT: Play icon
                         : Icons.pause, // ← EDIT: Pause icon
-                    size: 24, // ← EDIT: Icon size
+                    size: 36, // ← EDIT: Icon size
                   ),
                 ),
               ),
@@ -138,8 +138,8 @@ class PlaybackControlsWidget extends StatelessWidget {
                         horizontal: 2.0, // ← EDIT: Button spacing
                       ),
                       child: SizedBox(
-                        width: 44, // ← EDIT: Button width
-                        height: 28, // ← EDIT: Button height
+                        width: 48, // ← EDIT: Button width
+                        height: 48, // ← EDIT: Button height
                         child: ElevatedButton(
                           onPressed: isPlaying && onSpeedChanged != null ? () => onSpeedChanged!(speed) : null,
                           style: ElevatedButton.styleFrom(
