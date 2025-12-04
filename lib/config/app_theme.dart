@@ -39,8 +39,8 @@ class AppTheme {
 
   // Court colors for board rendering (colorful – reserved for board objects)
 
-  /// Court surface green
-  static const Color courtGreen = Color(0xFF4CAF50);
+  /// Court surface green - more subtle, darker, less neon
+  static const Color courtGreen = Color.fromARGB(255, 93, 164, 118);
 
   /// Court line white
   static const Color courtLine = Color(0xFFFFFFFF);

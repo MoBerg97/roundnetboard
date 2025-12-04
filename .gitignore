@@ -14,6 +14,19 @@ migrate_working_dir/
 *.keystore
 *.jks
 
+# Security & Sensitive Data
+*.pem
+*.p12
+*.pfx
+*.key
+*.gpg
+*.enc
+.env
+.env.*
+!.env.example
+secrets/
+private/
+credentials/
 
 # IntelliJ related
 *.iml
@@ -42,7 +55,18 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# Android related
+/android/.gradle/
+/android/local.properties
+android/app/google-services.json
+android/app/debug
+android/app/profile
+android/app/release
+
+# iOS related
+/ios/Pods/
+ios/Podfile.lock
+
+# Firebase & Google Services
+google-services.json
+GoogleService-Info.plist

@@ -1140,17 +1140,24 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       child: GestureDetector(
         onTap: () {
           if (!_isPlaying && !_endedAtLastFrame) {
-            // Close annotation menu if open and ball is tapped
-            if (_annotationMode) {
+            // If modifier menu is open, close it; otherwise open it
+            if (_showModifierMenu) {
               setState(() {
-                _annotationMode = false;
-                _activeAnnotationTool = AnnotationTool.none;
-                _pendingAnnotationPoints.clear();
+                _showModifierMenu = false;
+              });
+            } else {
+              // Close annotation menu if open and ball is tapped
+              if (_annotationMode) {
+                setState(() {
+                  _annotationMode = false;
+                  _activeAnnotationTool = AnnotationTool.none;
+                  _pendingAnnotationPoints.clear();
+                });
+              }
+              setState(() {
+                _showModifierMenu = true;
               });
             }
-            setState(() {
-              _showModifierMenu = true;
-            });
           }
         },
         onPanStart: (details) {
@@ -1243,9 +1250,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     // Timeline maintains consistent height during state transitions to avoid layout shifts
     // Playback: 160px (more space for timeline), End-state: 120px (with stop button), Editing: 120px (full controls)
     final double timelineHeight = 140.0;
-    final int playbackAnimIndex = _isPlaying
-        ? ((_playbackFrameIndex + _playbackT).clamp(0.0, (widget.project.frames.length - 1).toDouble())).round()
-        : -1;
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
@@ -1300,14 +1304,25 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 absorbing: _isPlaying || _endedAtLastFrame,
                 child: Container(
                   key: _boardKey,
-                  color: Colors.green[400],
+                  color: const Color.fromARGB(255, 55, 49, 120),
                   child: Stack(
                     children: [
-                      CustomPaint(
-                        size: screenSize,
-                        painter: BoardBackgroundPainter(screenSize: screenSize, settings: _settings),
+                      // ┌─────────────────────────────────────────────────────┐
+                      // │ BOARD BACKGROUND (Expensive - wrapped in RepaintBoundary)
+                      // │ Only repaints when settings change (rare)
+                      // └─────────────────────────────────────────────────────┘
+                      RepaintBoundary(
+                        child: CustomPaint(
+                          size: screenSize,
+                          painter: BoardBackgroundPainter(screenSize: screenSize, settings: _settings),
+                        ),
                       ),
                       if (!(_isPlaying || _endedAtLastFrame))
+                        // ┌─────────────────────────────────────────────────────┐
+                        // │ PATH PAINTER (Repaints on every build for live update)
+                        // │ Only drawn in edit mode, repaints continuously during
+                        // │ drag for real-time path feedback
+                        // └─────────────────────────────────────────────────────┘
                         CustomPaint(
                           size: screenSize,
                           painter: PathPainter(
@@ -1462,7 +1477,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     Positioned(
                       left: 0,
                       right: 0,
-                      bottom: 40,
+                      bottom: 24,
                       height: (timelineHeight - 40 - 28),
                       child: AbsorbPointer(
                         absorbing: _isPlaying || _endedAtLastFrame,
@@ -1473,7 +1488,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           itemBuilder: (context, index) {
                             final frame = _isPlaying ? widget.project.frames[index + 1] : widget.project.frames[index];
                             final isSelected = frame == currentFrame;
-                            final isPlayingFrame = _isPlaying && index == playbackAnimIndex;
                             return GestureDetector(
                               onTap: () {
                                 if (!(_isPlaying || _endedAtLastFrame)) {
@@ -1485,13 +1499,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 children: [
                                   Container(
                                     width: 56,
-                                    height: 48,
+                                    height: 40,
                                     margin: const EdgeInsets.symmetric(horizontal: AppConstants.paddingSmall),
                                     decoration: BoxDecoration(
                                       color: _isPlaying
                                           ? AppTheme.timelineInactive
                                           : (isSelected ? AppTheme.timelineActive : AppTheme.timelineInactive),
-                                      borderRadius: BorderRadius.circular(20),
+                                      borderRadius: BorderRadius.circular(24),
                                       border: (_isPlaying)
                                           ? null
                                           : (isSelected ? Border.all(color: AppTheme.primaryBlue, width: 2.5) : null),
@@ -1552,8 +1566,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       Positioned(
                         left: 0,
                         right: 0,
-                        bottom: 40,
-                        height: (timelineHeight - 40 - 28),
+                        bottom: 52,
+                        height: (timelineHeight - 40 - 52),
                         child: AbsorbPointer(
                           absorbing: true,
                           child: Container(
@@ -1568,19 +1582,21 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 // Frame i in timeline is at index i-1
                                 // Cursor at left of frame i when entering frame i (from frame i-1 animation ending)
                                 // Cursor at right of frame i when leaving frame i (entering frame i+1)
-                                final itemExtent = 68.0; // 60 width + 2*4 margin
+                                final itemExtent = 72.0; // 56 width + 2*8 margin
 
                                 // Map playback frame index to timeline index (offset by -1 to skip first frame)
                                 // At frame 0, we're at the boundary before frame 1 (timeline index -1, clamped)
                                 // At frame 1, we're showing frame 1 (timeline index 0)
                                 final interpolatedPosition = _playbackFrameIndex + _playbackT;
                                 final timelineIndex = interpolatedPosition - 1.0;
-                                final thumbnailWidth = 60.0;
+                                // Increase cursor X position by half the distance between frame midpoints
                                 final cursorWorldX =
-                                    timelineIndex * itemExtent + itemExtent / 2 + (thumbnailWidth * 0.5);
+                                    timelineIndex * itemExtent +
+                                    itemExtent / 2 +
+                                    (itemExtent / 2); // Added half itemExtent
 
                                 // Get scroll offset from timeline controller
-                                final scrollOffset = _timelineController.hasClients ? _timelineController.offset : 0.0;
+                                final scrollOffset = _timelineController.hasClients ? _timelineController.offset : 0;
 
                                 // Cursor position relative to the visible viewport
                                 final cursorX = cursorWorldX - scrollOffset;
@@ -1617,17 +1633,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     if (_isPlaying || _endedAtLastFrame)
                       Positioned(
                         top: 0,
-                        left: 12,
-                        right: 12,
-                        height: 30,
+                        left: 24,
+                        right: 24,
+                        height: 28,
                         child: GestureDetector(
                           onHorizontalDragUpdate: (details) {
                             if (widget.project.frames.length < 2) return;
                             RenderBox? box = context.findRenderObject() as RenderBox?;
                             if (box == null) return;
                             final local = box.globalToLocal(details.globalPosition);
-                            final leftPadding = 8.0;
-                            final rightPadding = 8.0;
+                            final leftPadding = 24.0;
+                            final rightPadding = 24.0;
                             final available = box.size.width - leftPadding - rightPadding;
                             final dx = (local.dx - leftPadding).clamp(0.0, available);
                             final frac = (available <= 0) ? 0.0 : (dx / available);
@@ -1700,7 +1716,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     // Playback controls at bottom (speed slider + buttons)
                     if (_isPlaying || _endedAtLastFrame)
                       Positioned(
-                        bottom: 0,
+                        bottom: 8,
                         left: 12,
                         right: 12,
                         height: 40,
@@ -1710,11 +1726,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               onPressed: _stopPlayback,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppTheme.errorRed,
-                                minimumSize: const Size(40, 32),
+                                minimumSize: const Size(40, 40),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                padding: EdgeInsets.zero,
                               ),
-                              child: const Icon(Icons.stop, size: 16),
+                              child: const Icon(Icons.stop, size: 20),
                             ),
                             const SizedBox(width: AppConstants.paddingSmall),
                             ElevatedButton(
@@ -1723,11 +1739,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   : (_isPaused ? _resumePlayback : _pausePlayback),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: _isPaused ? Colors.green : AppTheme.warningAmber,
-                                minimumSize: const Size(40, 32),
+                                minimumSize: const Size(48, 40),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                padding: EdgeInsets.zero,
                               ),
-                              child: Icon(_isPaused ? Icons.play_arrow : Icons.pause, size: 16),
+                              child: Icon(_isPaused ? Icons.play_arrow : Icons.pause, size: 20),
                             ),
                             const SizedBox(width: 8),
                             SizedBox(
@@ -1760,7 +1776,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       Positioned(
                         left: 0,
                         right: 0,
-                        bottom: 0,
+                        bottom: 12,
                         height: 40,
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -1769,9 +1785,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               onPressed: (_isPlaying || _endedAtLastFrame) ? _stopPlayback : _startPlayback,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: (_isPlaying || _endedAtLastFrame) ? AppTheme.errorRed : Colors.green,
-                                minimumSize: const Size(48, 36),
+                                minimumSize: const Size(48, 40),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding: EdgeInsets.zero,
                               ),
                               child: Icon((_isPlaying || _endedAtLastFrame) ? Icons.stop : Icons.play_arrow, size: 20),
                             ),
@@ -1779,9 +1795,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             ElevatedButton(
                               onPressed: (_isPlaying || _endedAtLastFrame) ? null : _insertFrameAfterCurrent,
                               style: ElevatedButton.styleFrom(
-                                minimumSize: const Size(48, 36),
+                                minimumSize: const Size(48, 40),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding: EdgeInsets.zero,
                               ),
                               child: const Icon(Icons.add, size: 20),
                             ),
@@ -1858,13 +1874,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Set button
+                      // Set button - toggle, mutually exclusive with Hit
                       GestureDetector(
                         onTap: () {
                           setState(() {
-                            currentFrame.ballSet = true;
-                            currentFrame.ballHitT = null;
-                            _showModifierMenu = false;
+                            // Toggle Set: if already set, unset it; otherwise set it and clear Hit
+                            if (currentFrame.ballSet ?? false) {
+                              currentFrame.ballSet = false;
+                            } else {
+                              currentFrame.ballSet = true;
+                              currentFrame.ballHitT = null; // Clear Hit when setting Set
+                            }
                           });
                           _saveProject();
                         },
@@ -1902,7 +1922,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           ),
                         ),
                       ),
-                      // Hit button
+                      // Hit button - toggle, mutually exclusive with Set
                       GestureDetector(
                         onTap: () {
                           final prev = _getPreviousFrame();
@@ -1910,9 +1930,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             final tMid = 0.5;
                             final tAdjusted = _avoidControlPointOverlap(prev, tMid);
                             setState(() {
-                              currentFrame.ballHitT = tAdjusted;
-                              currentFrame.ballSet = false;
-                              _showModifierMenu = false;
+                              // Toggle Hit: if already set, clear it; otherwise set it and clear Set
+                              if (currentFrame.ballHitT != null) {
+                                currentFrame.ballHitT = null;
+                              } else {
+                                currentFrame.ballHitT = tAdjusted;
+                                currentFrame.ballSet = false; // Clear Set when setting Hit
+                              }
                             });
                             _saveProject();
                           }
@@ -1950,11 +1974,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             ],
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      TextButton(
-                        onPressed: () => setState(() => _showModifierMenu = false),
-                        child: const Text('Close'),
                       ),
                     ],
                   ),
