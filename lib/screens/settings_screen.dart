@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../config/app_theme.dart';
+import '../config/app_constants.dart';
 import '../models/settings.dart';
 import '../models/animation_project.dart';
 
@@ -43,11 +45,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Settings"),
-      ),
+      appBar: AppBar(title: const Text("Settings")),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppConstants.padding),
         children: [
           ListTile(
             title: const Text("Default Playback Speed"),
@@ -154,9 +154,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const Divider(),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: ElevatedButton.icon(
+            padding: const EdgeInsets.symmetric(vertical: AppConstants.paddingLarge),
+            child: FilledButton.tonalIcon(
               onPressed: _resetDefaults,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.warningAmber.withOpacity(0.2),
+                foregroundColor: AppTheme.darkGrey,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppConstants.paddingLarge,
+                  vertical: AppConstants.padding,
+                ),
+              ),
               icon: const Icon(Icons.refresh),
               label: const Text("Reset to Defaults"),
             ),

@@ -10,17 +10,20 @@ class AppTheme {
 
   // Color Palette - Modern Roundnet/Sports Theme
 
-  /// Primary brand color - vibrant roundnet green
-  static const Color primaryGreen = Color(0xFF00C853);
+  /// Primary accent color for UI (buttons, highlights)
+  static const Color primaryBlue = Color(0xFF2196F3);
 
-  /// Secondary action color - blue for interactive elements
-  static const Color secondaryBlue = Color(0xFF2196F3);
+  /// Secondary action color - deeper blue
+  static const Color secondaryBlue = Color(0xFF1565C0);
 
-  /// Accent color - orange for energy and highlights
+  /// Accent color - orange (used mainly on board)
   static const Color accentOrange = Color(0xFFFF6F00);
 
-  /// Dark grey for text and icons
-  static const Color darkGrey = Color(0xFF37474F);
+  /// Dark grey for app bars and headers
+  static const Color darkGrey = Color(0xFF263238);
+
+  /// Medium grey for cards/containers
+  static const Color mediumGrey = Color(0xFF37474F);
 
   /// Light grey for backgrounds and dividers
   static const Color lightGrey = Color(0xFFECEFF1);
@@ -34,7 +37,7 @@ class AppTheme {
   /// Warning amber for cautions
   static const Color warningAmber = Color(0xFFFFA726);
 
-  // Court colors for board rendering
+  // Court colors for board rendering (colorful – reserved for board objects)
 
   /// Court surface green
   static const Color courtGreen = Color(0xFF4CAF50);
@@ -56,17 +59,22 @@ class AppTheme {
   /// Ball color
   static const Color ballColor = Color(0xFFFBC02D); // Yellow
 
+  // Timeline colors (UI grey + blue accents)
+  static const Color timelineBackground = lightGrey;
+  static const Color timelineInactive = Color(0xFFB0BEC5); // blue-grey 200
+  static const Color timelineActive = primaryBlue;
+
   /// Creates the light theme for the app using Material 3 design.
   static ThemeData lightTheme() {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryGreen,
-        primary: primaryGreen,
+        seedColor: primaryBlue,
+        primary: primaryBlue,
         secondary: secondaryBlue,
         tertiary: accentOrange,
         error: errorRed,
-        surface: Colors.white,
+        surface: lightGrey,
         brightness: Brightness.light,
       ),
 
@@ -74,7 +82,7 @@ class AppTheme {
       appBarTheme: const AppBarTheme(
         elevation: 2,
         centerTitle: false,
-        backgroundColor: primaryGreen,
+        backgroundColor: darkGrey,
         foregroundColor: Colors.white,
         iconTheme: IconThemeData(color: Colors.white),
         titleTextStyle: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w500),
@@ -89,7 +97,7 @@ class AppTheme {
 
       // Floating action button styling
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: secondaryBlue,
+        backgroundColor: primaryBlue,
         foregroundColor: Colors.white,
         elevation: 4,
       ),
@@ -100,6 +108,8 @@ class AppTheme {
           elevation: 2,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          backgroundColor: primaryBlue,
+          foregroundColor: Colors.white,
         ),
       ),
 
@@ -108,6 +118,7 @@ class AppTheme {
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          foregroundColor: primaryBlue,
         ),
       ),
 
@@ -115,18 +126,20 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         filled: true,
-        fillColor: lightGrey,
+        fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
 
       // Icon button styling
-      iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(minimumSize: const Size(48, 48))),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(minimumSize: const Size(48, 48), foregroundColor: primaryBlue),
+      ),
 
       // Slider styling
       sliderTheme: const SliderThemeData(
-        activeTrackColor: primaryGreen,
-        thumbColor: primaryGreen,
-        overlayColor: Color(0x2900C853), // primaryGreen with alpha
+        activeTrackColor: primaryBlue,
+        thumbColor: primaryBlue,
+        overlayColor: Color(0x292196F3), // primaryBlue with alpha
       ),
 
       // Dialog styling
@@ -150,14 +163,17 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryGreen,
-        primary: primaryGreen,
+        seedColor: primaryBlue,
+        primary: primaryBlue,
         secondary: secondaryBlue,
         tertiary: accentOrange,
         error: errorRed,
-        surface: const Color(0xFF1E1E1E),
+        surface: mediumGrey,
         brightness: Brightness.dark,
       ),
+      appBarTheme: const AppBarTheme(backgroundColor: mediumGrey, foregroundColor: Colors.white),
+      cardColor: mediumGrey,
+      dialogBackgroundColor: mediumGrey,
       // Additional dark theme customizations can be added here
     );
   }
