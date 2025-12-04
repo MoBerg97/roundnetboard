@@ -2,8 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:file_picker/file_picker.dart';
+import '../config/app_theme.dart';
+import '../config/app_constants.dart';
 import '../models/animation_project.dart';
-import '../models/settings.dart';
+import '../services/project_service.dart';
 import '../utils/share_helper.dart';
 import '../utils/export_import.dart';
 import 'board_screen.dart';
@@ -19,72 +21,148 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Projects'),
-      ),
-      body: ValueListenableBuilder(
-        valueListenable: projectBox.listenable(),
-        builder: (context, Box<AnimationProject> box, _) {
-          if (box.values.isEmpty) {
-            return const Center(child: Text("No projects yet. Add one!"));
-          }
-
-          return ListView.builder(
-            itemCount: box.length,
-            itemBuilder: (context, index) {
-              final project = box.getAt(index)!;
-
-              return ListTile(
-                title: Text(project.name),
-                onTap: () {
-                  Navigator.of(context).push(
-                    PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) =>
-                          BoardScreen(project: project),
-                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                        return FadeTransition(opacity: animation, child: child);
-                      },
-                      transitionDuration: const Duration(milliseconds: 300),
-                      reverseTransitionDuration: const Duration(milliseconds: 300),
-                    ),
-                  );
-                },
-                trailing: PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'rename') {
-                      _renameProject(context, box, index, project);
-                    } else if (value == 'delete') {
-                      box.deleteAt(index);
-                    } else if (value == 'duplicate') {
-                      _duplicateProject(context, box, project);
-                    } else if (value == 'export') {
-                      _exportProject(context, project);
-                    } else if (value == 'share') {
-                      _shareProject(context, project);
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'rename', child: Text('Rename')),
-                    const PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
-                    const PopupMenuItem(value: 'export', child: Text('Export JSON')),
-                    const PopupMenuItem(value: 'share', child: Text('Share Project')),
-                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
-                ),
-              );
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help),
+            tooltip: 'Help & Guide',
+            onPressed: () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HelpScreen()));
             },
-          );
-        },
+          ),
+        ],
+      ),
+      body: Container(
+        color: AppTheme.mediumGrey,
+        child: ValueListenableBuilder(
+          valueListenable: projectBox.listenable(),
+          builder: (context, Box<AnimationProject> box, _) {
+            if (box.values.isEmpty) {
+              return Center(
+                child: Text("No projects yet. Add one!", style: TextStyle(color: AppTheme.lightGrey)),
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(AppConstants.padding),
+              itemCount: box.length,
+              itemBuilder: (context, index) {
+                final project = box.getAt(index)!;
+
+                return Card(
+                  elevation: AppConstants.cardElevation,
+                  margin: const EdgeInsets.only(bottom: AppConstants.padding),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.borderRadius)),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppConstants.padding,
+                      vertical: AppConstants.paddingSmall,
+                    ),
+                    title: Text(
+                      project.name,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
+                    ),
+                    subtitle: Text("${project.frames.length} frame${project.frames.length == 1 ? '' : 's'}"),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) => BoardScreen(project: project),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            return FadeTransition(opacity: animation, child: child);
+                          },
+                          transitionDuration: AppConstants.mediumAnimation,
+                          reverseTransitionDuration: AppConstants.mediumAnimation,
+                        ),
+                      );
+                    },
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'rename') {
+                          _renameProject(context, box, index, project);
+                        } else if (value == 'delete') {
+                          box.deleteAt(index);
+                        } else if (value == 'duplicate') {
+                          _duplicateProject(context, box, project);
+                        } else if (value == 'export') {
+                          _exportProject(context, project);
+                        } else if (value == 'share') {
+                          _shareProject(context, project);
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'rename',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, size: 20),
+                              SizedBox(width: AppConstants.paddingSmall),
+                              Text('Rename'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'duplicate',
+                          child: Row(
+                            children: [
+                              Icon(Icons.content_copy, size: 20),
+                              SizedBox(width: AppConstants.paddingSmall),
+                              Text('Duplicate'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'export',
+                          child: Row(
+                            children: [
+                              Icon(Icons.file_download, size: 20),
+                              SizedBox(width: AppConstants.paddingSmall),
+                              Text('Export JSON'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'share',
+                          child: Row(
+                            children: [
+                              Icon(Icons.share, size: 20),
+                              SizedBox(width: AppConstants.paddingSmall),
+                              Text('Share Project'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, size: 20, color: AppTheme.errorRed),
+                              SizedBox(width: AppConstants.paddingSmall),
+                              Text('Delete', style: TextStyle(color: AppTheme.errorRed)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           FloatingActionButton(
             heroTag: 'import',
+            backgroundColor: AppTheme.secondaryBlue,
+            tooltip: 'Import Project',
             onPressed: () => _importProject(context, projectBox),
             child: const Icon(Icons.file_upload),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppConstants.padding),
           FloatingActionButton(
             heroTag: 'add',
+            backgroundColor: AppTheme.primaryBlue,
+            tooltip: 'Create New Project',
             onPressed: () => _addProject(context, projectBox),
             child: const Icon(Icons.add),
           ),
@@ -95,29 +173,43 @@ class HomeScreen extends StatelessWidget {
 
   void _addProject(BuildContext context, Box<AnimationProject> box) {
     final controller = TextEditingController();
+    final projectService = ProjectService(box);
+
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.dialogBorderRadius)),
         title: const Text("New Project"),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(labelText: "Project Name"),
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: "Project Name",
+            hintText: "Enter project name",
+            prefixIcon: Icon(Icons.edit),
+          ),
+          textCapitalization: TextCapitalization.words,
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () {
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          FilledButton.icon(
+            onPressed: () async {
               final name = controller.text.trim();
               if (name.isNotEmpty) {
-                final defaultSettings = Settings();
-                box.add(AnimationProject(name: name, frames: [], settings: defaultSettings));
+                try {
+                  await projectService.createProject(name);
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error creating project: $e')));
+                  }
+                }
               }
-              Navigator.pop(context);
             },
-            child: const Text("Create"),
+            icon: const Icon(Icons.check, size: 18),
+            label: const Text("Create"),
           ),
         ],
       ),
@@ -126,77 +218,77 @@ class HomeScreen extends StatelessWidget {
 
   void _renameProject(BuildContext context, Box<AnimationProject> box, int index, AnimationProject project) {
     final controller = TextEditingController(text: project.name);
+    final projectService = ProjectService(box);
+
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.dialogBorderRadius)),
         title: const Text("Rename Project"),
-        content: TextField(controller: controller),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: "Project Name", prefixIcon: Icon(Icons.edit)),
+          textCapitalization: TextCapitalization.words,
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          ElevatedButton(
-            onPressed: () {
+          FilledButton.icon(
+            onPressed: () async {
               final newName = controller.text.trim();
               if (newName.isNotEmpty) {
-                project.name = newName;
-                project.save(); // Save changes to Hive
+                try {
+                  await projectService.renameProject(index, newName);
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error renaming project: $e')));
+                  }
+                }
               }
-              Navigator.pop(context);
             },
-            child: const Text("Save"),
+            icon: const Icon(Icons.check, size: 18),
+            label: const Text("Save"),
           ),
         ],
       ),
     );
   }
 
-  void _duplicateProject(BuildContext context, Box<AnimationProject> box, AnimationProject project) {
-    // Find a unique name with numerated suffix
-    String newName = project.name;
-    int suffix = 1;
+  void _duplicateProject(BuildContext context, Box<AnimationProject> box, AnimationProject project) async {
+    final projectService = ProjectService(box);
 
-    while (box.values.any((p) => p.name == newName)) {
-      newName = "${project.name} ($suffix)";
-      suffix++;
+    try {
+      final newName = await projectService.duplicateProject(project);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Project duplicated as "$newName"')));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error duplicating project: $e')));
+      }
     }
-
-    // Create deep copy of the project
-    final duplicatedFrames = project.frames.map((f) => f.copy()).toList();
-    final duplicatedProject = AnimationProject(
-      name: newName,
-      frames: duplicatedFrames,
-      settings: project.settings?.copy(),
-    );
-
-    // Add to box
-    box.add(duplicatedProject);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Project duplicated as "$newName"')),
-    );
   }
 
   Future<void> _exportProject(BuildContext context, AnimationProject project) async {
     try {
       final file = await ProjectIO.exportToJsonWithPicker(project);
-      
+
       if (file == null) {
         // User cancelled the save dialog
         return;
       }
-      
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Project exported to:\n${file.path}'),
-            duration: const Duration(seconds: 4),
-          ),
+          SnackBar(content: Text('Project exported to:\n${file.path}'), duration: const Duration(seconds: 4)),
         );
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     }
   }
@@ -206,9 +298,7 @@ class HomeScreen extends StatelessWidget {
       await ShareHelper.shareProject(project);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Share failed: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Share failed: $e')));
       }
     }
   }
@@ -216,10 +306,7 @@ class HomeScreen extends StatelessWidget {
   Future<void> _importProject(BuildContext context, Box<AnimationProject> box) async {
     try {
       // Pick a JSON file
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
-      );
+      final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
 
       if (result != null && result.files.single.path != null) {
         final file = File(result.files.single.path!);
@@ -238,16 +325,12 @@ class HomeScreen extends StatelessWidget {
         box.add(importedProject);
 
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Project imported as "$newName"')),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Project imported as "$newName"')));
         }
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Import failed: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $e')));
       }
     }
   }

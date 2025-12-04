@@ -11,6 +11,20 @@ import '../models/settings.dart';
 import '../utils/path_engine.dart';
 import 'settings_screen.dart';
 import '../utils/history.dart';
+import '../config/app_theme.dart';
+import '../config/app_constants.dart';
+
+// ════════════════════════════════════════════════════════════════════════════
+// BOARD SCREEN - Main Animation Editor
+// ════════════════════════════════════════════════════════════════════════════
+// This screen contains:
+// - Interactive board for positioning players and ball
+// - Timeline with frame thumbnails
+// - Playback controls with speed adjustment
+// - Annotation tools (lines, circles, eraser)
+// - Ball modifiers (set, hit markers)
+// - Path control points for curved movement
+// ════════════════════════════════════════════════════════════════════════════
 
 class BoardScreen extends StatefulWidget {
   final AnimationProject project;
@@ -19,45 +33,73 @@ class BoardScreen extends StatefulWidget {
   State<BoardScreen> createState() => _BoardScreenState();
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// ANNOTATION TOOLS ENUM
+// ────────────────────────────────────────────────────────────────────────────
+// Available drawing tools for annotations on the board
 enum AnnotationTool { none, line, circle }
 
 class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin {
+  // ──────────────────────────────────────────────────────────────────────────
+  // STATE VARIABLES
+  // ──────────────────────────────────────────────────────────────────────────
+
+  // Current frame being edited
   late Frame currentFrame;
+
+  // Project settings (court dimensions, visual preferences)
   late Settings _settings;
+
+  // Undo/redo history manager
   late HistoryManager _history;
 
-  bool _isPlaying = false;
-  bool _isPaused = false;
-  bool _endedAtLastFrame = false;
-  bool _scrubberMovedManually = false;
-  late Ticker _ticker;
-  double _playbackT = 0.0;
-  double _playbackSpeed = 1.0;
-  int _playbackFrameIndex = 0;
+  // ──────────────────────────────────────────────────────────────────────────
+  // PLAYBACK STATE
+  // ──────────────────────────────────────────────────────────────────────────
+  bool _isPlaying = false; // Is animation currently playing?
+  bool _isPaused = false; // Is playback paused?
+  bool _endedAtLastFrame = false; // Did playback reach the end?
+  bool _scrubberMovedManually = false; // Did user drag the scrubber?
+  late Ticker _ticker; // Frame ticker for smooth animation
+  double _playbackT = 0.0; // Interpolation value (0.0 to 1.0) between frames
+  double _playbackSpeed = 1.0; // Playback speed multiplier (0.1x to 2.0x)
+  int _playbackFrameIndex = 0; // Current frame index during playback
 
-  String? _pendingBallMark; // 'hit' | 'set'
-  bool _showModifierMenu = false;
-  // Annotation mode + tools
-  bool _annotationMode = false;
-  AnnotationTool _activeAnnotationTool = AnnotationTool.none;
-  bool _eraserMode = false;
-  final List<Offset> _pendingAnnotationPoints = [];
-  Color _annotationColor = Colors.red; // Default to red
-  final List<Annotation> _stagedAnnotations = [];
-  final List<Annotation> _erasingAnnotations = []; // Annotations being touched by eraser for preview
-  // For drag-to-draw line preview
-  Offset? _currentDragPos; // Current position during drag for live preview
-  
+  // ──────────────────────────────────────────────────────────────────────────
+  // BALL MODIFIER STATE
+  // ──────────────────────────────────────────────────────────────────────────
+  String? _pendingBallMark; // 'hit' or 'set' when placing ball modifier
+  bool _showModifierMenu = false; // Show ball modifier menu (set/hit/clear)?
 
-  final Map<String, Offset> _dragStartLogical = {};
-  final Map<String, Offset> _dragStartScreen = {};
-  // Key for the board render box to compute coordinates reliably
-  final GlobalKey _boardKey = GlobalKey();
-  late final ScrollController _timelineController;
+  // ──────────────────────────────────────────────────────────────────────────
+  // ANNOTATION STATE
+  // ──────────────────────────────────────────────────────────────────────────
+  bool _annotationMode = false; // Is annotation mode active?
+  AnnotationTool _activeAnnotationTool = AnnotationTool.none; // Current drawing tool
+  bool _eraserMode = false; // Is eraser active?
+  final List<Offset> _pendingAnnotationPoints = []; // Points being drawn (not committed)
+  Color _annotationColor = Colors.red; // Current annotation color
+  final List<Annotation> _stagedAnnotations = []; // Annotations staged for preview
+  final List<Annotation> _erasingAnnotations = []; // Annotations being erased (preview)
+  Offset? _currentDragPos; // Current drag position for live preview
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // DRAG STATE (for moving objects and control points)
+  // ──────────────────────────────────────────────────────────────────────────
+  final Map<String, Offset> _dragStartLogical = {}; // Starting position in cm coordinates
+  final Map<String, Offset> _dragStartScreen = {}; // Starting position in screen pixels
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // UI REFERENCES
+  // ──────────────────────────────────────────────────────────────────────────
+  final GlobalKey _boardKey = GlobalKey(); // Key for board RenderBox (coordinate conversion)
+  late final ScrollController _timelineController; // Scroll controller for timeline
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize settings
     if (widget.project.settings == null) {
       widget.project.settings = Settings();
       widget.project.save();
@@ -65,6 +107,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _settings = widget.project.settings!;
     _playbackSpeed = _settings.playbackSpeed;
 
+    // Create default frame if project is empty
     if (widget.project.frames.isEmpty) {
       final r = _settings.outerCircleRadiusCm;
       final defaultFrame = Frame(
@@ -89,6 +132,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     } else {
       currentFrame = widget.project.frames.first;
     }
+
     _ticker = createTicker(_onTick);
     _history = HistoryManager(widget.project);
     _timelineController = ScrollController();
@@ -101,6 +145,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     super.dispose();
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // TIMELINE SCROLLING HELPERS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Scroll timeline to center the currently selected frame (edit mode)
   void _scrollToSelectedFrame() {
     final index = widget.project.frames.indexOf(currentFrame);
     if (index < 0) return;
@@ -116,6 +165,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     });
   }
 
+  /// Scroll timeline to center the current playback frame
   void _scrollToPlaybackFrame() {
     final index = (_playbackFrameIndex).clamp(0, widget.project.frames.length - 1);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -130,6 +180,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     });
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // COORDINATE CONVERSION HELPERS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Calculate the center point of the board (accounting for AppBar and Timeline)
   Offset _boardCenter(Size size) {
     const double appBarHeight = kToolbarHeight;
     const double timelineHeight = 140; // Match the timeline height in build()
@@ -139,16 +194,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     return Offset(cx, cy);
   }
 
+  /// Convert cm logical position to screen pixel position
   Offset _toScreenPosition(Offset cmPos, Size size) {
     final center = _boardCenter(size);
-    return center +
-        Offset(
-          _settings.cmToLogical(cmPos.dx, size),
-          _settings.cmToLogical(cmPos.dy, size),
-        );
+    return center + Offset(_settings.cmToLogical(cmPos.dx, size), _settings.cmToLogical(cmPos.dy, size));
   }
 
-  // Convert a screen position (pixels) to cm logical coordinates used by the model
+  /// Convert screen pixel position to cm logical coordinates
   Offset _screenToCm(Offset screenPos, Size size) {
     final center = _boardCenter(size);
     final logical = screenPos - center;
@@ -157,13 +209,19 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     return Offset(logical.dx / scalePerCm, logical.dy / scalePerCm);
   }
 
-  // removed unused _toLogicalPosition helper
+  // ══════════════════════════════════════════════════════════════════════════
+  // PLAYBACK LOGIC
+  // ══════════════════════════════════════════════════════════════════════════
 
+  /// Called on every frame during playback to update animation state
   void _onTick(Duration elapsed) {
     if (!_isPlaying || _isPaused) return;
     final frames = widget.project.frames;
-    // compute previous animated index so we can detect when it moves
+
+    // Detect frame transitions for auto-scrolling
     final prevAnimIndex = ((_playbackFrameIndex + _playbackT).clamp(0.0, (frames.length - 1).toDouble())).round();
+
+    // Stop at last frame
     if (_playbackFrameIndex >= frames.length - 1) {
       setState(() {
         _endedAtLastFrame = true;
@@ -172,17 +230,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _ticker.stop();
       return;
     }
-    
-    // Get next frame duration and calculate tick increment
+
+    // Calculate frame duration and tick increment
     // Duration[i] applies to the transition FROM frame i-1 TO frame i
-    // So we use the duration of the NEXT frame (frame at _playbackFrameIndex + 1)
     final nextFrameIndex = (_playbackFrameIndex + 1).clamp(0, frames.length - 1);
     final nextFrame = frames[nextFrameIndex];
-    // First frame has no duration (it's just starting position), so default to 0.5s
     final frameDuration = nextFrameIndex > 0 ? (nextFrame.duration > 0 ? nextFrame.duration : 0.5) : 0.5;
+
     // Each tick represents 16.67ms (60fps), increment based on frame duration and playback speed
     final tickIncrement = (1.0 / (frameDuration * 60.0)) * _playbackSpeed;
-    
+
     setState(() {
       _playbackT += tickIncrement;
       if (_playbackT >= 1.0) {
@@ -191,16 +248,18 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         if (_playbackFrameIndex >= frames.length - 1) {
           _endedAtLastFrame = true;
         }
-        // Auto-scroll to center current frame
         _scrollToPlaybackFrame();
       }
     });
+
+    // Auto-scroll timeline when crossing frame boundary
     final newAnimIndex = ((_playbackFrameIndex + _playbackT).clamp(0.0, (frames.length - 1).toDouble())).round();
     if (newAnimIndex != prevAnimIndex) {
       _scrollToPlaybackFrame();
     }
   }
 
+  /// Start playback from the beginning
   void _startPlayback() {
     if (widget.project.frames.length < 2) return;
     setState(() {
@@ -211,10 +270,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _playbackT = 0.0;
     });
     _ticker.start();
-    // center the timeline on the first playback frame
     _scrollToPlaybackFrame();
   }
 
+  /// Stop playback and return to edit mode
   void _stopPlayback() {
     setState(() {
       _isPlaying = false;
@@ -227,6 +286,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _ticker.stop();
   }
 
+  /// Pause playback (can be resumed)
   void _pausePlayback() {
     setState(() {
       _isPaused = true;
@@ -234,6 +294,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _ticker.stop();
   }
 
+  /// Resume paused playback
   void _resumePlayback() {
     setState(() {
       _isPaused = false;
@@ -241,28 +302,34 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _ticker.start();
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // FRAME DURATION PICKER DIALOG
+  // ══════════════════════════════════════════════════════════════════════════
+  // Shows a dialog to set the duration of the current frame (0.25s, 0.5s, 1.0s, 2.0s)
+
   void _showDurationPicker() {
     final durations = [0.25, 0.5, 1.0, 2.0];
     final isFirstFrame = widget.project.frames.indexOf(currentFrame) == 0;
-    
+
+    // First frame has no duration (it's just starting position)
     if (isFirstFrame) {
-      // First frame has no duration - show info dialog
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text("First Frame"),
-          content: const Text("The first frame defines starting positions only.\nIt has no duration for animation.\n\nSet duration for frame 2 instead."),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("OK"),
-            ),
-          ],
+          content: const Text(
+            "The first frame defines starting positions only.\nIt has no duration for animation.\n\nSet duration for frame 2 instead.",
+          ),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))],
         ),
       );
       return;
     }
-    
+
+    // ┌─────────────────────────────────────────────────────────────────────┐
+    // │ DURATION PICKER DIALOG                                              │
+    // │ GUI STRUCTURE: AlertDialog with pill-shaped option buttons          │
+    // └─────────────────────────────────────────────────────────────────────┘
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -277,26 +344,31 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 _saveProject();
                 Navigator.pop(context);
               },
+              // ─────────────────────────────────────────────────────────────
+              // DURATION OPTION BUTTON (Pill-Shaped)
+              // EDIT: Padding, border radius, colors
+              // ─────────────────────────────────────────────────────────────
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 margin: const EdgeInsets.symmetric(vertical: 4),
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.blueAccent : Colors.grey[300],
-                  borderRadius: BorderRadius.circular(6),
+                  color: isSelected ? AppTheme.primaryBlue : AppTheme.lightGrey,
+                  borderRadius: BorderRadius.circular(24), // ← EDIT: Pill shape radius
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Duration label text
                     Text(
                       "${d.toStringAsFixed(2)}s",
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 14, // ← EDIT: Text size
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected ? Colors.white : Colors.black,
+                        color: isSelected ? Colors.white : AppTheme.darkGrey,
                       ),
                     ),
-                    if (isSelected)
-                      const Icon(Icons.check, color: Colors.white, size: 18),
+                    // Checkmark icon when selected
+                    if (isSelected) const Icon(Icons.check, color: Colors.white, size: 18),
                   ],
                 ),
               ),
@@ -307,23 +379,24 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     );
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // FRAME INTERPOLATION (for smooth playback animation)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Generate interpolated frame between two keyframes during playback
   Frame? get _animatedFrame {
     if (!_isPlaying) return null;
     final frames = widget.project.frames;
     if (_playbackFrameIndex >= frames.length - 1) return null;
+
     final fA = frames[_playbackFrameIndex];
     final fB = frames[_playbackFrameIndex + 1];
     final t = _playbackT;
 
+    // Helper to interpolate along path or linearly
     Offset getPathOrLinear(String entity, Offset start, Offset end, List<Offset> pathPoints) {
       if (pathPoints.isNotEmpty) {
-        // Create PathEngine for the current frame transition
-        final engine = PathEngine.fromTwoQuadratics(
-          start: start,
-          control: pathPoints.first,
-          end: end,
-          resolution: 400,  // Use higher resolution for smoother animation
-        );
+        final engine = PathEngine.fromTwoQuadratics(start: start, control: pathPoints.first, end: end, resolution: 400);
         return engine.sample(t);
       } else {
         return Offset.lerp(start, end, t)!;
@@ -345,56 +418,67 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       p3PathPoints: [],
       p4PathPoints: [],
       ballPathPoints: [],
-      annotations: fB.annotations, // Include annotations from current frame (frame B)
+      annotations: fB.annotations,
     );
   }
 
-  // Compute scale and star opacity for ball effects during playback
+  // ══════════════════════════════════════════════════════════════════════════
+  // BALL EFFECT ANIMATIONS (Set swell, Hit shrink)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Calculate ball scale during playback based on set/hit effects
   double _ballScaleAt(double t) {
     const double base = 1.0;
     final frames = widget.project.frames;
     if (_playbackFrameIndex >= frames.length - 1) return base;
     final fB = frames[_playbackFrameIndex + 1];
-    // Set animation: subtle swell when set is enabled (use existing behavior)
+
+    // Set animation: subtle swell when set is enabled
     if ((fB.ballSet ?? false) && fB.ballHitT == null) {
       final quad = 1.0 + (1.0 - 4.0 * (t - 0.5) * (t - 0.5));
       return quad.clamp(0.5, 2.0);
     }
-    // Hit modifier: shrink to a minimum of 0.25 at hit time, easing back to 1.0
+
+    // Hit modifier: shrink to minimum 0.25 at hit time, easing back to 1.0
     if (fB.ballHitT != null && !(fB.ballSet ?? false)) {
       final th = fB.ballHitT!.clamp(0.0, 1.0);
-      const window = 0.25; // duration around hit where scale animates (longer for visibility)
+      const window = 0.25;
       final d = (t - th).abs();
       if (d > window) return 1.0;
-      // Use a quadratic easing so the size change is more noticeable and slower near the center
       final frac = (d / window).clamp(0.0, 1.0);
-      final eased = frac * frac; // slower ramp-up from the center outward
+      final eased = frac * frac;
       final scale = 0.25 + (1.0 - 0.25) * eased;
       return scale.clamp(0.25, 1.0);
     }
     return base;
   }
 
-  // star opacity is handled via _playbackHitStarInfo during playback
-
-  // removed unused _gauss helper
-
+  /// Interpolate rotation angle between two frames
   double _interpolateRotation(double a, double b, double t) => a + (b - a) * t;
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // FRAME HELPERS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Get the frame before the current frame (for path drawing)
   Frame? _getPreviousFrame() {
     final index = widget.project.frames.indexOf(currentFrame);
     if (index > 0) return widget.project.frames[index - 1];
     return null;
   }
 
+  /// Get the frame two positions before current (for extended path preview)
   Frame? _getTwoFramesAgo() {
     final index = widget.project.frames.indexOf(currentFrame);
     if (index >= 2) return widget.project.frames[index - 2];
     return null;
   }
 
-  // Undo/Redo handled via HistoryManager
+  // ══════════════════════════════════════════════════════════════════════════
+  // ENTITY POSITION UPDATES
+  // ══════════════════════════════════════════════════════════════════════════
 
+  /// Update the position of a player or ball in the current frame
   void _updateFramePosition(String label, Offset newPos) {
     if (_isPlaying) return;
     setState(() {
@@ -420,9 +504,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     });
   }
 
-  // removed unused _updateRotation helper
-  
+  // ══════════════════════════════════════════════════════════════════════════
+  // FRAME MANAGEMENT (Insert, Delete)
+  // ══════════════════════════════════════════════════════════════════════════
 
+  /// Insert a new frame after the current frame (duplicate positions)
   void _insertFrameAfterCurrent() {
     final index = widget.project.frames.indexOf(currentFrame);
     final newFrame = Frame(
@@ -448,6 +534,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _scrollToSelectedFrame();
   }
 
+  /// Confirm and delete a frame
   void _confirmDeleteFrame(Frame frame) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
@@ -455,23 +542,22 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         title: const Text("Delete Frame"),
         content: const Text("Are you sure you want to delete this frame?"),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text("Cancel"),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorRed),
             child: const Text("Delete"),
           ),
         ],
       ),
     );
+
     if (shouldDelete == true) {
       final index = widget.project.frames.indexOf(frame);
       _history.push(DeleteFrameAction(frameIndex: index));
       setState(() {
         if (widget.project.frames.isEmpty) {
+          // Create default frame if all frames deleted
           final r = _settings.outerCircleRadiusCm;
           final defaultFrame = Frame(
             p1: Offset(0, -r),
@@ -500,10 +586,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     }
   }
 
+  /// Save the project to Hive database
   void _saveProject() {
     widget.project.save();
     debugPrint("Project saved with ${widget.project.frames.length} frames");
   }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // COLOR PICKER DIALOG
+  // ══════════════════════════════════════════════════════════════════════════
+  // Shows a dialog to select annotation color (grid of color circles)
 
   void _showColorPicker() {
     showDialog(
@@ -514,43 +606,52 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           height: 200,
           child: GridView.count(
             crossAxisCount: 4,
-            children: [
-              Colors.red,
-              Colors.blue,
-              Colors.green,
-              Colors.yellow,
-              Colors.orange,
-              Colors.purple,
-              Colors.pink,
-              Colors.cyan,
-              Colors.teal,
-              Colors.lime,
-              Colors.indigo,
-              Colors.brown,
-            ]
-                .map((color) => GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                        setState(() => _annotationColor = color);
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: _annotationColor == color ? Border.all(color: Colors.black, width: 2) : null,
+            children:
+                [
+                      Colors.red,
+                      Colors.blue,
+                      Colors.green,
+                      Colors.yellow,
+                      Colors.orange,
+                      Colors.purple,
+                      Colors.pink,
+                      Colors.cyan,
+                      Colors.teal,
+                      Colors.lime,
+                      Colors.indigo,
+                      Colors.brown,
+                    ]
+                    .map(
+                      (color) => GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                          setState(() => _annotationColor = color);
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: _annotationColor == color ? Border.all(color: AppTheme.darkGrey, width: 2) : null,
+                          ),
                         ),
                       ),
-                    ))
-                .toList(),
+                    )
+                    .toList(),
           ),
         ),
       ),
     );
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // BOARD TAP HANDLER
+  // ══════════════════════════════════════════════════════════════════════════
+  // Handles taps on the board for placing ball modifiers or adding annotations
+
   void _handleBoardTap(Offset tapPos, Size size) {
     if (_isPlaying) return;
+
     // If in annotation mode, ignore taps (drawing uses drag instead)
     if (_annotationMode) {
       return;
@@ -558,6 +659,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
     final prev = _getPreviousFrame();
     if (prev == null) return;
+
+    // Check if tapping on ball - if annotations menu is open, close it and open ball menu
+    if (_annotationMode && _pendingBallMark == null) {
+      setState(() {
+        _annotationMode = false;
+        _activeAnnotationTool = AnnotationTool.none;
+        _showModifierMenu = true;
+      });
+      return;
+    }
+
     if (_pendingBallMark == 'hit') {
       _placeBallHitAt(tapPos, size);
       return;
@@ -582,6 +694,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       }
       return false;
     }
+
     if (tryAdd("P1", prev.p1, currentFrame.p1, currentFrame.p1PathPoints)) return;
     if (tryAdd("P2", prev.p2, currentFrame.p2, currentFrame.p2PathPoints)) return;
     if (tryAdd("P3", prev.p3, currentFrame.p3, currentFrame.p3PathPoints)) return;
@@ -593,7 +706,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   void _handleAnnotationDragStart(DragStartDetails details, Size size) {
     if (_isPlaying || _eraserMode) return;
     if (_activeAnnotationTool != AnnotationTool.line) return;
-    
+
+    // Close ball modifier menu if open and annotations are being touched
+    if (_showModifierMenu) {
+      setState(() => _showModifierMenu = false);
+    }
+
     // Get board position relative to the board widget to avoid coordinate offset
     final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
     final localPos = box.globalToLocal(details.globalPosition);
@@ -608,7 +726,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// Handle drag update for live line preview and erasing
   void _handleAnnotationDragUpdate(DragUpdateDetails details, Size size) {
     if (_isPlaying) return;
-    
+
     final currentPos = details.globalPosition;
     // Get board position relative to the board widget
     final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
@@ -616,6 +734,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final cmPos = _screenToCm(localPos, size);
 
     if (_eraserMode) {
+      // Close ball modifier menu if open and eraser is being used
+      if (_showModifierMenu) {
+        setState(() => _showModifierMenu = false);
+      }
+
       // Update erasing annotations list for preview (don't delete yet)
       setState(() {
         _erasingAnnotations.clear();
@@ -636,7 +759,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// Check if a dragging touch intersects with an annotation
   bool _isAnnotationTouched(Annotation ann, Offset touchCmPos, Size size) {
     const touchRadius = 20.0; // cm radius for touch detection
-    
+
     if (ann.type == AnnotationType.line && ann.points.length >= 2) {
       final start = ann.points[0];
       final end = ann.points[1];
@@ -661,7 +784,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final ab = b - a;
     final abDot = ab.dx * ab.dx + ab.dy * ab.dy;
     if (abDot == 0) return ap.distance;
-    
+
     final t = ((ap.dx * ab.dx + ap.dy * ab.dy) / abDot).clamp(0.0, 1.0);
     final closest = a + Offset(ab.dx * t, ab.dy * t);
     return (p - closest).distance;
@@ -670,7 +793,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// Handle drag end for committing line or finishing erase
   void _handleAnnotationDragEnd(DragEndDetails details, Size size) {
     if (_isPlaying) return;
-    
+
     if (_eraserMode) {
       // Commit erased annotations and save project
       setState(() {
@@ -680,12 +803,15 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _saveProject();
       return;
     }
-    
-    if (_activeAnnotationTool == AnnotationTool.line && _pendingAnnotationPoints.isNotEmpty && _currentDragPos != null) {
+
+    if (_activeAnnotationTool == AnnotationTool.line &&
+        _pendingAnnotationPoints.isNotEmpty &&
+        _currentDragPos != null) {
       final start = _pendingAnnotationPoints[0];
       final end = _currentDragPos!;
-      
-      if ((end - start).distance > 10) { // Only create if drag distance > 10cm
+
+      if ((end - start).distance > 10) {
+        // Only create if drag distance > 10cm
         final ann = Annotation(type: AnnotationType.line, color: _annotationColor, points: [start, end]);
         setState(() {
           currentFrame.annotations.add(ann);
@@ -703,17 +829,22 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // BALL PATH PLACEMENT (Hit/Set)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Place a ball hit marker at the nearest point on the ball path to the tap position
   void _placeBallHitAt(Offset tapPos, Size size) {
     final prev = _getPreviousFrame();
     if (prev == null) return;
-    
+
     // Check if ball path distance is >= 30cm
     final pathDistance = _calculateBallPathDistance(prev);
     if (pathDistance < 30.0) {
       // Silently ignore - path too short for hit
       return;
     }
-    
+
     // Build samples along path from prev.ball to currentFrame.ball
     final hasCtrl = currentFrame.ballPathPoints.isNotEmpty;
     final engine = hasCtrl
@@ -729,9 +860,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     const int res = 200;
     for (int i = 0; i <= res; i++) {
       final t = i / res;
-      final posCm = hasCtrl
-          ? engine!.sample(t)
-          : Offset.lerp(prev.ball, currentFrame.ball, t)!;
+      final posCm = hasCtrl ? engine!.sample(t) : Offset.lerp(prev.ball, currentFrame.ball, t)!;
       final posScreen = _toScreenPosition(posCm, size);
       final d = (tapPos - posScreen).distance;
       if (d < bestD) {
@@ -750,13 +879,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     }
   }
 
+  /// Calculate the straight-line distance from prev.ball to currentFrame.ball (in cm)
   double _calculateBallPathDistance(Frame prev) {
-    // Calculate the straight-line distance from prev.ball to currentFrame.ball (in cm)
     return (currentFrame.ball - prev.ball).distance;
   }
 
-  
-
+  /// Find the nearest t value on the ball path to the tap position
   double _nearestTOnBallPath(Offset tapPos, Size size) {
     final prev = _getPreviousFrame();
     if (prev == null) return 0.5;
@@ -766,7 +894,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             start: prev.ball,
             control: currentFrame.ballPathPoints.first,
             end: currentFrame.ball,
-            resolution: 400)
+            resolution: 400,
+          )
         : null;
     const int res = 400;
     double bestT = 0.5;
@@ -784,6 +913,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     return bestT;
   }
 
+  /// Avoid control point overlap by adjusting t value based on estimated path length
   double _avoidControlPointOverlap(Frame prev, double t) {
     if (currentFrame.ballPathPoints.isEmpty) return t;
     final ctrlT = 0.5; // control is midpoint in our 2-quad approx
@@ -797,6 +927,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     return t;
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // UI BUILD HELPERS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Build the hit marker widget for ball hit indication
   Widget _buildHitMarker(double t, Size size) {
     final prev = _getPreviousFrame();
     if (prev == null) return const SizedBox.shrink();
@@ -806,8 +941,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             start: prev.ball,
             control: currentFrame.ballPathPoints.first,
             end: currentFrame.ball,
-            resolution: 400)
-            .sample(t)
+            resolution: 400,
+          ).sample(t)
         : Offset.lerp(prev.ball, currentFrame.ball, t)!;
     final pos = _toScreenPosition(posCm, size);
     return Positioned(
@@ -818,7 +953,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           // Start dragging the hit marker immediately when the user pans on it
           setState(() => _pendingBallMark = 'hit');
         },
-            onPanUpdate: (details) {
+        onPanUpdate: (details) {
           if (_pendingBallMark == 'hit') {
             // Convert global coordinates to local coordinates relative to the board
             final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
@@ -829,14 +964,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           }
         },
         onPanEnd: (_) => setState(() => _pendingBallMark = null),
-        child: CustomPaint(
-          size: const Size(32, 32),
-          painter: _StarPainter(),
-        ),
+        child: CustomPaint(size: const Size(32, 32), painter: _StarPainter()),
       ),
     );
   }
 
+  /// Build the set preview indicator (circle) at the midpoint of the ball path
   Widget _buildSetPreview(Size size) {
     final prev = _getPreviousFrame();
     if (prev == null) return const SizedBox.shrink();
@@ -846,7 +979,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             start: prev.ball,
             control: currentFrame.ballPathPoints.first,
             end: currentFrame.ball,
-            resolution: 200).sample(0.5)
+            resolution: 200,
+          ).sample(0.5)
         : (prev.ball + currentFrame.ball) / 2;
     final pos = _toScreenPosition(midCm, size);
     final double scale = 2.0; // max size for set
@@ -858,24 +992,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         child: Container(
           width: 30 * scale,
           height: 30 * scale,
-          decoration: BoxDecoration(
-            color: Colors.orange.shade200,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: AppTheme.accentOrange.withOpacity(0.2), shape: BoxShape.circle),
         ),
       ),
     );
   }
 
-// (moved painter classes to top-level after the widget class)
+  // (moved painter classes to top-level after the widget class)
 
-  List<Widget> _buildPathControlPoints(
-    List<Offset> points,
-    Offset startCm,
-    Offset endCm,
-    Size size,
-    String label,
-  ) {
+  /// Build control points for path editing (draggable dots)
+  List<Widget> _buildPathControlPoints(List<Offset> points, Offset startCm, Offset endCm, Size size, String label) {
     final widgets = <Widget>[];
     for (int i = 0; i < points.length; i++) {
       final screenPos = _toScreenPosition(points[i], size);
@@ -916,10 +1042,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               child: Container(
                 width: 16,
                 height: 16,
-                decoration: const BoxDecoration(
-                  color: Color.fromARGB(97, 0, 0, 0),
-                  shape: BoxShape.circle,
-                ),
+                decoration: const BoxDecoration(color: Color.fromARGB(97, 0, 0, 0), shape: BoxShape.circle),
               ),
             ),
           ),
@@ -929,28 +1052,22 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     return widgets;
   }
 
-  void _removeControlPoint(
-    List<Offset> points,
-    int index,
-    Offset startCm,
-    Offset endCm,
-    Size size,
-  ) {
+  /// Remove a control point with animation
+  void _removeControlPoint(List<Offset> points, int index, Offset startCm, Offset endCm, Size size) {
     if (index < 0 || index >= points.length) return;
     final removedPoint = points[index];
     final target = (startCm + endCm) / 2;
-    final controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
+    final controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
     late final Animation<Offset> animation;
-    animation = Tween<Offset>(begin: removedPoint, end: target).animate(
-      CurvedAnimation(parent: controller, curve: Curves.easeInOut),
-    )..addListener(() {
-        setState(() {
-          if (index < points.length) points[index] = animation.value;
+    animation =
+        Tween<Offset>(
+          begin: removedPoint,
+          end: target,
+        ).animate(CurvedAnimation(parent: controller, curve: Curves.easeInOut))..addListener(() {
+          setState(() {
+            if (index < points.length) points[index] = animation.value;
+          });
         });
-      });
     controller.forward().then((_) {
       setState(() {
         points.removeAt(index);
@@ -962,13 +1079,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     });
   }
 
-  Widget _buildPlayer(
-    Offset posCm,
-    double rotation,
-    Color color,
-    String label,
-    Size size,
-  ) {
+  /// Build player widgets (P1, P2, P3, P4) with drag handling
+  Widget _buildPlayer(Offset posCm, double rotation, Color color, String label, Size size) {
     final screenPos = _toScreenPosition(posCm, size);
     return Positioned(
       left: screenPos.dx - 20,
@@ -985,10 +1097,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             final localPos = box.globalToLocal(details.globalPosition);
             final deltaScreen = localPos - (_dragStartScreen[label] ?? localPos);
             final scalePerCm = _settings.cmToLogical(1.0, size);
-            _updateFramePosition(
-              label,
-              (_dragStartLogical[label] ?? posCm) + deltaScreen / scalePerCm,
-            );
+            _updateFramePosition(label, (_dragStartLogical[label] ?? posCm) + deltaScreen / scalePerCm);
           });
         },
         onPanEnd: (_) {
@@ -1022,6 +1131,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     );
   }
 
+  /// Build the ball widget with optional scale and star opacity
   Widget _buildBall(Offset posCm, Size size, {double scale = 1.0, double starOpacity = 0.0}) {
     final screenPos = _toScreenPosition(posCm, size);
     return Positioned(
@@ -1030,6 +1140,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       child: GestureDetector(
         onTap: () {
           if (!_isPlaying && !_endedAtLastFrame) {
+            // Close annotation menu if open and ball is tapped
+            if (_annotationMode) {
+              setState(() {
+                _annotationMode = false;
+                _activeAnnotationTool = AnnotationTool.none;
+                _pendingAnnotationPoints.clear();
+              });
+            }
             setState(() {
               _showModifierMenu = true;
             });
@@ -1046,10 +1164,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             final localPos = box.globalToLocal(details.globalPosition);
             final deltaScreen = localPos - (_dragStartScreen["BALL"] ?? localPos);
             final scalePerCm = _settings.cmToLogical(1.0, size);
-            _updateFramePosition(
-              "BALL",
-              (_dragStartLogical["BALL"] ?? posCm) + deltaScreen / scalePerCm,
-            );
+            _updateFramePosition("BALL", (_dragStartLogical["BALL"] ?? posCm) + deltaScreen / scalePerCm);
           });
         },
         onPanEnd: (_) {
@@ -1070,20 +1185,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             Container(
               width: 30 * scale,
               height: 30 * scale,
-              decoration: const BoxDecoration(
-                color: Colors.orange,
-                shape: BoxShape.circle,
-              ),
+              decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
             ),
             if (starOpacity > 0)
               Transform.translate(
                 offset: Offset(0, 16 * scale), // draw below the ball
                 child: Opacity(
                   opacity: starOpacity,
-                  child: CustomPaint(
-                    size: Size(24 * scale, 24 * scale),
-                    painter: _StarPainter(),
-                  ),
+                  child: CustomPaint(size: Size(24 * scale, 24 * scale), painter: _StarPainter()),
                 ),
               ),
           ],
@@ -1111,7 +1220,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     // compute hit position along the path (use two-quad engine if control point exists)
     final hasCtrl = fB.ballPathPoints.isNotEmpty;
     final posCm = hasCtrl
-        ? PathEngine.fromTwoQuadratics(start: fA.ball, control: fB.ballPathPoints.first, end: fB.ball, resolution: 400).sample(fB.ballHitT!)
+        ? PathEngine.fromTwoQuadratics(
+            start: fA.ball,
+            control: fB.ballPathPoints.first,
+            end: fB.ball,
+            resolution: 400,
+          ).sample(fB.ballHitT!)
         : Offset.lerp(fA.ball, fB.ball, fB.ballHitT!)!;
     final pos = _toScreenPosition(posCm, size);
     return {'pos': pos, 'opacity': 1.0};
@@ -1125,15 +1239,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     Settings.setScreenSize(screenSize);
     final isPlayback = _isPlaying && _animatedFrame != null;
     final prev = _getPreviousFrame();
-    final frameToShow = _endedAtLastFrame
-        ? widget.project.frames.last
-        : (isPlayback ? _animatedFrame! : currentFrame);
+    final frameToShow = _endedAtLastFrame ? widget.project.frames.last : (isPlayback ? _animatedFrame! : currentFrame);
     // Timeline maintains consistent height during state transitions to avoid layout shifts
     // Playback: 160px (more space for timeline), End-state: 120px (with stop button), Editing: 120px (full controls)
     final double timelineHeight = 140.0;
     final int playbackAnimIndex = _isPlaying
-      ? ((_playbackFrameIndex + _playbackT).clamp(0.0, (widget.project.frames.length - 1).toDouble())).round()
-      : -1;
+        ? ((_playbackFrameIndex + _playbackT).clamp(0.0, (widget.project.frames.length - 1).toDouble())).round()
+        : -1;
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
@@ -1142,19 +1254,21 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           automaticallyImplyLeading: false,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
+            tooltip: 'Back to Projects',
             onPressed: () => Navigator.of(context).pop(),
           ),
           actions: [
             if (!_isPlaying && !_endedAtLastFrame)
               IconButton(
-                icon: Icon(
-                  Icons.draw,
-                  color: _annotationMode ? _annotationColor : Colors.red, // Show color based on mode
-                ),
+                icon: Icon(Icons.draw, color: _annotationMode ? _annotationColor : AppTheme.mediumGrey),
                 tooltip: _annotationMode ? 'Exit Annotation Mode' : 'Enter Annotation Mode',
                 onPressed: () {
                   setState(() {
                     _annotationMode = !_annotationMode;
+                    // Close ball modifier menu if annotation mode is opened
+                    if (_annotationMode && _showModifierMenu) {
+                      _showModifierMenu = false;
+                    }
                     if (!_annotationMode) {
                       _activeAnnotationTool = AnnotationTool.none;
                       _pendingAnnotationPoints.clear();
@@ -1191,10 +1305,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     children: [
                       CustomPaint(
                         size: screenSize,
-                        painter: BoardBackgroundPainter(
-                          screenSize: screenSize,
-                          settings: _settings,
-                        ),
+                        painter: BoardBackgroundPainter(screenSize: screenSize, settings: _settings),
                       ),
                       if (!(_isPlaying || _endedAtLastFrame))
                         CustomPaint(
@@ -1212,7 +1323,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         annotations: frameToShow.annotations,
                         tempAnnotations: _stagedAnnotations.isNotEmpty ? _stagedAnnotations : null,
                         erasingAnnotations: _erasingAnnotations.isNotEmpty ? _erasingAnnotations : null,
-                        dragPreviewLine: _annotationMode && _pendingAnnotationPoints.isNotEmpty && _currentDragPos != null
+                        dragPreviewLine:
+                            _annotationMode && _pendingAnnotationPoints.isNotEmpty && _currentDragPos != null
                             ? [_pendingAnnotationPoints.first, _currentDragPos!]
                             : null,
                         settings: _settings,
@@ -1272,29 +1384,55 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               top: pos.dy - 12,
                               child: Opacity(
                                 opacity: opacity,
-                                child: CustomPaint(
-                                  size: const Size(24, 24),
-                                  painter: _StarPainter(),
-                                ),
+                                child: CustomPaint(size: const Size(24, 24), painter: _StarPainter()),
                               ),
                             );
                           }
                           return const SizedBox.shrink();
                         })(),
                       ],
-                      if (!isPlayback && (currentFrame.ballSet ?? false))
-                        _buildSetPreview(screenSize),
+                      if (!isPlayback && (currentFrame.ballSet ?? false)) _buildSetPreview(screenSize),
                       if (!(_isPlaying || _endedAtLastFrame)) ...[
                         if (currentFrame.p1PathPoints.isNotEmpty)
-                          ..._buildPathControlPoints(currentFrame.p1PathPoints, prev != null ? prev.p1 : currentFrame.p1, currentFrame.p1, screenSize, "P1"),
+                          ..._buildPathControlPoints(
+                            currentFrame.p1PathPoints,
+                            prev != null ? prev.p1 : currentFrame.p1,
+                            currentFrame.p1,
+                            screenSize,
+                            "P1",
+                          ),
                         if (currentFrame.p2PathPoints.isNotEmpty)
-                          ..._buildPathControlPoints(currentFrame.p2PathPoints, prev != null ? prev.p2 : currentFrame.p2, currentFrame.p2, screenSize, "P2"),
+                          ..._buildPathControlPoints(
+                            currentFrame.p2PathPoints,
+                            prev != null ? prev.p2 : currentFrame.p2,
+                            currentFrame.p2,
+                            screenSize,
+                            "P2",
+                          ),
                         if (currentFrame.p3PathPoints.isNotEmpty)
-                          ..._buildPathControlPoints(currentFrame.p3PathPoints, prev != null ? prev.p3 : currentFrame.p3, currentFrame.p3, screenSize, "P3"),
+                          ..._buildPathControlPoints(
+                            currentFrame.p3PathPoints,
+                            prev != null ? prev.p3 : currentFrame.p3,
+                            currentFrame.p3,
+                            screenSize,
+                            "P3",
+                          ),
                         if (currentFrame.p4PathPoints.isNotEmpty)
-                          ..._buildPathControlPoints(currentFrame.p4PathPoints, prev != null ? prev.p4 : currentFrame.p4, currentFrame.p4, screenSize, "P4"),
+                          ..._buildPathControlPoints(
+                            currentFrame.p4PathPoints,
+                            prev != null ? prev.p4 : currentFrame.p4,
+                            currentFrame.p4,
+                            screenSize,
+                            "P4",
+                          ),
                         if (currentFrame.ballPathPoints.isNotEmpty)
-                          ..._buildPathControlPoints(currentFrame.ballPathPoints, prev != null ? prev.ball : currentFrame.ball, currentFrame.ball, screenSize, "BALL"),
+                          ..._buildPathControlPoints(
+                            currentFrame.ballPathPoints,
+                            prev != null ? prev.ball : currentFrame.ball,
+                            currentFrame.ball,
+                            screenSize,
+                            "BALL",
+                          ),
                       ],
                       if (currentFrame.ballHitT != null && !(_isPlaying || _endedAtLastFrame))
                         _buildHitMarker(currentFrame.ballHitT!, screenSize),
@@ -1303,18 +1441,18 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 ),
               ),
             ),
-            
+
             // Layer 2: Timeline - fixed at bottom
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              height: 140,
+              height: 120,
               child: AnimatedContainer(
-                height: 140,
+                height: 120,
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
-                color: Colors.grey[200],
+                color: AppTheme.timelineBackground,
                 padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Stack(
                   children: [
@@ -1346,35 +1484,58 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               child: Stack(
                                 children: [
                                   Container(
-                                    width: 60,
-                                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                                    width: 56,
+                                    height: 48,
+                                    margin: const EdgeInsets.symmetric(horizontal: AppConstants.paddingSmall),
                                     decoration: BoxDecoration(
                                       color: _isPlaying
-                                          ? Colors.grey[400]
-                                          : (isSelected ? Colors.blueAccent : Colors.grey[400]),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: (_isPlaying) ? null : (isSelected ? Border.all(color: Colors.yellow, width: 3) : null),
+                                          ? AppTheme.timelineInactive
+                                          : (isSelected ? AppTheme.timelineActive : AppTheme.timelineInactive),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: (_isPlaying)
+                                          ? null
+                                          : (isSelected ? Border.all(color: AppTheme.primaryBlue, width: 2.5) : null),
+                                      boxShadow: isSelected && !_isPlaying
+                                          ? [
+                                              BoxShadow(
+                                                color: AppTheme.primaryBlue.withOpacity(0.3),
+                                                blurRadius: 4,
+                                                spreadRadius: 1,
+                                              ),
+                                            ]
+                                          : null,
                                     ),
-                                    child: Center(child: Text("${_isPlaying ? index + 1 : index}")), // Playback: starts at 1, Edit: starts at 0
+                                    child: Center(
+                                      child: Text(
+                                        "${_isPlaying ? index + 1 : index}",
+                                        style: TextStyle(
+                                          fontWeight: isSelected && !_isPlaying ? FontWeight.bold : FontWeight.normal,
+                                          color: isSelected && !_isPlaying ? Colors.white : AppTheme.darkGrey,
+                                        ),
+                                      ),
+                                    ), // Playback: starts at 1, Edit: starts at 0
                                   ),
                                   if (isSelected && !(_isPlaying || _endedAtLastFrame))
                                     Positioned(
-                                      top: 2,
-                                      right: 2,
+                                      top: 4,
+                                      right: 4,
                                       child: GestureDetector(
                                         onTap: () => _confirmDeleteFrame(frame),
                                         child: Container(
-                                          width: 18,
-                                          height: 18,
-                                          decoration: const BoxDecoration(
-                                            color: Colors.red,
+                                          width: 20,
+                                          height: 20,
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.errorRed,
                                             shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withOpacity(0.2),
+                                                blurRadius: 2,
+                                                spreadRadius: 0.5,
+                                              ),
+                                            ],
                                           ),
-                                          child: const Icon(
-                                            Icons.remove,
-                                            size: 12,
-                                            color: Colors.white,
-                                          ),
+                                          child: const Icon(Icons.close, size: 14, color: Colors.white),
                                         ),
                                       ),
                                     ),
@@ -1401,28 +1562,29 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               builder: (context, constraints) {
                                 final frameCount = widget.project.frames.length;
                                 if (frameCount < 2) return const SizedBox.shrink();
-                                
+
                                 // Calculate cursor position with interpolation and scroll offset
                                 // Skip first frame: timeline shows frames 1+ only
                                 // Frame i in timeline is at index i-1
                                 // Cursor at left of frame i when entering frame i (from frame i-1 animation ending)
                                 // Cursor at right of frame i when leaving frame i (entering frame i+1)
                                 final itemExtent = 68.0; // 60 width + 2*4 margin
-                                
+
                                 // Map playback frame index to timeline index (offset by -1 to skip first frame)
                                 // At frame 0, we're at the boundary before frame 1 (timeline index -1, clamped)
                                 // At frame 1, we're showing frame 1 (timeline index 0)
                                 final interpolatedPosition = _playbackFrameIndex + _playbackT;
                                 final timelineIndex = interpolatedPosition - 1.0;
                                 final thumbnailWidth = 60.0;
-                                final cursorWorldX = timelineIndex * itemExtent + itemExtent / 2 + (thumbnailWidth * 0.5);
-                                
+                                final cursorWorldX =
+                                    timelineIndex * itemExtent + itemExtent / 2 + (thumbnailWidth * 0.5);
+
                                 // Get scroll offset from timeline controller
                                 final scrollOffset = _timelineController.hasClients ? _timelineController.offset : 0.0;
-                                
+
                                 // Cursor position relative to the visible viewport
                                 final cursorX = cursorWorldX - scrollOffset;
-                                
+
                                 return Stack(
                                   children: [
                                     Positioned(
@@ -1432,10 +1594,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                       child: Container(
                                         width: 4,
                                         decoration: BoxDecoration(
-                                          color: Colors.redAccent,
+                                          color: AppTheme.primaryBlue,
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.redAccent.withOpacity(0.5),
+                                              color: AppTheme.primaryBlue.withOpacity(0.5),
                                               blurRadius: 4,
                                               spreadRadius: 1,
                                             ),
@@ -1484,49 +1646,54 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             });
                             _scrollToPlaybackFrame();
                           },
-                          child: LayoutBuilder(builder: (context, constraints) {
-                            const scrubbersize = 20.0;
-                            final leftPadding = 8.0;
-                            final rightPadding = 8.0;
-                            final width = constraints.maxWidth;
-                            final available = (width - leftPadding - rightPadding).clamp(0.0, double.infinity);
-                            final frac = widget.project.frames.length > 1
-                                ? ((_playbackFrameIndex + _playbackT) / (widget.project.frames.length - 1).toDouble()).clamp(0.0, 1.0)
-                                : 0.0;
-                            final dotX = leftPadding + frac * available;
-                            return SizedBox(
-                              height: 30,
-                              child: Stack(
-                                children: [
-                                  Positioned(
-                                    left: leftPadding,
-                                    right: rightPadding,
-                                    top: 8,
-                                    child: Container(
-                                      height: 4,
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey[400],
-                                        borderRadius: BorderRadius.circular(2),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              const scrubbersize = 20.0;
+                              final leftPadding = 8.0;
+                              final rightPadding = 8.0;
+                              final width = constraints.maxWidth;
+                              final available = (width - leftPadding - rightPadding).clamp(0.0, double.infinity);
+                              final frac = widget.project.frames.length > 1
+                                  ? ((_playbackFrameIndex + _playbackT) / (widget.project.frames.length - 1).toDouble())
+                                        .clamp(0.0, 1.0)
+                                  : 0.0;
+                              final dotX = leftPadding + frac * available;
+                              return SizedBox(
+                                height: 30,
+                                child: Stack(
+                                  children: [
+                                    Positioned(
+                                      left: leftPadding,
+                                      right: rightPadding,
+                                      top: 8,
+                                      child: Container(
+                                        height: 4,
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.timelineInactive,
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  Positioned(
-                                    left: dotX - scrubbersize / 2,
-                                    top: 8 - (scrubbersize - 4) / 2,
-                                    child: Container(
-                                      width: scrubbersize,
-                                      height: scrubbersize,
-                                      decoration: BoxDecoration(
-                                        color: Colors.blueAccent,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 2, offset: const Offset(0, 1))],
+                                    Positioned(
+                                      left: dotX - scrubbersize / 2,
+                                      top: 8 - (scrubbersize - 4) / 2,
+                                      child: Container(
+                                        width: scrubbersize,
+                                        height: scrubbersize,
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primaryBlue,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(color: Colors.black26, blurRadius: 2, offset: const Offset(0, 1)),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
 
@@ -1541,17 +1708,26 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           children: [
                             ElevatedButton(
                               onPressed: _stopPlayback,
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size(36, 26)),
-                              child: const Icon(Icons.stop, size: 14),
-                            ),
-                            const SizedBox(width: 4),
-                            ElevatedButton(
-                              onPressed: (_endedAtLastFrame && !_scrubberMovedManually) ? null : (_isPaused ? _resumePlayback : _pausePlayback),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: _isPaused ? Colors.green : Colors.orange,
-                                minimumSize: const Size(36, 26),
+                                backgroundColor: AppTheme.errorRed,
+                                minimumSize: const Size(40, 32),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
                               ),
-                              child: Icon(_isPaused ? Icons.play_arrow : Icons.pause, size: 14),
+                              child: const Icon(Icons.stop, size: 16),
+                            ),
+                            const SizedBox(width: AppConstants.paddingSmall),
+                            ElevatedButton(
+                              onPressed: (_endedAtLastFrame && !_scrubberMovedManually)
+                                  ? null
+                                  : (_isPaused ? _resumePlayback : _pausePlayback),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _isPaused ? Colors.green : AppTheme.warningAmber,
+                                minimumSize: const Size(40, 32),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                              ),
+                              child: Icon(_isPaused ? Icons.play_arrow : Icons.pause, size: 16),
                             ),
                             const SizedBox(width: 8),
                             SizedBox(
@@ -1592,16 +1768,22 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             ElevatedButton(
                               onPressed: (_isPlaying || _endedAtLastFrame) ? _stopPlayback : _startPlayback,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: (_isPlaying || _endedAtLastFrame) ? Colors.red : Colors.green,
-                                minimumSize: const Size(36, 24),
+                                backgroundColor: (_isPlaying || _endedAtLastFrame) ? AppTheme.errorRed : Colors.green,
+                                minimumSize: const Size(48, 36),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
                               ),
-                              child: Icon((_isPlaying || _endedAtLastFrame) ? Icons.stop : Icons.play_arrow, size: 18),
+                              child: Icon((_isPlaying || _endedAtLastFrame) ? Icons.stop : Icons.play_arrow, size: 20),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppConstants.paddingSmall),
                             ElevatedButton(
                               onPressed: (_isPlaying || _endedAtLastFrame) ? null : _insertFrameAfterCurrent,
-                              style: ElevatedButton.styleFrom(minimumSize: const Size(32, 24)),
-                              child: const Icon(Icons.add, size: 18),
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(48, 36),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                              ),
+                              child: const Icon(Icons.add, size: 20),
                             ),
                             const SizedBox(width: 8),
                             if (!(_isPlaying || _endedAtLastFrame))
@@ -1625,16 +1807,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               onPressed: (_isPlaying || _endedAtLastFrame)
                                   ? null
                                   : (_history.canUndo
-                                      ? () {
-                                          final idx = _history.undo();
-                                          if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
-                                            setState(() => currentFrame = widget.project.frames[idx]);
-                                            _scrollToSelectedFrame();
-                                          } else {
-                                            setState(() {});
+                                        ? () {
+                                            final idx = _history.undo();
+                                            if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
+                                              setState(() => currentFrame = widget.project.frames[idx]);
+                                              _scrollToSelectedFrame();
+                                            } else {
+                                              setState(() {});
+                                            }
                                           }
-                                        }
-                                      : null),
+                                        : null),
                             ),
                             const SizedBox(width: 4),
                             IconButton(
@@ -1644,16 +1826,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               onPressed: (_isPlaying || _endedAtLastFrame)
                                   ? null
                                   : (_history.canRedo
-                                      ? () {
-                                          final idx = _history.redo();
-                                          if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
-                                            setState(() => currentFrame = widget.project.frames[idx]);
-                                            _scrollToSelectedFrame();
-                                          } else {
-                                            setState(() {});
+                                        ? () {
+                                            final idx = _history.redo();
+                                            if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
+                                              setState(() => currentFrame = widget.project.frames[idx]);
+                                              _scrollToSelectedFrame();
+                                            } else {
+                                              setState(() {});
+                                            }
                                           }
-                                        }
-                                      : null),
+                                        : null),
                             ),
                           ],
                         ),
@@ -1662,7 +1844,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 ),
               ),
             ),
-            
+
             // Layer 3 (top): Ball Modifier Menu - overlay at top
             if (_showModifierMenu && !_annotationMode)
               Positioned(
@@ -1671,7 +1853,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 right: 0,
                 height: 56,
                 child: Container(
-                  color: Colors.orange[100],
+                  color: AppTheme.lightGrey,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1691,14 +1873,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           height: 44,
                           margin: const EdgeInsets.symmetric(horizontal: 8),
                           decoration: BoxDecoration(
-                            color: (currentFrame.ballSet ?? false) 
-                                ? Colors.orange.withOpacity(0.3) 
+                            color: (currentFrame.ballSet ?? false)
+                                ? AppTheme.accentOrange.withOpacity(0.15)
                                 : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: (currentFrame.ballSet ?? false) 
-                                  ? Colors.orange 
-                                  : Colors.grey,
+                              color: (currentFrame.ballSet ?? false) ? AppTheme.accentOrange : AppTheme.mediumGrey,
                               width: 2,
                             ),
                           ),
@@ -1714,12 +1894,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 'Set',
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color: (currentFrame.ballSet ?? false) 
-                                      ? Colors.orange 
-                                      : Colors.grey[700],
-                                  fontWeight: (currentFrame.ballSet ?? false)
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
+                                  color: (currentFrame.ballSet ?? false) ? AppTheme.accentOrange : AppTheme.mediumGrey,
+                                  fontWeight: (currentFrame.ballSet ?? false) ? FontWeight.bold : FontWeight.normal,
                                 ),
                               ),
                             ],
@@ -1746,14 +1922,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           height: 44,
                           margin: const EdgeInsets.symmetric(horizontal: 8),
                           decoration: BoxDecoration(
-                            color: (currentFrame.ballHitT != null) 
-                                ? Colors.yellow[700]!.withOpacity(0.3) 
+                            color: (currentFrame.ballHitT != null)
+                                ? AppTheme.warningAmber.withOpacity(0.15)
                                 : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: (currentFrame.ballHitT != null) 
-                                  ? Colors.yellow[700]! 
-                                  : Colors.grey,
+                              color: (currentFrame.ballHitT != null) ? AppTheme.warningAmber : AppTheme.mediumGrey,
                               width: 2,
                             ),
                           ),
@@ -1769,12 +1943,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 'Hit',
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color: (currentFrame.ballHitT != null) 
-                                      ? Colors.yellow[900] 
-                                      : Colors.grey[700],
-                                  fontWeight: (currentFrame.ballHitT != null)
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
+                                  color: (currentFrame.ballHitT != null) ? AppTheme.warningAmber : AppTheme.mediumGrey,
+                                  fontWeight: (currentFrame.ballHitT != null) ? FontWeight.bold : FontWeight.normal,
                                 ),
                               ),
                             ],
@@ -1790,7 +1960,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                   ),
                 ),
               ),
-            
+
             // Layer 4 (top): Annotation Toolbar - overlay at top
             if (_annotationMode && !_showModifierMenu)
               Positioned(
@@ -1799,19 +1969,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 right: 0,
                 height: 56,
                 child: Container(
-                  color: Colors.grey[300],
+                  color: AppTheme.lightGrey,
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Row(
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit),
                         tooltip: 'Line Tool',
-                        color: _activeAnnotationTool == AnnotationTool.line 
-                            ? _annotationColor 
-                            : Colors.grey,
+                        color: _activeAnnotationTool == AnnotationTool.line ? _annotationColor : AppTheme.mediumGrey,
                         onPressed: () => setState(() {
-                          _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.line 
-                              ? AnnotationTool.none 
+                          _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.line
+                              ? AnnotationTool.none
                               : AnnotationTool.line;
                           _eraserMode = false;
                         }),
@@ -1819,12 +1987,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       IconButton(
                         icon: const Icon(Icons.circle_outlined),
                         tooltip: 'Circle Tool',
-                        color: _activeAnnotationTool == AnnotationTool.circle 
-                            ? _annotationColor 
-                            : Colors.grey,
+                        color: _activeAnnotationTool == AnnotationTool.circle ? _annotationColor : AppTheme.mediumGrey,
                         onPressed: () => setState(() {
-                          _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.circle 
-                              ? AnnotationTool.none 
+                          _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.circle
+                              ? AnnotationTool.none
                               : AnnotationTool.circle;
                           _eraserMode = false;
                         }),
@@ -1832,7 +1998,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       IconButton(
                         icon: const Icon(Icons.auto_delete),
                         tooltip: 'Eraser',
-                        color: _eraserMode ? Colors.red : Colors.grey,
+                        color: _eraserMode ? AppTheme.errorRed : AppTheme.mediumGrey,
                         onPressed: () => setState(() {
                           _eraserMode = !_eraserMode;
                           if (_eraserMode) _activeAnnotationTool = AnnotationTool.none;
@@ -1847,7 +2013,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           decoration: BoxDecoration(
                             color: _annotationColor,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.black, width: 2),
+                            border: Border.all(color: AppTheme.darkGrey, width: 2),
                           ),
                           child: const Icon(Icons.palette, size: 16, color: Colors.white),
                         ),
@@ -1917,16 +2083,12 @@ class _SetIconPainter extends CustomPainter {
       ..color = active ? Colors.orange : Colors.grey;
     final path = Path();
     path.moveTo(size.width * 0.05, size.height * 0.9);
-    path.quadraticBezierTo(
-      size.width * 0.45,
-      size.height * 0.05,
-      size.width * 0.75,
-      size.height * 0.85,
-    );
+    path.quadraticBezierTo(size.width * 0.45, size.height * 0.05, size.width * 0.75, size.height * 0.85);
     canvas.drawPath(path, paint);
     final c = Offset(size.width * 0.85, size.height * 0.85);
     canvas.drawCircle(c, size.height * 0.12, paint);
   }
+
   @override
   bool shouldRepaint(covariant _SetIconPainter oldDelegate) => oldDelegate.active != active;
 }
@@ -1949,6 +2111,7 @@ class _HitIconPainter extends CustomPainter {
     final c = Offset(size.width * 0.9, size.height * 0.28);
     canvas.drawCircle(c, size.height * 0.12, paint);
   }
+
   @override
   bool shouldRepaint(covariant _HitIconPainter oldDelegate) => oldDelegate.active != active;
 }
