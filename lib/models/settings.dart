@@ -43,8 +43,7 @@ class Settings extends HiveObject {
     const double timelineHeight = 120;
     final usableHeight = screenSize.height - appBarHeight - timelineHeight;
     final usableWidth = screenSize.width;
-    final halfMinScreen =
-        (usableHeight < usableWidth ? usableHeight : usableWidth) / 2 - padding;
+    final halfMinScreen = (usableHeight < usableWidth ? usableHeight : usableWidth) / 2 - padding;
     return cm * (halfMinScreen / referenceRadiusCm);
   }
 
@@ -60,34 +59,57 @@ class Settings extends HiveObject {
 
   /// Create a deep copy of settings
   Settings copy() => Settings(
-        playbackSpeed: playbackSpeed,
-        outerCircleRadiusCm: outerCircleRadiusCm,
-        innerCircleRadiusCm: innerCircleRadiusCm,
-        netCircleRadiusCm: netCircleRadiusCm,
-        outerBoundsRadiusCm: outerBoundsRadiusCm,
-        referenceRadiusCm: referenceRadiusCm,
-        showPreviousFrameLines: showPreviousFrameLines,
-      );
+    playbackSpeed: playbackSpeed,
+    outerCircleRadiusCm: outerCircleRadiusCm,
+    innerCircleRadiusCm: innerCircleRadiusCm,
+    netCircleRadiusCm: netCircleRadiusCm,
+    outerBoundsRadiusCm: outerBoundsRadiusCm,
+    referenceRadiusCm: referenceRadiusCm,
+    showPreviousFrameLines: showPreviousFrameLines,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Settings &&
+          runtimeType == other.runtimeType &&
+          playbackSpeed == other.playbackSpeed &&
+          outerCircleRadiusCm == other.outerCircleRadiusCm &&
+          innerCircleRadiusCm == other.innerCircleRadiusCm &&
+          netCircleRadiusCm == other.netCircleRadiusCm &&
+          outerBoundsRadiusCm == other.outerBoundsRadiusCm &&
+          referenceRadiusCm == other.referenceRadiusCm &&
+          showPreviousFrameLines == other.showPreviousFrameLines;
+
+  @override
+  int get hashCode =>
+      playbackSpeed.hashCode ^
+      outerCircleRadiusCm.hashCode ^
+      innerCircleRadiusCm.hashCode ^
+      netCircleRadiusCm.hashCode ^
+      outerBoundsRadiusCm.hashCode ^
+      referenceRadiusCm.hashCode ^
+      showPreviousFrameLines.hashCode;
 }
 
 extension SettingsMap on Settings {
   Map<String, dynamic> toMap() => {
-        'playbackSpeed': playbackSpeed,
-        'outerCircleRadiusCm': outerCircleRadiusCm,
-        'innerCircleRadiusCm': innerCircleRadiusCm,
-        'netCircleRadiusCm': netCircleRadiusCm,
-        'outerBoundsRadiusCm': outerBoundsRadiusCm,
-        'referenceRadiusCm': referenceRadiusCm,
-      'showPreviousFrameLines': showPreviousFrameLines,
-      };
+    'playbackSpeed': playbackSpeed,
+    'outerCircleRadiusCm': outerCircleRadiusCm,
+    'innerCircleRadiusCm': innerCircleRadiusCm,
+    'netCircleRadiusCm': netCircleRadiusCm,
+    'outerBoundsRadiusCm': outerBoundsRadiusCm,
+    'referenceRadiusCm': referenceRadiusCm,
+    'showPreviousFrameLines': showPreviousFrameLines,
+  };
 
   static Settings fromMap(Map<String, dynamic> m) => Settings(
-        playbackSpeed: (m['playbackSpeed'] ?? 1.0).toDouble(),
-        outerCircleRadiusCm: (m['outerCircleRadiusCm'] ?? 260.0).toDouble(),
-        innerCircleRadiusCm: (m['innerCircleRadiusCm'] ?? 100.0).toDouble(),
-        netCircleRadiusCm: (m['netCircleRadiusCm'] ?? 46.0).toDouble(),
-        outerBoundsRadiusCm: (m['outerBoundsRadiusCm'] ?? 850.0).toDouble(),
-        referenceRadiusCm: (m['referenceRadiusCm'] ?? 260.0).toDouble(),
-      showPreviousFrameLines: (m['showPreviousFrameLines'] ?? true) as bool,
-      );
+    playbackSpeed: (m['playbackSpeed'] ?? 1.0).toDouble(),
+    outerCircleRadiusCm: (m['outerCircleRadiusCm'] ?? 260.0).toDouble(),
+    innerCircleRadiusCm: (m['innerCircleRadiusCm'] ?? 100.0).toDouble(),
+    netCircleRadiusCm: (m['netCircleRadiusCm'] ?? 46.0).toDouble(),
+    outerBoundsRadiusCm: (m['outerBoundsRadiusCm'] ?? 850.0).toDouble(),
+    referenceRadiusCm: (m['referenceRadiusCm'] ?? 260.0).toDouble(),
+    showPreviousFrameLines: (m['showPreviousFrameLines'] ?? true) as bool,
+  );
 }
