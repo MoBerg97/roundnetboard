@@ -27,6 +27,8 @@ migrate_working_dir/
 secrets/
 private/
 credentials/
+android/key.properties
+**/key.properties
 
 # IntelliJ related
 *.iml
@@ -68,8 +70,12 @@ android/app/release
 ios/Podfile.lock
 
 # Firebase & Google Services
-google-services.json
-GoogleService-Info.plist
+**/google-services.json
+**/GoogleService-Info.plist
 firebase.json
 .firebaserc
 .crashlytics/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/
