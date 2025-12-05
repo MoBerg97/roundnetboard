@@ -20,7 +20,7 @@ main aspects: less clutter
 
 project screen:
 
-- [x] project should be able to be duplicated and then get a ascending numerated suffix when the peoject name already exists in ().
+- [x] project should be able to be duplicated and then get a ascending numerated suffix when the project name already exists in ().
 - [ ] users should be able to share projects including all frames and project specific settings.
 
 intuitive actions:
@@ -34,6 +34,7 @@ court:
 
 - [ ] the court should be zoomable with two states, first state is as it currently is, showing at least 1.2 times servezone_radius around the center of the court. second zoom stage should be the whole court towards the outer boundary at 850cm radius around the center of court.
 - [ ] the user should be able to select standard court or empty court as a drop down menu setting when opening a new project.
+- [ ] make objects on court relate in size to court (player and ball circle radius, paths in width adjusted for size)
 
 annotations:
 

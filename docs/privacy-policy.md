@@ -13,6 +13,15 @@ The Service Provider may also use the information you provided them to contact y
 
 In addition, the Application may collect certain information automatically, including, but not limited to, the type of mobile device you use, your mobile devices unique device ID, the IP address of your mobile device, your mobile operating system, the type of mobile Internet browsers you use, and information about the way you use the Application.
 
+**Advertising Identifier**
+
+The Application collects your device's advertising identifier (Google Advertising ID on Android, IDFA on iOS) for the following purposes:
+
+* Analytics and Performance: The advertising ID is used to measure app performance, understand user engagement, and analyze usage patterns in an aggregated and anonymized manner.
+* Attribution: The advertising ID helps the Service Provider understand which marketing channels are effective and how users discover the Application.
+
+The Application does **not** use the advertising identifier for personalized advertising or ad targeting. You can reset or opt out of personalized ads through your device settings (Google Settings > Ads on Android, or Settings > Privacy > Advertising on iOS).
+
 **Does the Application collect precise real time location information of the device?**
 
 This Application does not gather precise information about the location of your mobile device.
