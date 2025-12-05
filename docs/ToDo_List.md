@@ -16,13 +16,12 @@ main aspects: less clutter
 - [ ] get rid of circle points at start and end points of lines
 - [ ] the annotations should fade in and fade out dynamically in animation playback.
 
-
 ## Features
 
 project screen:
 
-- [x] project should be able to be duplicated and then get a ascending numerated suffix when the peoject name already exists in (). 
-- [ ] users should be able to share projects including all frames and project specific settings. 
+- [x] project should be able to be duplicated and then get a ascending numerated suffix when the peoject name already exists in ().
+- [ ] users should be able to share projects including all frames and project specific settings.
 
 intuitive actions:
 
@@ -53,12 +52,12 @@ statistics:
 - [ ] footwork statistics shows for each frame the amount of distance each player travels, as small bars on the top side of the screen.
 - [ ] the maximum footwork distance is 850cm and the minimum is 0cm.
 - [ ] if turned on, the footwork statistics will also be depicted in the animation playback with showing the footwork of a certain frame during the playback of this frame.
- 
+
 sharing:
 
 - [ ] users can export each frame as a single image, or all frames as images appended to each other, to form a left to right or top to bottom succession.
 - [ ] users can export the animation as a video file. the speed of the exported animation should match the last selected playback speed of the animation.
-    
+
 players:
 
 - [ ] the color of player objects should be editable.
@@ -70,7 +69,6 @@ players:
     - [ ] animation of swinging arm right before the end of the frames duration and only starting when ball is within proximity of the player during a tick
   - [ ] half defense (L/R): (funnel) one arm reaching out a side of the playerwith 120 degree elbow bend
   - [ ] full defense (L/R): both arms reach out the sides of a player with 120 degree elbow bends.
-
 
 ball:
 
@@ -98,7 +96,7 @@ no critical issues at the moment.
 - [ ] the undo and redo history should also track annotation edits (creation, deletion, etc).
 - [ ] the eraser tool should show no preview of which annotations to delete, instead annotations touched during tapping or dragging of the eraser tool (10px radius) are instantly deleted.
 - [ ] the numerated suffix does not supply increasing numbers in brackets. Instead each copy gets another (1) suffix resulting in e.g. framename (1) (1) (1)
-- [ ] the annotations are not copied and displayed in a new frame when this is added. 
+- [ ] the annotations are not copied and displayed in a new frame when this is added.
 - [x] the playback timeline divides the frame thumbnail into n thumbnails as in the editing timeline. but the first frame has no duration, only giving the start positions. therefore the cursor of the thumbnail should start at time 0 at the left hand side of the thumbnail of frame 1
 - [x] the ball path modifier menu buttons should be toggable to on and off (Iindicated by highlighted/non-highlighted button), not only on. MAke sure, that the ball path can be either set or hit, not both.
 - [x] the go to previous and go to next frame in the boardscreen should be removed, since the user can already select the current frame directly from the timeline.

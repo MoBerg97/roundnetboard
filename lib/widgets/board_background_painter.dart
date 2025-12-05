@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import '../config/app_theme.dart';
 import '../models/settings.dart';
 
 class BoardBackgroundPainter extends CustomPainter {
@@ -23,13 +24,13 @@ class BoardBackgroundPainter extends CustomPainter {
     final center = _boardCenter();
 
     // --- Background ---
-    final bgPaint = Paint()..color = Colors.green[400]!;
+    final bgPaint = Paint()..color = AppTheme.courtGreen;
     canvas.drawRect(Offset.zero & size, bgPaint);
 
     // --- Net circle ---
     final netRadius = settings.netCircleRadiusPx;
     final netPaint = Paint()
-      ..color = Colors.black.withAlpha((0.4 * 255).round())
+      ..color = AppTheme.netBlack.withAlpha((0.4 * 255).round())
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 
@@ -37,21 +38,25 @@ class BoardBackgroundPainter extends CustomPainter {
 
     final step = 6.0;
     for (double dx = -netRadius; dx <= netRadius; dx += step) {
-      final dy = (netRadius * netRadius - dx * dx) > 0
-          ? math.sqrt(netRadius * netRadius - dx * dx)
-          : 0;
-      canvas.drawLine(center + Offset(dx.toDouble(), -dy.toDouble()), center + Offset(dx.toDouble(), dy.toDouble()), netPaint);
+      final dy = (netRadius * netRadius - dx * dx) > 0 ? math.sqrt(netRadius * netRadius - dx * dx) : 0;
+      canvas.drawLine(
+        center + Offset(dx.toDouble(), -dy.toDouble()),
+        center + Offset(dx.toDouble(), dy.toDouble()),
+        netPaint,
+      );
     }
     for (double dy = -netRadius; dy <= netRadius; dy += step) {
-      final dx = (netRadius * netRadius - dy * dy) > 0
-          ? math.sqrt(netRadius * netRadius - dy * dy)
-          : 0;
-      canvas.drawLine(center + Offset(-dx.toDouble(), dy.toDouble()), center + Offset(dx.toDouble(), dy.toDouble()), netPaint);
+      final dx = (netRadius * netRadius - dy * dy) > 0 ? math.sqrt(netRadius * netRadius - dy * dy) : 0;
+      canvas.drawLine(
+        center + Offset(-dx.toDouble(), dy.toDouble()),
+        center + Offset(dx.toDouble(), dy.toDouble()),
+        netPaint,
+      );
     }
 
     // --- Inner + Outer circles ---
     final whitePaint = Paint()
-      ..color = Colors.white
+      ..color = AppTheme.courtLine
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
