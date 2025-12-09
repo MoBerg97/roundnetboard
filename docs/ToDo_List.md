@@ -15,6 +15,11 @@ main aspects: less clutter
 - [ ] the eraser tool icon should be an actual eraser icon (not trash can icon)
 - [ ] get rid of circle points at start and end points of lines
 - [ ] the annotations should fade in and fade out dynamically in animation playback.
+- [ ] landscape mode orientation changes visual structure (left side is court, right side is controls including annotations and ball modifier menu)
+
+## Quick tips
+
+- [ ] "Want to emphasize a certain position? Copy the specific frame and leave as is to provide an obersevational pause in the animation"
 
 ## Features
 
@@ -35,6 +40,7 @@ court:
 - [ ] the court should be zoomable with two states, first state is as it currently is, showing at least 1.2 times servezone_radius around the center of the court. second zoom stage should be the whole court towards the outer boundary at 850cm radius around the center of court.
 - [ ] the user should be able to select standard court or empty court as a drop down menu setting when opening a new project.
 - [ ] make objects on court relate in size to court (player and ball circle radius, paths in width adjusted for size)
+- [ ] default starting position of player and ball should be editable in the global (home screen accesible) settings menu and then new projects start with objects in this position.
 
 annotations:
 
@@ -53,18 +59,20 @@ statistics:
 - [ ] footwork statistics shows for each frame the amount of distance each player travels, as small bars on the top side of the screen.
 - [ ] the maximum footwork distance is 850cm and the minimum is 0cm.
 - [ ] if turned on, the footwork statistics will also be depicted in the animation playback with showing the footwork of a certain frame during the playback of this frame.
+- [ ] during animation playback, when the playback is paused, the user can toggle full path revision of a player or the ball by tapping the player or ball and this shows the path that this object already moved (full line) and the upcoming path of this object (dashed line). toggles off when the object is tapped again.
 
 sharing:
 
 - [ ] users can export each frame as a single image, or all frames as images appended to each other, to form a left to right or top to bottom succession.
 - [ ] users can export the animation as a video file. the speed of the exported animation should match the last selected playback speed of the animation.
+- [x] users can share projects as a json file and import shared json files
 
 players:
 
 - [ ] the color of player objects should be editable.
 - [ ] the user should be able to additionally add a single character shown on the player object always (project specific).
 - [ ] the user should be able to delete players and add players. The color of the added player object should match the color of the last tapped player object.
-- [ ] player objects can have frame specific body postures ( resembled by changing greaphical representation) and introducing a rotational component of player objects
+- [ ] player objects can have frame specific body postures (resembled by changing greaphical representation) and introducing a rotational component of player objects
   - [ ] set (L/R): arm reaching out in front of player on of the side
   - [ ] hit (L/R): arm is with 90degree elbow bend on is going out of one of the sided of the player
     - [ ] animation of swinging arm right before the end of the frames duration and only starting when ball is within proximity of the player during a tick
@@ -78,6 +86,7 @@ ball:
 
 timeline:
 
+- [ ] playback scrubber should be time related, taking frame duration into account. Currently the playback scrubber
 - [ ] the insert frame thumbnail button should appear right next to the current frame in the timeline instead of below it, indicating that the next frame is created after the currently selected frame as a direct copy.
 - [ ] the delete current frame button should only appear when a frame is tapped again if already selected and then disappears again if it is tapped again.
 - [x] during playback a cursor should appear in the timeline visually indicating the current point in time of the playback. This should be checked to be in accordance with the timing of the frames.
@@ -89,7 +98,8 @@ timeline:
 
 ### HOTFIX
 
-no critical issues at the moment.
+- [ ] account for virtual navigation bar on some android phones such as Redmi Note 13 Pro 5G by using a safe area
+- [ ] when playback is through, meaning the playback reached the end while playing, the timeline should only go back to the editing controls after the stop button is tapped, not automatically after playback reached the end
 
 ### Other fixes
 

@@ -1,6 +1,6 @@
-import 'package:hive/hive.dart';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 
 part 'settings.g.dart';
 
@@ -44,7 +44,11 @@ class Settings extends HiveObject {
     final usableHeight = screenSize.height - appBarHeight - timelineHeight;
     final usableWidth = screenSize.width;
     final halfMinScreen = (usableHeight < usableWidth ? usableHeight : usableWidth) / 2 - padding;
-    return cm * (halfMinScreen / referenceRadiusCm);
+    final bool desktopLike = kIsWeb || defaultTargetPlatform == TargetPlatform.windows;
+    final double serveZoneRadius = outerCircleRadiusCm;
+    final double targetReference = desktopLike ? serveZoneRadius * 1.5 : referenceRadiusCm;
+    final double safeReference = targetReference == 0 ? 1.0 : targetReference;
+    return cm * (halfMinScreen / safeReference);
   }
 
   // Convenience getters for logical units

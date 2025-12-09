@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import '../models/animation_project.dart';
 import '../models/frame.dart';
 import '../widgets/path_painter.dart';
@@ -198,6 +200,42 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   Offset _toScreenPosition(Offset cmPos, Size size) {
     final center = _boardCenter(size);
     return center + Offset(_settings.cmToLogical(cmPos.dx, size), _settings.cmToLogical(cmPos.dy, size));
+  }
+
+  /// Derive available logical screen size from the active window (web/windows) or MediaQuery elsewhere.
+  Size _effectiveScreenSize(BuildContext context) {
+    final mqSize = MediaQuery.of(context).size;
+    if (!(kIsWeb || defaultTargetPlatform == TargetPlatform.windows)) {
+      return mqSize;
+    }
+
+    try {
+      final dispatcher = WidgetsBinding.instance.platformDispatcher;
+      if (dispatcher.views.isEmpty) return mqSize;
+      final ui.FlutterView view = dispatcher.views.first;
+      final double ratio = view.devicePixelRatio;
+      final double logicalWidth = view.physicalSize.width / ratio;
+      final double logicalHeight = view.physicalSize.height / ratio;
+
+      final double padLeft = view.viewPadding.left / ratio;
+      final double padRight = view.viewPadding.right / ratio;
+      final double padTop = view.viewPadding.top / ratio;
+      final double padBottom = view.viewPadding.bottom / ratio;
+
+      final double insetLeft = view.viewInsets.left / ratio;
+      final double insetRight = view.viewInsets.right / ratio;
+      final double insetTop = view.viewInsets.top / ratio;
+      final double insetBottom = view.viewInsets.bottom / ratio;
+
+        final double availableWidth =
+          (logicalWidth - padLeft - padRight - insetLeft - insetRight).clamp(0.0, logicalWidth) as double;
+        final double availableHeight =
+          (logicalHeight - padTop - padBottom - insetTop - insetBottom).clamp(0.0, logicalHeight) as double;
+
+      return Size(availableWidth, availableHeight);
+    } catch (_) {
+      return mqSize;
+    }
   }
 
   /// Convert screen pixel position to cm logical coordinates
@@ -1238,7 +1276,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
+    final screenSize = _effectiveScreenSize(context);
     Settings.setScreenSize(screenSize);
     final isPlayback = _isPlaying && _animatedFrame != null;
     final prev = _getPreviousFrame();
