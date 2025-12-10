@@ -90,6 +90,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   // ──────────────────────────────────────────────────────────────────────────
   final Map<String, Offset> _dragStartLogical = {}; // Starting position in cm coordinates
   final Map<String, Offset> _dragStartScreen = {}; // Starting position in screen pixels
+  String? _activePathDragLabel; // Which path control is being dragged
+  int? _activePathDragIndex; // Index of the control point being dragged (currently first only)
 
   // ──────────────────────────────────────────────────────────────────────────
   // UI REFERENCES
@@ -961,6 +963,171 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     return t;
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // PATH CONTROL DRAG HELPERS
+  // ──────────────────────────────────────────────────────────────────────────
+
+  List<Offset>? _pathPointsForLabel(String label) {
+    switch (label) {
+      case "P1":
+        return currentFrame.p1PathPoints;
+      case "P2":
+        return currentFrame.p2PathPoints;
+      case "P3":
+        return currentFrame.p3PathPoints;
+      case "P4":
+        return currentFrame.p4PathPoints;
+      case "BALL":
+        return currentFrame.ballPathPoints;
+      default:
+        return null;
+    }
+  }
+
+  Offset? _pathStartForLabel(String label, Frame prev) {
+    switch (label) {
+      case "P1":
+        return prev.p1;
+      case "P2":
+        return prev.p2;
+      case "P3":
+        return prev.p3;
+      case "P4":
+        return prev.p4;
+      case "BALL":
+        return prev.ball;
+      default:
+        return null;
+    }
+  }
+
+  Offset? _pathEndForLabel(String label) {
+    switch (label) {
+      case "P1":
+        return currentFrame.p1;
+      case "P2":
+        return currentFrame.p2;
+      case "P3":
+        return currentFrame.p3;
+      case "P4":
+        return currentFrame.p4;
+      case "BALL":
+        return currentFrame.ball;
+      default:
+        return null;
+    }
+  }
+
+  /// Locate the nearest path under a touch and snap/create a control point for drag.
+  bool _maybeStartPathDrag(Offset localPos, Size size) {
+    final prev = _getPreviousFrame();
+    if (prev == null) return false;
+
+    const double bufferCm = 10.0;
+    final bufferPx = _settings.cmToLogical(bufferCm, size).abs();
+
+    String? bestLabel;
+    Offset? bestPointCm;
+    double bestDistPx = double.infinity;
+
+    void scanPath(String label, Offset start, Offset end, List<Offset> points) {
+      final pathLen = (end - start).distance;
+      if (pathLen < 1) return;
+
+      final hasCtrl = points.isNotEmpty;
+      final engine = hasCtrl
+          ? PathEngine.fromTwoQuadratics(start: start, control: points.first, end: end, resolution: 200)
+          : null;
+
+      const int res = 200;
+      for (int i = 0; i <= res; i++) {
+        final t = i / res;
+        final posCm = hasCtrl ? engine!.sample(t) : Offset.lerp(start, end, t)!;
+        final posScreen = _toScreenPosition(posCm, size);
+        final d = (localPos - posScreen).distance;
+        if (d < bestDistPx) {
+          bestDistPx = d;
+          bestPointCm = posCm;
+          bestLabel = label;
+        }
+      }
+    }
+
+    final candidates = ["P1", "P2", "P3", "P4", "BALL"];
+    for (final label in candidates) {
+      final start = _pathStartForLabel(label, prev);
+      final end = _pathEndForLabel(label);
+      final points = _pathPointsForLabel(label);
+      if (start == null || end == null || points == null) continue;
+      scanPath(label, start, end, points);
+    }
+
+    if (bestLabel == null || bestPointCm == null) return false;
+    if (bestDistPx > bufferPx) return false;
+
+    final points = _pathPointsForLabel(bestLabel!);
+    if (points == null) return false;
+
+    setState(() {
+      if (points.isEmpty) {
+        points.add(bestPointCm!);
+      } else {
+        points[0] = bestPointCm!;
+      }
+      _activePathDragLabel = bestLabel;
+      _activePathDragIndex = 0;
+      _dragStartLogical["PATH-$bestLabel-0"] = points[0];
+      _dragStartScreen["PATH-$bestLabel-0"] = localPos;
+      _showModifierMenu = false;
+    });
+
+    final idx = widget.project.frames.indexOf(currentFrame);
+    if (idx >= 0) {
+      widget.project.frames[idx] = currentFrame;
+      PathEngine.invalidateCacheFor(idx, bestLabel!);
+    }
+    return true;
+  }
+
+  void _updatePathDrag(Offset localPos, Size size) {
+    final label = _activePathDragLabel;
+    final index = _activePathDragIndex;
+    if (label == null || index == null) return;
+    final points = _pathPointsForLabel(label);
+    if (points == null || points.isEmpty || index >= points.length) return;
+    final startLogical = _dragStartLogical["PATH-$label-$index"] ?? points[index];
+    final startScreen = _dragStartScreen["PATH-$label-$index"] ?? localPos;
+    final scalePerCm = _settings.cmToLogical(1.0, size);
+    if (scalePerCm == 0) return;
+
+    setState(() {
+      final deltaScreen = localPos - startScreen;
+      points[index] = startLogical + deltaScreen / scalePerCm;
+    });
+
+    final frameIdx = widget.project.frames.indexOf(currentFrame);
+    if (frameIdx >= 0) PathEngine.invalidateCacheFor(frameIdx, label);
+  }
+
+  void _endPathDrag() {
+    final label = _activePathDragLabel;
+    final index = _activePathDragIndex;
+    if (label != null && index != null) {
+      final frameIdx = widget.project.frames.indexOf(currentFrame);
+      if (frameIdx >= 0) {
+        widget.project.frames[frameIdx] = currentFrame;
+        PathEngine.invalidateCacheFor(frameIdx, label);
+      }
+      _dragStartLogical.remove("PATH-$label-$index");
+      _dragStartScreen.remove("PATH-$label-$index");
+      _saveProject();
+    }
+    setState(() {
+      _activePathDragLabel = null;
+      _activePathDragIndex = null;
+    });
+  }
+
   // ══════════════════════════════════════════════════════════════════════════
   // UI BUILD HELPERS
   // ══════════════════════════════════════════════════════════════════════════
@@ -1074,9 +1241,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               alignment: Alignment.center,
               color: Colors.transparent,
               child: Container(
-                width: 16,
-                height: 16,
-                decoration: const BoxDecoration(color: Color.fromARGB(97, 0, 0, 0), shape: BoxShape.circle),
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                ),
               ),
             ),
           ),
@@ -1394,18 +1566,27 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             }
                           },
                           onPanStart: (details) {
-                            if (!(_isPlaying || _endedAtLastFrame) && _annotationMode) {
+                            if (_isPlaying || _endedAtLastFrame) return;
+                            if (_annotationMode) {
                               _handleAnnotationDragStart(details, screenSize);
+                            } else {
+                              _maybeStartPathDrag(details.localPosition, screenSize);
                             }
                           },
                           onPanUpdate: (details) {
-                            if (!(_isPlaying || _endedAtLastFrame) && _annotationMode) {
+                            if (_isPlaying || _endedAtLastFrame) return;
+                            if (_annotationMode) {
                               _handleAnnotationDragUpdate(details, screenSize);
+                            } else if (_activePathDragLabel != null) {
+                              _updatePathDrag(details.localPosition, screenSize);
                             }
                           },
                           onPanEnd: (details) {
-                            if (!(_isPlaying || _endedAtLastFrame) && _annotationMode) {
+                            if (_isPlaying || _endedAtLastFrame) return;
+                            if (_annotationMode) {
                               _handleAnnotationDragEnd(details, screenSize);
+                            } else if (_activePathDragLabel != null) {
+                              _endPathDrag();
                             }
                           },
                           behavior: HitTestBehavior.translucent,

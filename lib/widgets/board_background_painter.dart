@@ -27,14 +27,25 @@ class BoardBackgroundPainter extends CustomPainter {
     final bgPaint = Paint()..color = AppTheme.courtGreen;
     canvas.drawRect(Offset.zero & size, bgPaint);
 
-    // --- Net circle ---
+    // --- Net donut (annulus) ---
     final netRadius = settings.netCircleRadiusPx;
-    final netPaint = Paint()
-      ..color = AppTheme.netBlack.withAlpha((0.4 * 255).round())
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
+    final RimOuterRadius = netRadius + 5;
 
-    canvas.drawCircle(center, netRadius, netPaint);
+    // Draw outer filled circle (light grey)
+    final RimPaint = Paint()
+      ..color = AppTheme.lightGrey
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(center, RimOuterRadius, RimPaint);
+
+    // Draw inner filled circle (court background color) to "cut out" center
+    canvas.drawCircle(center, netRadius, bgPaint);
+
+    // Define netPaint for grid lines (if you still want them)
+    final netPaint = Paint()
+      ..color = AppTheme.netBlack.withAlpha((0.4*255).round())
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
 
     final step = 6.0;
     for (double dx = -netRadius; dx <= netRadius; dx += step) {
@@ -63,8 +74,14 @@ class BoardBackgroundPainter extends CustomPainter {
     final innerRadius = settings.innerCircleRadiusPx;
     final outerRadius = settings.outerCircleRadiusPx;
 
+    // Existing circles
     canvas.drawCircle(center, innerRadius, whitePaint);
     canvas.drawCircle(center, outerRadius, whitePaint);
+
+    // --- Additional outer bounds circle ---
+    final outerBoundsRadius = settings.outerBoundsRadiusPx; // Define this in your Settings model
+
+    canvas.drawCircle(center, outerBoundsRadius, whitePaint);
   }
 
   @override
