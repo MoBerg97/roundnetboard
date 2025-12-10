@@ -779,15 +779,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         setState(() => _showModifierMenu = false);
       }
 
-      // Update erasing annotations list for preview (don't delete yet)
+      // Instantly delete annotations touched during dragging (no preview)
       setState(() {
-        _erasingAnnotations.clear();
-        for (final ann in currentFrame.annotations) {
-          if (_isAnnotationTouched(ann, cmPos, size)) {
-            _erasingAnnotations.add(ann);
-          }
-        }
+        currentFrame.annotations.removeWhere((ann) => _isAnnotationTouched(ann, cmPos, size));
       });
+      _saveProject();
     } else if (_activeAnnotationTool == AnnotationTool.line && _pendingAnnotationPoints.isNotEmpty) {
       // Update preview position for line drag
       setState(() {
@@ -798,7 +794,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   /// Check if a dragging touch intersects with an annotation
   bool _isAnnotationTouched(Annotation ann, Offset touchCmPos, Size size) {
-    const touchRadius = 20.0; // cm radius for touch detection
+    const touchRadius = 10.0; // 10px radius for touch detection (converted to cm)
     if (ann.type == AnnotationType.line && ann.points.length >= 2) {
       final start = ann.points[0];
       final end = ann.points[1];
@@ -832,12 +828,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   void _handleAnnotationDragEnd(DragEndDetails details, Size size) {
     if (_isPlaying) return;
     if (_eraserMode) {
-      // Commit erased annotations and save project
+      // Erasing already happened during drag, just cleanup preview state
       setState(() {
-        currentFrame.annotations.removeWhere((ann) => _erasingAnnotations.contains(ann));
         _erasingAnnotations.clear();
       });
-      _saveProject();
       return;
     }
 
@@ -2226,7 +2220,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         }),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.auto_delete),
+                        icon: const Icon(Icons.ink_eraser),
                         tooltip: 'Eraser',
                         color: _eraserMode ? AppTheme.errorRed : AppTheme.mediumGrey,
                         onPressed: () => setState(() {
