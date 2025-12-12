@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/scheduler.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -79,6 +80,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   bool _annotationMode = false; // Is annotation mode active?
   AnnotationTool _activeAnnotationTool = AnnotationTool.none; // Current drawing tool
   bool _eraserMode = false; // Is eraser active?
+  Offset? _eraserPosCm; // Current eraser position in cm coordinates
+  final double _eraserRadiusCm = 20; // Eraser radius in cm (40cm diameter)
+  bool _annotationsAboveObjects = false; // Layer order for annotations
   final List<Offset> _pendingAnnotationPoints = []; // Points being drawn (not committed)
   Color _annotationColor = Colors.red; // Current annotation color
   final List<Annotation> _stagedAnnotations = []; // Annotations staged for preview
@@ -204,6 +208,19 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     return center + Offset(_settings.cmToLogical(cmPos.dx, size), _settings.cmToLogical(cmPos.dy, size));
   }
 
+  bool _isPhone(BuildContext context) {
+    final shortest = MediaQuery.of(context).size.shortestSide;
+    return shortest < 600; // heuristic for handset
+  }
+
+  bool _shouldShowEraserOverlay(BuildContext context) {
+    if (!_eraserMode || _eraserPosCm == null) return false;
+    if (kIsWeb) {
+      return !_isPhone(context);
+    }
+    return !(defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+  }
+
   /// Derive available logical screen size from the active window (web/windows) or MediaQuery elsewhere.
   Size _effectiveScreenSize(BuildContext context) {
     final mqSize = MediaQuery.of(context).size;
@@ -229,10 +246,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final double insetTop = view.viewInsets.top / ratio;
       final double insetBottom = view.viewInsets.bottom / ratio;
 
-        final double availableWidth =
-          (logicalWidth - padLeft - padRight - insetLeft - insetRight).clamp(0.0, logicalWidth) as double;
-        final double availableHeight =
-          (logicalHeight - padTop - padBottom - insetTop - insetBottom).clamp(0.0, logicalHeight) as double;
+      final double availableWidth = (logicalWidth - padLeft - padRight - insetLeft - insetRight).clamp(
+        0.0,
+        logicalWidth,
+      );
+      final double availableHeight = (logicalHeight - padTop - padBottom - insetTop - insetBottom).clamp(
+        0.0,
+        logicalHeight,
+      );
 
       return Size(availableWidth, availableHeight);
     } catch (_) {
@@ -548,25 +569,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   // FRAME MANAGEMENT (Insert, Delete)
   // ══════════════════════════════════════════════════════════════════════════
 
-  /// Insert a new frame after the current frame (duplicate positions)
+  /// Insert a new frame after the current frame (deep copy including annotations)
   void _insertFrameAfterCurrent() {
     final index = widget.project.frames.indexOf(currentFrame);
-    final newFrame = Frame(
-      p1: currentFrame.p1,
-      p2: currentFrame.p2,
-      p3: currentFrame.p3,
-      p4: currentFrame.p4,
-      ball: currentFrame.ball,
-      p1Rotation: currentFrame.p1Rotation,
-      p2Rotation: currentFrame.p2Rotation,
-      p3Rotation: currentFrame.p3Rotation,
-      p4Rotation: currentFrame.p4Rotation,
-      p1PathPoints: [],
-      p2PathPoints: [],
-      p3PathPoints: [],
-      p4PathPoints: [],
-      ballPathPoints: [],
-    );
+    // Deep-copy current frame so all positions, settings, and annotations carry over
+    final newFrame = currentFrame.copy();
     final newIdx = _history.push(InsertFrameAction(frameIndex: index, inserted: newFrame));
     setState(() {
       currentFrame = widget.project.frames[newIdx + 1];
@@ -745,7 +752,20 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   /// Handle drag start for line drawing
   void _handleAnnotationDragStart(DragStartDetails details, Size size) {
-    if (_isPlaying || _eraserMode) return;
+    if (_isPlaying) return;
+    if (_eraserMode) {
+      // Start eraser drag
+      if (_showModifierMenu) {
+        setState(() => _showModifierMenu = false);
+      }
+      final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
+      final localPos = box.globalToLocal(details.globalPosition);
+      final cmPos = _screenToCm(localPos, size);
+      setState(() {
+        _eraserPosCm = cmPos;
+      });
+      return;
+    }
     if (_activeAnnotationTool != AnnotationTool.line) return;
 
     // Close ball modifier menu if open and annotations are being touched
@@ -779,9 +799,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         setState(() => _showModifierMenu = false);
       }
 
-      // Instantly delete annotations touched during dragging (no preview)
+      // Update eraser position and instantly delete annotations touched by circle
       setState(() {
-        currentFrame.annotations.removeWhere((ann) => _isAnnotationTouched(ann, cmPos, size));
+        _eraserPosCm = cmPos;
+        currentFrame.annotations.removeWhere((ann) => _isAnnotationTouchedByCircle(ann, cmPos, _eraserRadiusCm));
       });
       _saveProject();
     } else if (_activeAnnotationTool == AnnotationTool.line && _pendingAnnotationPoints.isNotEmpty) {
@@ -792,23 +813,36 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     }
   }
 
-  /// Check if a dragging touch intersects with an annotation
-  bool _isAnnotationTouched(Annotation ann, Offset touchCmPos, Size size) {
-    const touchRadius = 10.0; // 10px radius for touch detection (converted to cm)
+  /// Clear all annotations on the current frame
+  void _clearCurrentFrameAnnotations() {
+    if (_isPlaying) return;
+    setState(() {
+      currentFrame.annotations.clear();
+      _stagedAnnotations.clear();
+      _erasingAnnotations.clear();
+      _eraserPosCm = null;
+      final idx = widget.project.frames.indexOf(currentFrame);
+      if (idx >= 0) widget.project.frames[idx] = currentFrame;
+    });
+    _saveProject();
+  }
+
+  /// Check if an annotation intersects with the eraser circle
+  bool _isAnnotationTouchedByCircle(Annotation ann, Offset eraserCenterCm, double eraserRadiusCm) {
     if (ann.type == AnnotationType.line && ann.points.length >= 2) {
       final start = ann.points[0];
       final end = ann.points[1];
-      // Check distance from touch point to line segment
-      final dist = _distanceToLineSegment(touchCmPos, start, end);
-      return dist <= touchRadius;
+      // Check if line segment intersects with eraser circle
+      final dist = _distanceToLineSegment(eraserCenterCm, start, end);
+      return dist <= eraserRadiusCm;
     } else if (ann.type == AnnotationType.circle && ann.points.length >= 2) {
       final center = ann.points[0];
       final radiusPoint = ann.points[1];
       final radius = (radiusPoint - center).distance;
-      final distToCenter = (touchCmPos - center).distance;
-      // Check if touch is near the circle
+      final distToCenter = (eraserCenterCm - center).distance;
+      // Check if annotation circle overlaps with eraser circle
       final circleWidth = 10.0; // cm width of the circle line
-      return (distToCenter - radius).abs() <= (touchRadius + circleWidth / 2);
+      return distToCenter <= (eraserRadiusCm + radius + circleWidth / 2);
     }
     return false;
   }
@@ -828,9 +862,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   void _handleAnnotationDragEnd(DragEndDetails details, Size size) {
     if (_isPlaying) return;
     if (_eraserMode) {
-      // Erasing already happened during drag, just cleanup preview state
+      // Erasing already happened during drag, clear eraser position
       setState(() {
         _erasingAnnotations.clear();
+        _eraserPosCm = null;
       });
       return;
     }
@@ -1017,7 +1052,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final prev = _getPreviousFrame();
     if (prev == null) return false;
 
-    const double bufferCm = 10.0;
+    const double bufferCm = 20.0;
     final bufferPx = _settings.cmToLogical(bufferCm, size).abs();
 
     String? bestLabel;
@@ -1148,7 +1183,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           // Start dragging the hit marker immediately when the user pans on it
           setState(() => _pendingBallMark = 'hit');
         },
-            onPanUpdate: (details) {
+        onPanUpdate: (details) {
           if (_pendingBallMark == 'hit') {
             // Convert global coordinates to local coordinates relative to the board
             final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
@@ -1187,7 +1222,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         child: Container(
           width: 30 * scale,
           height: 30 * scale,
-          decoration: BoxDecoration(color: AppTheme.accentOrange.withOpacity(0.2), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: AppTheme.accentOrange.withValues(alpha: 0.35), shape: BoxShape.circle),
         ),
       ),
     );
@@ -1285,46 +1320,49 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     return Positioned(
       left: screenPos.dx - 20,
       top: screenPos.dy - 20,
-      child: GestureDetector(
-        onPanStart: (details) {
-          _dragStartLogical[label] = posCm;
-          final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
-          _dragStartScreen[label] = box.globalToLocal(details.globalPosition);
-        },
-        onPanUpdate: (details) {
-          setState(() {
+      child: IgnorePointer(
+        ignoring: _annotationMode,
+        child: GestureDetector(
+          onPanStart: (details) {
+            _dragStartLogical[label] = posCm;
             final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
-            final localPos = box.globalToLocal(details.globalPosition);
-            final deltaScreen = localPos - (_dragStartScreen[label] ?? localPos);
-            final scalePerCm = _settings.cmToLogical(1.0, size);
-            _updateFramePosition(label, (_dragStartLogical[label] ?? posCm) + deltaScreen / scalePerCm);
-          });
-        },
-        onPanEnd: (_) {
-          final from = _dragStartLogical[label] ?? posCm;
-          final to = switch (label) {
-            "P1" => currentFrame.p1,
-            "P2" => currentFrame.p2,
-            "P3" => currentFrame.p3,
-            "P4" => currentFrame.p4,
-            _ => currentFrame.ball,
-          };
-          final idx = widget.project.frames.indexOf(currentFrame);
-          final newIdx = _history.push(MoveEntityAction(frameIndex: idx, label: label, from: from, to: to));
-          setState(() {
-            currentFrame = widget.project.frames[newIdx];
-          });
-          _scrollToSelectedFrame();
-          _dragStartLogical.remove(label);
-          _dragStartScreen.remove(label);
-        },
-        child: Transform.rotate(
-          angle: rotation,
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            // Arrow hidden by default for now
+            _dragStartScreen[label] = box.globalToLocal(details.globalPosition);
+          },
+          onPanUpdate: (details) {
+            setState(() {
+              final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
+              final localPos = box.globalToLocal(details.globalPosition);
+              final deltaScreen = localPos - (_dragStartScreen[label] ?? localPos);
+              final scalePerCm = _settings.cmToLogical(1.0, size);
+              _updateFramePosition(label, (_dragStartLogical[label] ?? posCm) + deltaScreen / scalePerCm);
+            });
+          },
+          onPanEnd: (_) {
+            final from = _dragStartLogical[label] ?? posCm;
+            final to = switch (label) {
+              "P1" => currentFrame.p1,
+              "P2" => currentFrame.p2,
+              "P3" => currentFrame.p3,
+              "P4" => currentFrame.p4,
+              _ => currentFrame.ball,
+            };
+            final idx = widget.project.frames.indexOf(currentFrame);
+            final newIdx = _history.push(MoveEntityAction(frameIndex: idx, label: label, from: from, to: to));
+            setState(() {
+              currentFrame = widget.project.frames[newIdx];
+            });
+            _scrollToSelectedFrame();
+            _dragStartLogical.remove(label);
+            _dragStartScreen.remove(label);
+          },
+          child: Transform.rotate(
+            angle: rotation,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              // Arrow hidden by default for now
+            ),
           ),
         ),
       ),
@@ -1337,72 +1375,75 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     return Positioned(
       left: screenPos.dx - 15 * scale,
       top: screenPos.dy - 15 * scale,
-      child: GestureDetector(
-        onTap: () {
-          if (!_isPlaying && !_endedAtLastFrame) {
-            // If modifier menu is open, close it; otherwise open it
-            if (_showModifierMenu) {
-              setState(() {
-                _showModifierMenu = false;
-              });
-            } else {
-              // Close annotation menu if open and ball is tapped
-              if (_annotationMode) {
+      child: IgnorePointer(
+        ignoring: _annotationMode,
+        child: GestureDetector(
+          onTap: () {
+            if (!_isPlaying && !_endedAtLastFrame) {
+              // If modifier menu is open, close it; otherwise open it
+              if (_showModifierMenu) {
                 setState(() {
-                  _annotationMode = false;
-                  _activeAnnotationTool = AnnotationTool.none;
-                  _pendingAnnotationPoints.clear();
+                  _showModifierMenu = false;
+                });
+              } else {
+                // Close annotation menu if open and ball is tapped
+                if (_annotationMode) {
+                  setState(() {
+                    _annotationMode = false;
+                    _activeAnnotationTool = AnnotationTool.none;
+                    _pendingAnnotationPoints.clear();
+                  });
+                }
+                setState(() {
+                  _showModifierMenu = true;
                 });
               }
-              setState(() {
-                _showModifierMenu = true;
-              });
             }
-          }
-        },
-        onPanStart: (details) {
-          _dragStartLogical["BALL"] = posCm;
-          final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
-          _dragStartScreen["BALL"] = box.globalToLocal(details.globalPosition);
-        },
-        onPanUpdate: (details) {
-          setState(() {
+          },
+          onPanStart: (details) {
+            _dragStartLogical["BALL"] = posCm;
             final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
-            final localPos = box.globalToLocal(details.globalPosition);
-            final deltaScreen = localPos - (_dragStartScreen["BALL"] ?? localPos);
-            final scalePerCm = _settings.cmToLogical(1.0, size);
-            _updateFramePosition("BALL", (_dragStartLogical["BALL"] ?? posCm) + deltaScreen / scalePerCm);
-          });
-        },
-        onPanEnd: (_) {
-          final from = _dragStartLogical["BALL"] ?? posCm;
-          final to = currentFrame.ball;
-          final idx = widget.project.frames.indexOf(currentFrame);
-          final newIdx = _history.push(MoveEntityAction(frameIndex: idx, label: "BALL", from: from, to: to));
-          setState(() {
-            currentFrame = widget.project.frames[newIdx];
-          });
-          _scrollToSelectedFrame();
-          _dragStartLogical.remove("BALL");
-          _dragStartScreen.remove("BALL");
-        },
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: 30 * scale,
-              height: 30 * scale,
-              decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
-            ),
-            if (starOpacity > 0)
-              Transform.translate(
-                offset: Offset(0, 16 * scale), // draw below the ball
-                child: Opacity(
-                  opacity: starOpacity,
-                  child: CustomPaint(size: Size(24 * scale, 24 * scale), painter: _StarPainter()),
-                ),
+            _dragStartScreen["BALL"] = box.globalToLocal(details.globalPosition);
+          },
+          onPanUpdate: (details) {
+            setState(() {
+              final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
+              final localPos = box.globalToLocal(details.globalPosition);
+              final deltaScreen = localPos - (_dragStartScreen["BALL"] ?? localPos);
+              final scalePerCm = _settings.cmToLogical(1.0, size);
+              _updateFramePosition("BALL", (_dragStartLogical["BALL"] ?? posCm) + deltaScreen / scalePerCm);
+            });
+          },
+          onPanEnd: (_) {
+            final from = _dragStartLogical["BALL"] ?? posCm;
+            final to = currentFrame.ball;
+            final idx = widget.project.frames.indexOf(currentFrame);
+            final newIdx = _history.push(MoveEntityAction(frameIndex: idx, label: "BALL", from: from, to: to));
+            setState(() {
+              currentFrame = widget.project.frames[newIdx];
+            });
+            _scrollToSelectedFrame();
+            _dragStartLogical.remove("BALL");
+            _dragStartScreen.remove("BALL");
+          },
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 30 * scale,
+                height: 30 * scale,
+                decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
               ),
-          ],
+              if (starOpacity > 0)
+                Transform.translate(
+                  offset: Offset(0, 16 * scale), // draw below the ball
+                  child: Opacity(
+                    opacity: starOpacity,
+                    child: CustomPaint(size: Size(24 * scale, 24 * scale), painter: _StarPainter()),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -1450,8 +1491,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     // Timeline maintains consistent height during state transitions to avoid layout shifts
     // Playback: 160px (more space for timeline), End-state: 120px (with stop button), Editing: 120px (full controls)
     final double timelineHeight = 140.0;
-    return WillPopScope(
-      onWillPop: () async => false,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) {
+        if (didPop) return;
+        // Handle back button press if needed
+      },
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.project.name),
@@ -1464,7 +1509,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           actions: [
             if (!_isPlaying && !_endedAtLastFrame)
               IconButton(
-                icon: Icon(Icons.draw, color: _annotationMode ? _annotationColor : AppTheme.mediumGrey),
+                icon: Icon(Icons.draw, color: Colors.white),
                 tooltip: _annotationMode ? 'Exit Annotation Mode' : 'Enter Annotation Mode',
                 onPressed: () {
                   setState(() {
@@ -1533,18 +1578,36 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             settings: _settings,
                           ),
                         ),
-                      // Draw annotations for the current frame and any staged previews
-                      AnnotationPainter(
-                        annotations: frameToShow.annotations,
-                        tempAnnotations: _stagedAnnotations.isNotEmpty ? _stagedAnnotations : null,
-                        erasingAnnotations: _erasingAnnotations.isNotEmpty ? _erasingAnnotations : null,
-                        dragPreviewLine:
-                            _annotationMode && _pendingAnnotationPoints.isNotEmpty && _currentDragPos != null
-                            ? [_pendingAnnotationPoints.first, _currentDragPos!]
-                            : null,
-                        settings: _settings,
-                        screenSize: screenSize,
-                      ),
+                      // Draw annotations below objects when toggled off
+                      if (!_annotationsAboveObjects)
+                        IgnorePointer(
+                          ignoring: true,
+                          child: AnnotationPainter(
+                            annotations: frameToShow.annotations,
+                            tempAnnotations: _stagedAnnotations.isNotEmpty ? _stagedAnnotations : null,
+                            erasingAnnotations: _erasingAnnotations.isNotEmpty ? _erasingAnnotations : null,
+                            dragPreviewLine:
+                                _annotationMode && _pendingAnnotationPoints.isNotEmpty && _currentDragPos != null
+                                ? [_pendingAnnotationPoints.first, _currentDragPos!]
+                                : null,
+                            settings: _settings,
+                            screenSize: screenSize,
+                          ),
+                        ),
+                      // Draw eraser circle when eraser is active (desktop/non-phone web only)
+                      if (_shouldShowEraserOverlay(context))
+                        IgnorePointer(
+                          ignoring: true,
+                          child: CustomPaint(
+                            size: screenSize,
+                            painter: _EraserCirclePainter(
+                              centerCm: _eraserPosCm!,
+                              radiusCm: _eraserRadiusCm,
+                              screenSize: screenSize,
+                              settings: _settings,
+                            ),
+                          ),
+                        ),
                       // Full-board tap & drag handler
                       Positioned.fill(
                         child: GestureDetector(
@@ -1597,6 +1660,22 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         scale: isPlayback ? _ballScaleAt(_playbackT) : 1.0,
                         starOpacity: 0.0,
                       ),
+                      // Draw annotations above objects when toggled on
+                      if (_annotationsAboveObjects)
+                        IgnorePointer(
+                          ignoring: true,
+                          child: AnnotationPainter(
+                            annotations: frameToShow.annotations,
+                            tempAnnotations: _stagedAnnotations.isNotEmpty ? _stagedAnnotations : null,
+                            erasingAnnotations: _erasingAnnotations.isNotEmpty ? _erasingAnnotations : null,
+                            dragPreviewLine:
+                                _annotationMode && _pendingAnnotationPoints.isNotEmpty && _currentDragPos != null
+                                ? [_pendingAnnotationPoints.first, _currentDragPos!]
+                                : null,
+                            settings: _settings,
+                            screenSize: screenSize,
+                          ),
+                        ),
                       if (isPlayback) ...[
                         (() {
                           final info = _playbackHitStarInfo(screenSize);
@@ -2198,7 +2277,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.edit),
+                        icon: const Icon(Symbols.diagonal_line),
                         tooltip: 'Line Tool',
                         color: _activeAnnotationTool == AnnotationTool.line ? _annotationColor : AppTheme.mediumGrey,
                         onPressed: () => setState(() {
@@ -2220,12 +2299,26 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         }),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.ink_eraser),
+                        icon: const Icon(Symbols.ink_eraser),
                         tooltip: 'Eraser',
                         color: _eraserMode ? AppTheme.errorRed : AppTheme.mediumGrey,
                         onPressed: () => setState(() {
                           _eraserMode = !_eraserMode;
                           if (_eraserMode) _activeAnnotationTool = AnnotationTool.none;
+                        }),
+                      ),
+                      IconButton(
+                        icon: const Icon(Symbols.delete),
+                        tooltip: 'Delete All Annotations',
+                        color: AppTheme.mediumGrey,
+                        onPressed: _clearCurrentFrameAnnotations,
+                      ),
+                      IconButton(
+                        icon: Icon(_annotationsAboveObjects ? Symbols.flip_to_front : Symbols.flip_to_back),
+                        tooltip: _annotationsAboveObjects ? 'Annotations Above Objects' : 'Annotations Below Objects',
+                        color: _annotationsAboveObjects ? AppTheme.mediumGrey : AppTheme.mediumGrey,
+                        onPressed: () => setState(() {
+                          _annotationsAboveObjects = !_annotationsAboveObjects;
                         }),
                       ),
                       const SizedBox(width: 8),
@@ -2338,4 +2431,52 @@ class _HitIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _HitIconPainter oldDelegate) => oldDelegate.active != active;
+}
+
+/// Eraser circle painter - shows a transparent circle with stroke when eraser is active
+class _EraserCirclePainter extends CustomPainter {
+  final Offset centerCm;
+  final double radiusCm;
+  final Size screenSize;
+  final Settings settings;
+
+  _EraserCirclePainter({
+    required this.centerCm,
+    required this.radiusCm,
+    required this.screenSize,
+    required this.settings,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Convert cm center to screen coordinates
+    const double appBarHeight = kToolbarHeight;
+    const double timelineHeight = 140;
+    final usableHeight = screenSize.height - appBarHeight - timelineHeight;
+    final boardCenter = Offset(screenSize.width / 2, appBarHeight + usableHeight / 2);
+
+    final screenCenter =
+        boardCenter +
+        Offset(settings.cmToLogical(centerCm.dx, screenSize), settings.cmToLogical(centerCm.dy, screenSize));
+
+    // Convert radius from cm to screen pixels
+    final screenRadiusPx = settings.cmToLogical(radiusCm, screenSize).abs();
+
+    // Draw semi-transparent filled circle
+    final fillPaint = Paint()
+      ..color = AppTheme.errorRed.withOpacity(0.2)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(screenCenter, screenRadiusPx, fillPaint);
+
+    // Draw stroke circle
+    final strokePaint = Paint()
+      ..color = AppTheme.errorRed.withOpacity(0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    canvas.drawCircle(screenCenter, screenRadiusPx, strokePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _EraserCirclePainter oldDelegate) =>
+      oldDelegate.centerCm != centerCm || oldDelegate.radiusCm != radiusCm;
 }
