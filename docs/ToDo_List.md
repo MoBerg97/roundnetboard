@@ -7,18 +7,18 @@ less clutter
 
 ### design ideas
 
-- [ ] **make path control points less invisible, therefore the path editable from any point (snaps control point to current touched position of path if a path is touched). This means that instead of creating the ball path on double tap; the user should instantly drag the snapped path control point if a point on path (with 10cm buffer) is touched and hold.**
+- [x] **make path control points less invisible, therefore the path editable from any point (snaps control point to current touched position of path if a path is touched). This means that instead of creating the ball path on double tap; the user should instantly drag the snapped path control point if a point on path (with 10cm buffer) is touched and hold.**
 - [x] lines preview fade from end (alpha 0) to start position (alpha 0.5) of current path
 - [x] lines of the previous frame should be less visible on default and fade from end position (alpha 0.75) to start position (alpha=1)
 - [ ] adjust the hit and set symbols on the boardscreen (not the icons to toggle them):
   - [ ] set: instead of a circle, the current path is displayed as a line getting thicker in size from start towards the middle and thinner again from middle to end.
   - [ ] hit: the star icon should be more transparent and only grey color, no outline and a little bigger. it should slowly fade in the animation playback on its position after appearing under the ball.
-- [ ] the ball path modifier menu should have no visible box container
 - [x] the timeline can be a little lower in height.
-- [ ] **the eraser tool icon should be an actual eraser icon (not trash can icon)**
+- [x] **the eraser tool icon should be an actual eraser icon (not trash can icon)**
 - [ ] get rid of circle points at start and end points of lines
 - [ ] the annotations should fade in and fade out dynamically in animation playback.
 - [ ] landscape mode orientation changes visual structure (left side is court, right side is controls including annotations and ball modifier menu)
+- [ ] the insert frame thumbnail button should appear right next to the current frame in the timeline instead of below it, indicating that the next frame is created after the currently selected frame as a direct copy.
 
 ### Quick tips
 
@@ -44,7 +44,7 @@ less clutter
 
 - [ ] the court should be zoomable with two states, first state is as it currently is, showing at least 1.2 times servezone_radius around the center of the court. second zoom stage should be the whole court towards the outer boundary at 850cm radius around the center of court.
 - [ ] the user should be able to select standard court or empty court as a drop down menu setting when opening a new project.
-- [ ] make objects on court relate in size to court (player and ball circle radius, paths in width adjusted for size)
+- [ ] make objects on court relate in size to court (player and ball circle radius, paths in width adjusted for size not in pixels but in relation to court size)
 - [ ] default starting position of player and ball should be editable in the global (home screen accesible) settings menu and then new projects start with objects in this position.
 - [ ] user should be able to turn off zones and net in project settings
 - [ ] when a new project is created, the user can decide if he wants the play scenario (with all zones on default radii and 4 players in their default start position and one ball) or training scenario (with all zones deactivated and 1 player red and one player blue and one ball)
@@ -54,11 +54,10 @@ less clutter
 - [x] there should be a foldable menu for annotations that provides frame specific annotations.
 - [ ] the annotations should be selectable from a variety of icons indicating the annotation to add.
 - [x] add a line annotation tool, that also is editable in color, user can manually edit the end points of the line.
-- [ ] **annotations should be frame specific and also should be copyed along all other objects when a new frame is inserted.**
+- [x] **annotations should be frame specific and also should be copyed along all other objects when a new frame is inserted.**
 - [ ] annotations should only be permament (saved per frame) when added in the annotation mode in the editing board screen.
 - [ ] annotations that are added in paused mode in the animation playback are only temporarely visible during this playback until the current playback is left (going back to the editing screen or back to project overview)
-- [ ] **add a trash can icon to erase all annotations of a frame. this should pop up a user confirmation before deleting all annotations.**
-- [ ] the trash confirmation should ask if all annotations (across all frames) or only for a single frame should be done
+- [x] **add a trash can icon to erase all annotations of the current frame**
 
 ### statistics:
 
@@ -93,8 +92,7 @@ less clutter
 
 timeline:
 
-- [ ] playback scrubber should be time related, taking frame duration into account. Currently the playback scrubber
-- [ ] the insert frame thumbnail button should appear right next to the current frame in the timeline instead of below it, indicating that the next frame is created after the currently selected frame as a direct copy.
+- [ ] playback scrubber should be time related, taking frame duration into account. Currently the playback scrubber moves with equal speed through all frames, regardless of their duration setting.
 - [ ] the delete current frame button should only appear when a frame is tapped again if already selected and then disappears again if it is tapped again.
 - [x] during playback a cursor should appear in the timeline visually indicating the current point in time of the playback. This should be checked to be in accordance with the timing of the frames.
 - [x] the timeline should have a pause button.
@@ -116,7 +114,7 @@ timeline:
 - [ ] the numerated suffix does not supply increasing numbers in brackets. Instead each copy gets another (1) suffix resulting in e.g. framename (1) (1) (1)
 - [ ] the annotations are not copied and displayed in a new frame when this is added.
 - [x] the playback timeline divides the frame thumbnail into n thumbnails as in the editing timeline. but the first frame has no duration, only giving the start positions. therefore the cursor of the thumbnail should start at time 0 at the left hand side of the thumbnail of frame 1
-- [x] the ball path modifier menu buttons should be toggable to on and off (Iindicated by highlighted/non-highlighted button), not only on. MAke sure, that the ball path can be either set or hit, not both.
+- [x] the ball path modifier menu buttons should be toggable to on and off (Iindicated by highlighted/non-highlighted button), not only on. Make sure, that the ball path can be either set or hit, not both.
 - [x] the go to previous and go to next frame in the boardscreen should be removed, since the user can already select the current frame directly from the timeline.
 - [x] the hit animation is animated too short and is too small. It should be the size of the normal ball size times 0.3
 - [x] instead of tap-and-holding the ball path to trigger the ball set hit icons to appear, the icons should appear when the ball at its current position is tapped.
