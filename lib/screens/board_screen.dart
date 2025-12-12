@@ -1622,6 +1622,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               }
                             }
                           },
+                          onDoubleTap: () {
+                            // Close annotation menu on double-tap when no tool is selected
+                            // Helps teach users that objects can't be moved while in annotation mode
+                            if (_annotationMode && _activeAnnotationTool == AnnotationTool.none && !_eraserMode) {
+                              setState(() {
+                                _annotationMode = false;
+                                _pendingAnnotationPoints.clear();
+                              });
+                            }
+                          },
                           onPanStart: (details) {
                             if (_isPlaying || _endedAtLastFrame) return;
                             if (_annotationMode) {
