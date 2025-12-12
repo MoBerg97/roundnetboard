@@ -32,16 +32,7 @@ class AnnotationPainter extends StatelessWidget {
     return Offset(cx, cy);
   }
 
-  /// Convert cm logical coordinates to screen pixels
-  Offset _cmToScreen(Offset cmPos) {
-    final center = _boardCenter();
-    return center +
-        Offset(
-          settings.cmToLogical(cmPos.dx, screenSize),
-          settings.cmToLogical(cmPos.dy, screenSize),
-        );
-  }
-
+  /// Paint annotations with a dedicated custom painter
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
@@ -80,11 +71,7 @@ class _AnnotationCustomPainter extends CustomPainter {
 
   /// Convert cm logical coordinates to screen pixels
   Offset _cmToScreen(Offset cmPos) {
-    return boardCenter +
-        Offset(
-          settings.cmToLogical(cmPos.dx, screenSize),
-          settings.cmToLogical(cmPos.dy, screenSize),
-        );
+    return boardCenter + Offset(settings.cmToLogical(cmPos.dx, screenSize), settings.cmToLogical(cmPos.dy, screenSize));
   }
 
   @override
@@ -143,12 +130,13 @@ class _AnnotationCustomPainter extends CustomPainter {
     final startScreen = _cmToScreen(startCm);
     final endScreen = _cmToScreen(endCm);
     final paint = Paint()
-      ..color = const Color.fromARGB(200, 255, 200, 100) // Semi-transparent orange preview
+      ..color =
+          const Color.fromARGB(200, 255, 200, 100) // Semi-transparent orange preview
       ..strokeWidth = 3.0
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
     canvas.drawLine(startScreen, endScreen, paint);
-    
+
     // Draw endpoint markers
     final endpointPaint = Paint()
       ..color = const Color.fromARGB(220, 255, 200, 100)
@@ -249,10 +237,7 @@ class _AnnotationCustomPainter extends CustomPainter {
     // Draw strikethrough (perpendicular lines across the erasing line)
     final center = (startScreen + endScreen) / 2;
     final direction = (endScreen - startScreen).direction;
-    final perpendicular = Offset(
-      -math.sin(direction),
-      math.cos(direction),
-    );
+    final perpendicular = Offset(-math.sin(direction), math.cos(direction));
     const strokeLength = 15.0;
 
     final strikePaint = Paint()
@@ -260,11 +245,7 @@ class _AnnotationCustomPainter extends CustomPainter {
       ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round;
 
-    canvas.drawLine(
-      center - perpendicular * strokeLength,
-      center + perpendicular * strokeLength,
-      strikePaint,
-    );
+    canvas.drawLine(center - perpendicular * strokeLength, center + perpendicular * strokeLength, strikePaint);
 
     // Draw faded endpoints
     final endpointPaint = Paint()
@@ -298,16 +279,8 @@ class _AnnotationCustomPainter extends CustomPainter {
       ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round;
 
-    canvas.drawLine(
-      centerScreen - Offset(xRadius, xRadius),
-      centerScreen + Offset(xRadius, xRadius),
-      xPaint,
-    );
-    canvas.drawLine(
-      centerScreen - Offset(xRadius, -xRadius),
-      centerScreen + Offset(xRadius, -xRadius),
-      xPaint,
-    );
+    canvas.drawLine(centerScreen - Offset(xRadius, xRadius), centerScreen + Offset(xRadius, xRadius), xPaint);
+    canvas.drawLine(centerScreen - Offset(xRadius, -xRadius), centerScreen + Offset(xRadius, -xRadius), xPaint);
 
     // Draw faded center point
     final centerPaint = Paint()
