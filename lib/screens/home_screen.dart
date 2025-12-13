@@ -9,8 +9,30 @@ import '../utils/share_helper.dart';
 import 'board_screen.dart';
 import 'help_screen.dart';
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+
+class HomeScreen extends StatefulWidget {
+  final void Function(Map<String, GlobalKey>)? onProvideTutorialKeys;
+  const HomeScreen({super.key, this.onProvideTutorialKeys});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final GlobalKey _fabAddKey = GlobalKey(debugLabel: 'fab_add');
+  final GlobalKey _projectListKey = GlobalKey(debugLabel: 'project_list');
+  final Map<int, GlobalKey> _projectTileKeys = {};
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Provide keys to tutorial if requested
+    widget.onProvideTutorialKeys?.call({
+      'fab_add': _fabAddKey,
+      'project_list': _projectListKey,
+      // Project tile keys will be provided dynamically in the builder
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,18 +61,23 @@ class HomeScreen extends StatelessWidget {
                 child: Text("No projects yet. Add one!", style: TextStyle(color: AppTheme.lightGrey)),
               );
             }
-
             return ListView.builder(
+              key: _projectListKey,
               padding: const EdgeInsets.all(AppConstants.padding),
               itemCount: box.length,
               itemBuilder: (context, index) {
                 final project = box.getAt(index)!;
-
+                _projectTileKeys[index] = GlobalKey(debugLabel: 'project_tile_$index');
+                // Optionally, provide keys to tutorial
+                widget.onProvideTutorialKeys?.call({
+                  'project_tile_$index': _projectTileKeys[index]!,
+                });
                 return Card(
                   elevation: AppConstants.cardElevation,
                   margin: const EdgeInsets.only(bottom: AppConstants.padding),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.borderRadius)),
                   child: ListTile(
+                    key: _projectTileKeys[index],
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: AppConstants.padding,
                       vertical: AppConstants.paddingSmall,
@@ -158,6 +185,7 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: AppConstants.padding),
           FloatingActionButton(
+            key: _fabAddKey,
             heroTag: 'add',
             backgroundColor: AppTheme.primaryBlue,
             tooltip: 'Create New Project',

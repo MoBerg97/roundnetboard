@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
+import 'interactive_tutorial_screen.dart';
 
-class HelpScreen extends StatelessWidget {
+
+class HelpScreen extends StatefulWidget {
   const HelpScreen({super.key});
+
+  @override
+  State<HelpScreen> createState() => _HelpScreenState();
+}
+
+class _HelpScreenState extends State<HelpScreen> {
+  final Map<String, GlobalKey> _tutorialKeys = {};
 
   @override
   Widget build(BuildContext context) {
@@ -12,6 +21,30 @@ class HelpScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(AppConstants.padding),
         children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.school),
+              label: const Text('Restart Tutorial'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryBlue,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(180, 44),
+              ),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => InteractiveTutorialScreen(
+                      onFinish: () => Navigator.of(context).pop(),
+                      highlightKeys: _tutorialKeys,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          // Optionally, collect keys from HomeScreen if needed for tutorial
+          // (In a real app, you might want to pass these from a higher level)
           _buildSection(
             context,
             icon: Icons.add_circle,

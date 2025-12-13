@@ -11,6 +11,9 @@ import 'models/animation_project.dart';
 import 'models/settings.dart';
 import 'models/annotation.dart';
 import 'screens/home_screen.dart';
+import 'screens/onboarding_screen.dart';
+import 'screens/interactive_tutorial_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -61,14 +64,60 @@ void main() async {
       await p.save();
     }
   }
-  runApp(const MyApp());
+  // Check onboarding state
+  final prefs = await SharedPreferences.getInstance();
+  final seenOnboarding = prefs.getBool('seenOnboarding') ?? false;
+  runApp(MyApp(seenOnboarding: seenOnboarding));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+
+class MyApp extends StatefulWidget {
+  final bool seenOnboarding;
+  const MyApp({super.key, required this.seenOnboarding});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late bool _seenOnboarding;
+  final Map<String, GlobalKey> _tutorialKeys = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _seenOnboarding = widget.seenOnboarding;
+  }
+
+  void _collectTutorialKeys(Map<String, GlobalKey> keys) {
+    _tutorialKeys.addAll(keys);
+  }
+
+  void _finishOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('seenOnboarding', true);
+    setState(() => _seenOnboarding = true);
+  }
+
+  void _startTutorial() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => InteractiveTutorialScreen(
+          onFinish: _finishOnboarding,
+          highlightKeys: _tutorialKeys,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(title: 'Roundnet Tactical Board', theme: AppTheme.lightTheme(), home: const HomeScreen());
+    return MaterialApp(
+      title: 'Roundnet Tactical Board',
+      theme: AppTheme.lightTheme(),
+      home: _seenOnboarding
+          ? HomeScreen(onProvideTutorialKeys: _collectTutorialKeys)
+          : OnboardingScreen(onFinish: _startTutorial),
+    );
   }
 }
