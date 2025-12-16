@@ -144,28 +144,67 @@ class HomeTutorialOverlay {
   }
 
   Widget _buildContent(String title, String description, String gesture) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          const SizedBox(height: 8),
-          Text(description, style: const TextStyle(fontSize: 16, color: Colors.white70)),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
-            child: Text(
-              gesture,
-              style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w500),
+    // Icon mapping for gestures
+    IconData? gestureIcon;
+    switch (gesture.toLowerCase()) {
+      case 'tap':
+        gestureIcon = Icons.touch_app;
+        break;
+      case 'drag':
+        gestureIcon = Icons.pan_tool;
+        break;
+      case 'look':
+        gestureIcon = Icons.visibility;
+        break;
+      default:
+        gestureIcon = null;
+    }
+
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.85),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 10,
+              spreadRadius: 2,
             ),
-          ),
-        ],
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            Text(description, style: const TextStyle(fontSize: 16, color: Colors.white70)),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (gestureIcon != null) ...[
+                    Icon(gestureIcon, size: 16, color: Colors.white),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    gesture,
+                    style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
