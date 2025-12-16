@@ -17,6 +17,8 @@ import 'settings_screen.dart';
 import '../utils/history.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
+import '../services/tutorial_service.dart';
+import '../widgets/board_tutorial_overlay.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // BOARD SCREEN - Main Animation Editor
@@ -35,7 +37,7 @@ class BoardScreen extends StatefulWidget {
   final void Function(Map<String, GlobalKey>)? onProvideTutorialKeys;
   final TutorialService? tutorialService;
   final Map<String, GlobalKey>? tutorialKeys;
-  
+
   const BoardScreen({
     super.key,
     required this.project,
@@ -43,7 +45,7 @@ class BoardScreen extends StatefulWidget {
     this.tutorialService,
     this.tutorialKeys,
   });
-  
+
   @override
   State<BoardScreen> createState() => _BoardScreenState();
 }
@@ -119,9 +121,26 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   final GlobalKey _annotationModeButtonKey = GlobalKey(debugLabel: 'annotation_menu'); // Key for annotation mode toggle
   late final ScrollController _timelineController; // Scroll controller for timeline
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // TUTORIAL KEYS
+  // ──────────────────────────────────────────────────────────────────────────
+  final GlobalKey _timelineAreaKey = GlobalKey(debugLabel: 'timeline_area');
+  final GlobalKey _player1Key = GlobalKey(debugLabel: 'player1');
+  final GlobalKey _player2Key = GlobalKey(debugLabel: 'player2');
+  final GlobalKey _ballKey = GlobalKey(debugLabel: 'ball');
+  final GlobalKey _frameAddKey = GlobalKey(debugLabel: 'frame_add');
+  final GlobalKey _durationKey = GlobalKey(debugLabel: 'duration');
+  final GlobalKey _playKey = GlobalKey(debugLabel: 'play');
+  final GlobalKey _stopKey = GlobalKey(debugLabel: 'stop');
+
   @override
   void initState() {
     super.initState();
+    print('🎲 BoardScreen: initState called');
+
+    // Listen for tutorial requests
+    TutorialService().addListener(_checkForPendingTutorial);
+    print('🎲 BoardScreen: Listener added to TutorialService');
 
     // Initialize settings
     if (widget.project.settings == null) {
@@ -179,9 +198,73 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   @override
   void dispose() {
+    print('🎲 BoardScreen: dispose called');
+    TutorialService().removeListener(_checkForPendingTutorial);
     _ticker.dispose();
     _timelineController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    print('🎲 BoardScreen: didChangeDependencies called');
+
+    // Check for pending tutorial trigger on first build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('🎲 BoardScreen: Post-frame callback from didChangeDependencies');
+      _checkForPendingTutorial();
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TUTORIAL METHODS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  void _checkForPendingTutorial() {
+    print('🎲 BoardScreen: _checkForPendingTutorial called');
+    final tutorialService = TutorialService();
+    print('🎲 BoardScreen: Pending tutorial = ${tutorialService.pendingTutorial?.name ?? 'none'}');
+    print('🎲 BoardScreen: Is active = ${tutorialService.isActive}');
+
+    if (tutorialService.pendingTutorial == TutorialType.board && !tutorialService.isActive) {
+      print('🎲 BoardScreen: Conditions met, scheduling tutorial start');
+      // Use post-frame callback to ensure UI is ready
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        print('🎲 BoardScreen: Post-frame callback for tutorial start');
+        if (mounted) {
+          print('🎲 BoardScreen: Widget is mounted, starting tutorial');
+          _startBoardTutorial();
+        } else {
+          print('⚠️ BoardScreen: Widget not mounted, skipping tutorial');
+        }
+      });
+    } else {
+      print('🎲 BoardScreen: Conditions not met for tutorial');
+    }
+  }
+
+  void _startBoardTutorial() {
+    print('🎲 BoardScreen: _startBoardTutorial called');
+
+    final overlay = BoardTutorialOverlay(
+      context: context,
+      boardKey: _boardKey,
+      timelineKey: _timelineAreaKey,
+      player1Key: _player1Key,
+      player2Key: _player2Key,
+      ballKey: _ballKey,
+      frameAddKey: _frameAddKey,
+      durationKey: _durationKey,
+      playKey: _playKey,
+      stopKey: _stopKey,
+      onFinish: () {
+        print('🎲 BoardScreen: Tutorial finished');
+      },
+    );
+
+    print('🎲 BoardScreen: Calling overlay.show()');
+    overlay.show();
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1346,9 +1429,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   /// Build player widgets (P1, P2, P3, P4) with drag handling
-  Widget _buildPlayer(Offset posCm, double rotation, Color color, String label, Size size) {
+  Widget _buildPlayer(Offset posCm, double rotation, Color color, String label, Size size, {GlobalKey? key}) {
     final screenPos = _toScreenPosition(posCm, size);
     return Positioned(
+      key: key,
       left: screenPos.dx - 20,
       top: screenPos.dy - 20,
       child: IgnorePointer(
@@ -1401,9 +1485,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   /// Build the ball widget with optional scale and star opacity
-  Widget _buildBall(Offset posCm, Size size, {double scale = 1.0, double starOpacity = 0.0}) {
+  Widget _buildBall(Offset posCm, Size size, {double scale = 1.0, double starOpacity = 0.0, GlobalKey? key}) {
     final screenPos = _toScreenPosition(posCm, size);
     return Positioned(
+      key: key,
       left: screenPos.dx - 15 * scale,
       top: screenPos.dy - 15 * scale,
       child: IgnorePointer(
@@ -1692,8 +1777,22 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           child: Container(),
                         ),
                       ),
-                      _buildPlayer(frameToShow.p1, frameToShow.p1Rotation, Colors.blue, "P1", screenSize),
-                      _buildPlayer(frameToShow.p2, frameToShow.p2Rotation, Colors.blue, "P2", screenSize),
+                      _buildPlayer(
+                        frameToShow.p1,
+                        frameToShow.p1Rotation,
+                        Colors.blue,
+                        "P1",
+                        screenSize,
+                        key: _player1Key,
+                      ),
+                      _buildPlayer(
+                        frameToShow.p2,
+                        frameToShow.p2Rotation,
+                        Colors.blue,
+                        "P2",
+                        screenSize,
+                        key: _player2Key,
+                      ),
                       _buildPlayer(frameToShow.p3, frameToShow.p3Rotation, Colors.red, "P3", screenSize),
                       _buildPlayer(frameToShow.p4, frameToShow.p4Rotation, Colors.red, "P4", screenSize),
                       _buildBall(
@@ -1701,6 +1800,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         screenSize,
                         scale: isPlayback ? _ballScaleAt(_playbackT) : 1.0,
                         starOpacity: 0.0,
+                        key: _ballKey,
                       ),
                       // Draw annotations above objects when toggled on
                       if (_annotationsAboveObjects)
@@ -1788,6 +1888,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             ),
             // Layer 2: Timeline - fixed at bottom
             Positioned(
+              key: _timelineAreaKey,
               left: 0,
               right: 0,
               bottom: 0,
@@ -2052,6 +2153,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         child: Row(
                           children: [
                             ElevatedButton(
+                              key: _stopKey,
                               onPressed: _stopPlayback,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppTheme.errorRed,
@@ -2111,7 +2213,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             ElevatedButton(
-                              key: _playButtonKey,
+                              key: _playKey,
                               onPressed: (_isPlaying || _endedAtLastFrame) ? _stopPlayback : _startPlayback,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: (_isPlaying || _endedAtLastFrame) ? AppTheme.errorRed : Colors.green,
@@ -2123,7 +2225,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             ),
                             const SizedBox(width: AppConstants.paddingSmall),
                             ElevatedButton(
-                              key: _frameAddButtonKey,
+                              key: _frameAddKey,
                               onPressed: (_isPlaying || _endedAtLastFrame) ? null : _insertFrameAfterCurrent,
                               style: ElevatedButton.styleFrom(
                                 minimumSize: const Size(48, 40),
@@ -2139,6 +2241,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 4),
                                   child: IconButton(
+                                    key: _durationKey,
                                     icon: const Icon(Icons.schedule),
                                     tooltip: "Set frame duration (${currentFrame.duration.toStringAsFixed(2)}s)",
                                     iconSize: 18,

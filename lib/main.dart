@@ -80,45 +80,28 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late bool _seenOnboarding;
-  bool _pendingHomeTutorial = false;
-  late TutorialService _tutorialService;
+  final Map<String, GlobalKey> _tutorialKeys = {};
 
   @override
   void initState() {
     super.initState();
     _seenOnboarding = widget.seenOnboarding;
-    _tutorialService = TutorialService();
+  }
+
+  void _collectTutorialKeys(Map<String, GlobalKey> keys) {
+    _tutorialKeys.addAll(keys);
   }
 
   Future<void> _finishOnboardingAndQueueHomeTutorial(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('seenOnboarding', true);
-    setState(() {
-      _seenOnboarding = true;
-      _pendingHomeTutorial = true;
-    });
+    setState(() => _seenOnboarding = true);
   }
 
-  bool _consumePendingHomeTutorialFlag() {
-    if (_pendingHomeTutorial) {
-      _pendingHomeTutorial = false;
-      return true;
-    }
-    return false;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FeatureDiscovery(
-      child: ChangeNotifierProvider.value(
-        value: _tutorialService,
-        child: MaterialApp(
-          title: 'Roundnet Tactical Board',
-          theme: AppTheme.lightTheme(),
-          home: _seenOnboarding
-              ? HomeScreen(startTutorialOnMount: _consumePendingHomeTutorialFlag())
-              : _OnboardingWrapper(onStartTutorial: _finishOnboardingAndQueueHomeTutorial),
-        ),
+  void _startTutorial() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => InteractiveTutorialScreen(onFinish: _finishOnboarding, highlightKeys: _tutorialKeys),
       ),
     );
   }
@@ -131,6 +114,12 @@ class _OnboardingWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OnboardingScreen(onFinish: () => onStartTutorial(context));
+    return MaterialApp(
+      title: 'Roundnet Tactical Board',
+      theme: AppTheme.lightTheme(),
+      home: _seenOnboarding
+          ? HomeScreen(onProvideTutorialKeys: _collectTutorialKeys)
+          : OnboardingScreen(onFinish: _startTutorial),
+    );
   }
 }
