@@ -12,6 +12,7 @@ import '../models/annotation.dart';
 import '../widgets/annotation_painter.dart';
 import '../models/settings.dart';
 import '../utils/path_engine.dart';
+import '../services/tutorial_service.dart';
 import 'settings_screen.dart';
 import '../utils/history.dart';
 import '../config/app_theme.dart';
@@ -31,7 +32,18 @@ import '../config/app_constants.dart';
 
 class BoardScreen extends StatefulWidget {
   final AnimationProject project;
-  const BoardScreen({super.key, required this.project});
+  final void Function(Map<String, GlobalKey>)? onProvideTutorialKeys;
+  final TutorialService? tutorialService;
+  final Map<String, GlobalKey>? tutorialKeys;
+  
+  const BoardScreen({
+    super.key,
+    required this.project,
+    this.onProvideTutorialKeys,
+    this.tutorialService,
+    this.tutorialKeys,
+  });
+  
   @override
   State<BoardScreen> createState() => _BoardScreenState();
 }
@@ -100,7 +112,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   // ──────────────────────────────────────────────────────────────────────────
   // UI REFERENCES
   // ──────────────────────────────────────────────────────────────────────────
-  final GlobalKey _boardKey = GlobalKey(); // Key for board RenderBox (coordinate conversion)
+  final GlobalKey _boardKey = GlobalKey(debugLabel: 'board'); // Key for board RenderBox (coordinate conversion)
+  final GlobalKey _timelineKey = GlobalKey(debugLabel: 'timeline'); // Key for timeline widget
+  final GlobalKey _playButtonKey = GlobalKey(debugLabel: 'playback_play'); // Key for play button
+  final GlobalKey _frameAddButtonKey = GlobalKey(debugLabel: 'timeline_add'); // Key for frame add button
+  final GlobalKey _annotationModeButtonKey = GlobalKey(debugLabel: 'annotation_menu'); // Key for annotation mode toggle
   late final ScrollController _timelineController; // Scroll controller for timeline
 
   @override
@@ -144,6 +160,21 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _ticker = createTicker(_onTick);
     _history = HistoryManager(widget.project);
     _timelineController = ScrollController();
+
+    // Provide tutorial keys after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) => _provideTutorialKeys());
+  }
+
+  void _provideTutorialKeys() {
+    if (!mounted) return;
+    final keys = {
+      'board_canvas': _boardKey,
+      'timeline': _timelineKey,
+      'play_button': _playButtonKey,
+      'frame_add_button': _frameAddButtonKey,
+      'annotation_button': _annotationModeButtonKey,
+    };
+    widget.onProvideTutorialKeys?.call(keys);
   }
 
   @override
@@ -1509,6 +1540,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           actions: [
             if (!_isPlaying && !_endedAtLastFrame)
               IconButton(
+                key: _annotationModeButtonKey,
                 icon: Icon(Icons.draw, color: Colors.white),
                 tooltip: _annotationMode ? 'Exit Annotation Mode' : 'Enter Annotation Mode',
                 onPressed: () {
@@ -1779,6 +1811,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       child: AbsorbPointer(
                         absorbing: _isPlaying || _endedAtLastFrame,
                         child: ListView.builder(
+                          key: _timelineKey,
                           controller: _timelineController,
                           scrollDirection: Axis.horizontal,
                           itemCount: _isPlaying ? widget.project.frames.length - 1 : widget.project.frames.length,
@@ -2078,6 +2111,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             ElevatedButton(
+                              key: _playButtonKey,
                               onPressed: (_isPlaying || _endedAtLastFrame) ? _stopPlayback : _startPlayback,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: (_isPlaying || _endedAtLastFrame) ? AppTheme.errorRed : Colors.green,
@@ -2089,6 +2123,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             ),
                             const SizedBox(width: AppConstants.paddingSmall),
                             ElevatedButton(
+                              key: _frameAddButtonKey,
                               onPressed: (_isPlaying || _endedAtLastFrame) ? null : _insertFrameAfterCurrent,
                               style: ElevatedButton.styleFrom(
                                 minimumSize: const Size(48, 40),

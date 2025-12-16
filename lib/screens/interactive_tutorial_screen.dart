@@ -1,151 +1,174 @@
 import 'package:flutter/material.dart';
-import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
-
+/// Static tutorial screen that guides users through the app features
 class InteractiveTutorialScreen extends StatefulWidget {
   final VoidCallback onFinish;
   final Map<String, GlobalKey>? highlightKeys;
 
-  InteractiveTutorialScreen({Key? key, required this.onFinish, this.highlightKeys}) : super(key: key);
+  const InteractiveTutorialScreen({
+    Key? key,
+    required this.onFinish,
+    this.highlightKeys,
+  }) : super(key: key);
 
   @override
   State<InteractiveTutorialScreen> createState() => _InteractiveTutorialScreenState();
 }
 
 class _InteractiveTutorialScreenState extends State<InteractiveTutorialScreen> {
-  int step = 0;
-  TutorialCoachMark? _tutorialCoachMark;
-  List<TargetFocus> _targets = [];
-
   final List<_TutorialStep> steps = [
     _TutorialStep(
       title: 'Create a Project',
-      description: 'Tap the + button to create a new project.',
-      highlightKey: 'fab_add',
+      description: 'Tap the + button to create a new animation project. Type a name and tap Create.',
+      icon: Icons.add_circle,
     ),
     _TutorialStep(
-      title: 'Name Your Project',
-      description: 'Enter a name for your project and tap Create.',
-      highlightKey: 'dialog_create',
+      title: 'Select a Project',
+      description: 'Tap on a project card to open it and start editing frames.',
+      icon: Icons.folder_open,
     ),
     _TutorialStep(
-      title: 'Open the Project',
-      description: 'Tap your new project to open it.',
-      highlightKey: 'project_tile',
+      title: 'Add Frames',
+      description: 'In the board editor, tap the frame button to add new animation frames.',
+      icon: Icons.video_call,
     ),
     _TutorialStep(
-      title: 'Set Initial Positions',
-      description: 'Frame 0: Drag players and the ball to choose starting positions.',
-      highlightKey: 'board_objects',
-    ),
-    _TutorialStep(
-      title: 'Add a New Frame',
-      description: 'Tap the frame add button to create a new frame. Positions are copied!',
-      highlightKey: 'timeline_add',
-    ),
-    _TutorialStep(
-      title: 'Move Players',
-      description: 'Drag a player to a new position in the new frame to show movement.',
-      highlightKey: 'board_objects',
-    ),
-    _TutorialStep(
-      title: 'Curve a Path',
-      description: 'Tap and drag on a path to add a curve.',
-      highlightKey: 'path_curve',
-    ),
-    _TutorialStep(
-      title: 'Straighten a Path',
-      description: 'Double tap a curve point to make the path straight again.',
-      highlightKey: 'path_curve',
+      title: 'Position Players',
+      description: 'Drag player avatars to position them on the court for each frame.',
+      icon: Icons.pan_tool,
     ),
     _TutorialStep(
       title: 'Move the Ball',
-      description: 'Drag the ball to a new position.',
-      highlightKey: 'ball_object',
+      description: 'Drag the ball to set its position for ball movement tracking.',
+      icon: Icons.sports_soccer,
     ),
     _TutorialStep(
-      title: 'Set & Hit',
-      description: 'Tap the ball, choose Set, then switch to Hit and pick the hit point along the path.',
-      highlightKey: 'ball_modifiers',
-    ),
-    _TutorialStep(
-      title: 'Add Annotations',
-      description: 'Open the annotation menu, add lines/circles, use eraser, and try all annotation tools.',
-      highlightKey: 'annotation_menu',
-    ),
-    _TutorialStep(
-      title: 'Tutorial Complete!',
-      description: 'You are ready to use Roundnet Board. Tap Finish to start creating!',
-      highlightKey: null,
+      title: 'Play Animation',
+      description: 'Use the play button to preview your animation sequence.',
+      icon: Icons.play_arrow,
     ),
   ];
 
+  int _currentStep = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _showTutorial());
+  void _nextStep() {
+    if (_currentStep < steps.length - 1) {
+      setState(() => _currentStep++);
+    } else {
+      _finish();
+    }
   }
 
-  void _showTutorial() {
-    if (widget.highlightKeys == null) {
-      widget.onFinish();
-      return;
+  void _previousStep() {
+    if (_currentStep > 0) {
+      setState(() => _currentStep--);
     }
-    _targets = [];
-    for (final s in steps) {
-      if (s.highlightKey != null && widget.highlightKeys![s.highlightKey!] != null) {
-        _targets.add(
-          TargetFocus(
-            identify: s.highlightKey!,
-            keyTarget: widget.highlightKeys![s.highlightKey!],
-            contents: [
-              TargetContent(
-                align: ContentAlign.bottom,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(s.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-                    const SizedBox(height: 12),
-                    Text(s.description, style: const TextStyle(fontSize: 18, color: Colors.white)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-    }
-    if (_targets.isNotEmpty) {
-      _tutorialCoachMark = TutorialCoachMark(
-        targets: _targets,
-        colorShadow: Colors.black,
-        textSkip: "Skip",
-        paddingFocus: 8,
-        opacityShadow: 0.7,
-        onFinish: widget.onFinish,
-        onSkip: () {
-          widget.onFinish();
-          return true;
-        },
-      );
-      _tutorialCoachMark!.show(context: context);
-    } else {
-      // Fallback: just finish
-      widget.onFinish();
-    }
+  }
+
+  void _finish() {
+    Navigator.of(context).pop();
+    widget.onFinish();
   }
 
   @override
   Widget build(BuildContext context) {
-    // The tutorial_coach_mark overlays the UI, so just return an empty container
-    return const SizedBox.shrink();
+    final step = steps[_currentStep];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tutorial'),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: _finish,
+        ),
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Progress indicator
+              LinearProgressIndicator(
+                value: (_currentStep + 1) / steps.length,
+                minHeight: 8,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Step ${_currentStep + 1}/${steps.length}',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: 32),
+              // Step icon
+              Icon(
+                step.icon,
+                size: 80,
+                color: Theme.of(context).primaryColor,
+              ),
+              const SizedBox(height: 32),
+              // Step content
+              Card(
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        step.title,
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        step.description,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              // Navigation buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  if (_currentStep > 0)
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('Previous'),
+                      onPressed: _previousStep,
+                    ),
+                  ElevatedButton.icon(
+                    icon: Icon(_currentStep == steps.length - 1
+                        ? Icons.check
+                        : Icons.arrow_forward),
+                    label: Text(_currentStep == steps.length - 1
+                        ? 'Finish'
+                        : 'Next'),
+                    onPressed: _nextStep,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
 class _TutorialStep {
   final String title;
   final String description;
-  final String? highlightKey;
-  const _TutorialStep({required this.title, required this.description, this.highlightKey});
+  final IconData icon;
+
+  _TutorialStep({
+    required this.title,
+    required this.description,
+    required this.icon,
+  });
 }

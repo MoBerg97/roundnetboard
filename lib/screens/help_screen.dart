@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
-import 'interactive_tutorial_screen.dart';
-
+import '../models/animation_project.dart';
+import '../screens/onboarding_screen.dart';
+import '../services/tutorial_service.dart';
 
 class HelpScreen extends StatefulWidget {
   const HelpScreen({super.key});
@@ -12,7 +15,10 @@ class HelpScreen extends StatefulWidget {
 }
 
 class _HelpScreenState extends State<HelpScreen> {
-  final Map<String, GlobalKey> _tutorialKeys = {};
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,27 +30,28 @@ class _HelpScreenState extends State<HelpScreen> {
           Padding(
             padding: const EdgeInsets.only(bottom: 16.0),
             child: ElevatedButton.icon(
-              icon: const Icon(Icons.school),
-              label: const Text('Restart Tutorial'),
+              icon: const Icon(Icons.play_circle_outline),
+              label: const Text('Start Home Tutorial'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryBlue,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(180, 44),
               ),
+              onPressed: () => _startHomeTutorialFromHelp(context),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.school_outlined),
+              label: const Text('Replay Onboarding Intro'),
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => InteractiveTutorialScreen(
-                      onFinish: () => Navigator.of(context).pop(),
-                      highlightKeys: _tutorialKeys,
-                    ),
-                  ),
+                  MaterialPageRoute(builder: (_) => OnboardingScreen(onFinish: () => Navigator.of(context).pop())),
                 );
               },
             ),
           ),
-          // Optionally, collect keys from HomeScreen if needed for tutorial
-          // (In a real app, you might want to pass these from a higher level)
           _buildSection(
             context,
             icon: Icons.add_circle,
@@ -267,5 +274,10 @@ class _HelpScreenState extends State<HelpScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _startHomeTutorialFromHelp(BuildContext context) async {
+    final box = Hive.box<AnimationProject>('projects');
+    await context.read<TutorialService>().startHomeTutorial(context, hasProject: box.isNotEmpty);
   }
 }
