@@ -12,7 +12,7 @@ import 'models/settings.dart';
 import 'models/annotation.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
-import 'screens/interactive_tutorial_screen.dart';
+import 'services/tutorial_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 
@@ -23,9 +23,7 @@ void main() async {
   // 🚨 Initialize Firebase & Crashlytics
   // -------------------------
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   if (!kIsWeb) {
     // Pass all uncaught errors from the framework to Crashlytics
@@ -70,7 +68,6 @@ void main() async {
   runApp(MyApp(seenOnboarding: seenOnboarding));
 }
 
-
 class MyApp extends StatefulWidget {
   final bool seenOnboarding;
   const MyApp({super.key, required this.seenOnboarding});
@@ -81,7 +78,6 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late bool _seenOnboarding;
-  final Map<String, GlobalKey> _tutorialKeys = {};
 
   @override
   void initState() {
@@ -89,25 +85,15 @@ class _MyAppState extends State<MyApp> {
     _seenOnboarding = widget.seenOnboarding;
   }
 
-  void _collectTutorialKeys(Map<String, GlobalKey> keys) {
-    _tutorialKeys.addAll(keys);
-  }
-
   void _finishOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('seenOnboarding', true);
     setState(() => _seenOnboarding = true);
-  }
 
-  void _startTutorial() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => InteractiveTutorialScreen(
-          onFinish: _finishOnboarding,
-          highlightKeys: _tutorialKeys,
-        ),
-      ),
-    );
+    // Auto-trigger Home tutorial after onboarding
+    Future.delayed(const Duration(milliseconds: 500), () {
+      TutorialService().requestTutorial(TutorialType.home);
+    });
   }
 
   @override
@@ -115,9 +101,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       title: 'Roundnet Tactical Board',
       theme: AppTheme.lightTheme(),
-      home: _seenOnboarding
-          ? HomeScreen(onProvideTutorialKeys: _collectTutorialKeys)
-          : OnboardingScreen(onFinish: _startTutorial),
+      home: _seenOnboarding ? const HomeScreen() : OnboardingScreen(onFinish: _finishOnboarding),
     );
   }
 }

@@ -5,14 +5,14 @@ import '../config/app_constants.dart';
 import '../models/animation_project.dart';
 import '../services/project_service.dart';
 import '../services/export_service.dart';
+import '../services/tutorial_service.dart';
 import '../utils/share_helper.dart';
+import '../widgets/home_tutorial_overlay.dart';
 import 'board_screen.dart';
 import 'help_screen.dart';
 
-
 class HomeScreen extends StatefulWidget {
-  final void Function(Map<String, GlobalKey>)? onProvideTutorialKeys;
-  const HomeScreen({super.key, this.onProvideTutorialKeys});
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -20,18 +20,85 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _fabAddKey = GlobalKey(debugLabel: 'fab_add');
+  final GlobalKey _fabImportKey = GlobalKey(debugLabel: 'fab_import');
+  final GlobalKey _helpIconKey = GlobalKey(debugLabel: 'help_icon');
   final GlobalKey _projectListKey = GlobalKey(debugLabel: 'project_list');
   final Map<int, GlobalKey> _projectTileKeys = {};
+  final Map<int, GlobalKey> _projectMenuKeys = {};
+
+  @override
+  void initState() {
+    super.initState();
+    print('🏠 HomeScreen: initState called');
+
+    // Listen for tutorial requests
+    TutorialService().addListener(_checkForPendingTutorial);
+    print('🏠 HomeScreen: Listener added to TutorialService');
+  }
+
+  @override
+  void dispose() {
+    print('🏠 HomeScreen: dispose called');
+    TutorialService().removeListener(_checkForPendingTutorial);
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Provide keys to tutorial if requested
-    widget.onProvideTutorialKeys?.call({
-      'fab_add': _fabAddKey,
-      'project_list': _projectListKey,
-      // Project tile keys will be provided dynamically in the builder
+    print('🏠 HomeScreen: didChangeDependencies called');
+
+    // Check for pending tutorial trigger on first build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('🏠 HomeScreen: Post-frame callback from didChangeDependencies');
+      _checkForPendingTutorial();
     });
+  }
+
+  void _checkForPendingTutorial() {
+    print('🏠 HomeScreen: _checkForPendingTutorial called');
+    final tutorialService = TutorialService();
+    print('🏠 HomeScreen: Pending tutorial = ${tutorialService.pendingTutorial?.name ?? 'none'}');
+    print('🏠 HomeScreen: Is active = ${tutorialService.isActive}');
+
+    if (tutorialService.pendingTutorial == TutorialType.home && !tutorialService.isActive) {
+      print('🏠 HomeScreen: Conditions met, scheduling tutorial start');
+      // Use post-frame callback to ensure UI is ready
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        print('🏠 HomeScreen: Post-frame callback for tutorial start');
+        if (mounted) {
+          print('🏠 HomeScreen: Widget is mounted, starting tutorial');
+          _startHomeTutorial();
+        } else {
+          print('⚠️ HomeScreen: Widget not mounted, skipping tutorial');
+        }
+      });
+    } else {
+      print('🏠 HomeScreen: Conditions not met for tutorial');
+    }
+  }
+
+  void _startHomeTutorial() {
+    print('🏠 HomeScreen: _startHomeTutorial called');
+    final Box<AnimationProject> projectBox = Hive.box<AnimationProject>('projects');
+
+    print('🏠 HomeScreen: Creating HomeTutorialOverlay');
+    print('🏠 HomeScreen: Project count = ${projectBox.length}');
+
+    final overlay = HomeTutorialOverlay(
+      context: context,
+      fabAddKey: _fabAddKey,
+      fabImportKey: _fabImportKey,
+      firstProjectKey: projectBox.isNotEmpty ? _projectTileKeys[0] : null,
+      projectMenuKey: projectBox.isNotEmpty ? _projectMenuKeys[0] : null,
+      helpIconKey: _helpIconKey,
+      onFinish: () {
+        print('🏠 HomeScreen: Tutorial finished');
+      },
+    );
+
+    print('🏠 HomeScreen: Calling overlay.show()');
+    overlay.show();
   }
 
   @override
@@ -43,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('My Projects'),
         actions: [
           IconButton(
+            key: _helpIconKey,
             icon: const Icon(Icons.help),
             tooltip: 'Help & Guide',
             onPressed: () {
@@ -68,10 +136,8 @@ class _HomeScreenState extends State<HomeScreen> {
               itemBuilder: (context, index) {
                 final project = box.getAt(index)!;
                 _projectTileKeys[index] = GlobalKey(debugLabel: 'project_tile_$index');
-                // Optionally, provide keys to tutorial
-                widget.onProvideTutorialKeys?.call({
-                  'project_tile_$index': _projectTileKeys[index]!,
-                });
+                _projectMenuKeys[index] = GlobalKey(debugLabel: 'project_menu_$index');
+
                 return Card(
                   elevation: AppConstants.cardElevation,
                   margin: const EdgeInsets.only(bottom: AppConstants.padding),
@@ -100,6 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                     trailing: PopupMenuButton<String>(
+                      key: _projectMenuKeys[index],
                       onSelected: (value) {
                         if (value == 'rename') {
                           _renameProject(context, box, index, project);
@@ -177,6 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           FloatingActionButton(
+            key: _fabImportKey,
             heroTag: 'import',
             backgroundColor: AppTheme.primaryBlue,
             tooltip: 'Import Project',
