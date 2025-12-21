@@ -1690,12 +1690,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// Build player widgets (P1, P2, P3, P4) with drag handling
   Widget _buildPlayer(Offset posCm, double rotation, Color color, String label, Size size, {GlobalKey? key}) {
     final screenPos = _toScreenPosition(posCm, size);
-    
+
     // Check if this player is the current drag target in a tutorial step
     final tutorial = TutorialService();
-    final isCurrentDragTarget = tutorial.isActive &&
-        tutorial.currentStep?.requiresDrag == true &&
-        tutorial.currentStep?.dragTargetId == label;
+    final isCurrentDragTarget =
+        tutorial.isActive && tutorial.currentStep?.requiresDrag == true && tutorial.currentStep?.dragTargetId == label;
 
     return Positioned(
       key: key,
@@ -1744,11 +1743,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             alignment: Alignment.center,
             children: [
               // Pulsating glow when this player is the tutorial drag target
-              if (isCurrentDragTarget)
-                TutorialPulseGlow(
-                  size: 50,
-                  glowColor: Colors.cyan,
-                ),
+              if (isCurrentDragTarget) TutorialPulseGlow(size: 50, glowColor: Colors.cyan),
               // Player circle
               Transform.rotate(
                 angle: rotation,
@@ -1768,12 +1763,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// Build the ball widget with optional scale and star opacity
   Widget _buildBall(Offset posCm, Size size, {double scale = 1.0, double starOpacity = 0.0, GlobalKey? key}) {
     final screenPos = _toScreenPosition(posCm, size);
-    
+
     // Check if ball is the current drag target in a tutorial step
     final tutorial = TutorialService();
-    final isCurrentDragTarget = tutorial.isActive &&
-        tutorial.currentStep?.requiresDrag == true &&
-        tutorial.currentStep?.dragTargetId == "BALL";
+    final isCurrentDragTarget =
+        tutorial.isActive && tutorial.currentStep?.requiresDrag == true && tutorial.currentStep?.dragTargetId == "BALL";
 
     return Positioned(
       key: key,
@@ -1838,11 +1832,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             alignment: Alignment.center,
             children: [
               // Pulsating glow when ball is the tutorial drag target
-              if (isCurrentDragTarget)
-                TutorialPulseGlow(
-                  size: 50 * scale,
-                  glowColor: Colors.cyan,
-                ),
+              if (isCurrentDragTarget) TutorialPulseGlow(size: 50 * scale, glowColor: Colors.cyan),
               // Ball circle
               Container(
                 width: 30 * scale,
@@ -2990,27 +2980,19 @@ class TutorialPulseGlow extends StatefulWidget {
   final double size;
   final Color glowColor;
 
-  const TutorialPulseGlow({
-    super.key,
-    this.size = 50,
-    this.glowColor = Colors.cyan,
-  });
+  const TutorialPulseGlow({super.key, this.size = 50, this.glowColor = Colors.cyan});
 
   @override
   State<TutorialPulseGlow> createState() => _TutorialPulseGlowState();
 }
 
-class _TutorialPulseGlowState extends State<TutorialPulseGlow>
-    with SingleTickerProviderStateMixin {
+class _TutorialPulseGlowState extends State<TutorialPulseGlow> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat();
+    _controller = AnimationController(duration: const Duration(milliseconds: 1500), vsync: this)..repeat();
   }
 
   @override
@@ -3034,11 +3016,7 @@ class _TutorialPulseGlowState extends State<TutorialPulseGlow>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             boxShadow: [
-              BoxShadow(
-                color: widget.glowColor.withOpacity(opacity),
-                blurRadius: 15,
-                spreadRadius: scale * 5,
-              ),
+              BoxShadow(color: widget.glowColor.withOpacity(opacity), blurRadius: 15, spreadRadius: scale * 5),
             ],
           ),
         );

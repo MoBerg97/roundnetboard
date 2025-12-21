@@ -8,12 +8,7 @@ class BoardTutorialOverlay extends StatefulWidget {
   final VoidCallback onFinish;
   final GlobalKey? boardKey;
 
-  const BoardTutorialOverlay({
-    super.key,
-    required this.steps,
-    required this.onFinish,
-    this.boardKey,
-  });
+  const BoardTutorialOverlay({super.key, required this.steps, required this.onFinish, this.boardKey});
 
   @override
   State<BoardTutorialOverlay> createState() => _BoardTutorialOverlayState();
@@ -100,10 +95,7 @@ class _BoardTutorialOverlayState extends State<BoardTutorialOverlay> with Single
           Positioned.fill(
             child: IgnorePointer(
               ignoring: true,
-              child: _TutorialBackdrop(
-                targetKey: currentStep.targetKey,
-                overlayKey: _overlayKey,
-              ),
+              child: _TutorialBackdrop(targetKey: currentStep.targetKey, overlayKey: _overlayKey),
             ),
           ),
 
@@ -114,96 +106,97 @@ class _BoardTutorialOverlayState extends State<BoardTutorialOverlay> with Single
               animation: _pulse,
               builder: (context, _) => IgnorePointer(
                 ignoring: true,
-                child: _TargetKeyPulseGlow(
-                  targetKey: currentStep.targetKey,
-                  t: _pulse.value,
-                  overlayKey: _overlayKey,
-                ),
+                child: _TargetKeyPulseGlow(targetKey: currentStep.targetKey, t: _pulse.value, overlayKey: _overlayKey),
               ),
             ),
           ),
 
-          // Instruction card - positioned at top, smaller and more transparent
-          Positioned(
-            left: 12,
-            right: 12,
-            top: currentStep.id == 'ball_modifier' || currentStep.id == 'ball_hit' ? 80 : 12,
-            child: Card(
-              elevation: 4,
-              color: Colors.black87.withOpacity(0.85),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
+        // Instruction card - positioned at top, smaller and more transparent
+        Positioned(
+          left: 12,
+          right: 12,
+          top: currentStep.id == 'ball_modifier' || currentStep.id == 'ball_hit' ? 80 : 12,
+          child: Card(
+            elevation: 4,
+            color: Colors.black87.withOpacity(0.85),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          currentStep.title,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _handleSkip,
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 32)),
+                        child: const Text('Skip', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    currentStep.description,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Step ${tutorial.currentStepIndex + 1}/${widget.steps.length}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.white54),
+                      ),
+                      if (!currentStep.requiresDrag)
+                        ElevatedButton(
+                          onPressed: _handleNext,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            backgroundColor:
+                                (currentStep.isConditional &&
+                                    (currentStep.id != 'board_drag' || tutorial.movedObjectsCount < 2))
+                                ? Colors.grey.withOpacity(0.5)
+                                : null,
+                          ),
                           child: Text(
-                            currentStep.title,
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                            tutorial.currentStepIndex == widget.steps.length - 1 ? 'Finish' : 'Next',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color:
+                                  (currentStep.isConditional &&
+                                      (currentStep.id != 'board_drag' || tutorial.movedObjectsCount < 2))
+                                  ? Colors.white60
+                                  : null,
                             ),
                           ),
                         ),
-                        TextButton(
-                          onPressed: _handleSkip,
-                          style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 32)),
-                          child: const Text('Skip', style: TextStyle(fontSize: 12, color: Colors.white70)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      currentStep.description,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
+                      if (currentStep.requiresDrag)
                         Text(
-                          'Step ${tutorial.currentStepIndex + 1}/${widget.steps.length}',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.white54),
+                          'Perform the action →',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.labelSmall?.copyWith(fontStyle: FontStyle.italic, color: Colors.white54),
                         ),
-                        if (!currentStep.requiresDrag)
-                          ElevatedButton(
-                            onPressed: _handleNext,
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                              backgroundColor: (currentStep.isConditional && (currentStep.id != 'board_drag' || tutorial.movedObjectsCount < 2)) ? Colors.grey.withOpacity(0.5) : null,
-                            ),
-                            child: Text(
-                              tutorial.currentStepIndex == widget.steps.length - 1 ? 'Finish' : 'Next',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: (currentStep.isConditional && (currentStep.id != 'board_drag' || tutorial.movedObjectsCount < 2)) ? Colors.white60 : null,
-                              ),
-                            ),
-                          ),
-                        if (currentStep.requiresDrag)
-                          Text(
-                            'Perform the action →',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              fontStyle: FontStyle.italic,
-                              color: Colors.white54,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
+        ),
 
-          // Success Effect Overlay
-          if (tutorial.showSuccessEffect)
-            const _SuccessEffect(),
-        ],
-      );
+        // Success Effect Overlay
+        if (tutorial.showSuccessEffect) const _SuccessEffect(),
+      ],
+    );
   }
 }
 
@@ -260,10 +253,9 @@ class _SuccessEffectState extends State<_SuccessEffect> with SingleTickerProvide
                       const SizedBox(height: 12),
                       Text(
                         'Great!',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.headlineMedium?.copyWith(color: Colors.green, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -313,7 +305,10 @@ class _BackdropPainter extends CustomPainter {
         final renderObject = targetKey!.currentContext?.findRenderObject();
         final overlayObject = overlayKey.currentContext?.findRenderObject();
 
-        if (renderObject is RenderBox && renderObject.attached && overlayObject is RenderBox && overlayObject.attached) {
+        if (renderObject is RenderBox &&
+            renderObject.attached &&
+            overlayObject is RenderBox &&
+            overlayObject.attached) {
           final targetSize = renderObject.size;
           final targetGlobalPos = renderObject.localToGlobal(Offset.zero);
           final overlayGlobalPos = overlayObject.localToGlobal(Offset.zero);
@@ -330,12 +325,7 @@ class _BackdropPainter extends CustomPainter {
 
           final path = Path()
             ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
-            ..addRRect(
-              RRect.fromRectAndRadius(
-                highlightRect,
-                const Radius.circular(10),
-              ),
-            )
+            ..addRRect(RRect.fromRectAndRadius(highlightRect, const Radius.circular(10)))
             ..fillType = PathFillType.evenOdd;
 
           canvas.drawPath(path, dimPaint);
@@ -347,10 +337,7 @@ class _BackdropPainter extends CustomPainter {
             ..strokeWidth = 3
             ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 6);
 
-          canvas.drawRRect(
-            RRect.fromRectAndRadius(highlightRect, const Radius.circular(10)),
-            glowPaint,
-          );
+          canvas.drawRRect(RRect.fromRectAndRadius(highlightRect, const Radius.circular(10)), glowPaint);
 
           return;
         }
@@ -406,12 +393,7 @@ class _KeyPulsePainter extends CustomPainter {
     final overlayGlobalPos = oo.localToGlobal(Offset.zero);
     final targetPos = targetGlobalPos - overlayGlobalPos;
 
-    final baseRect = Rect.fromLTWH(
-      targetPos.dx - 6,
-      targetPos.dy - 6,
-      targetSize.width + 12,
-      targetSize.height + 12,
-    );
+    final baseRect = Rect.fromLTWH(targetPos.dx - 6, targetPos.dy - 6, targetSize.width + 12, targetSize.height + 12);
 
     // Draw a static highlight border first
     final staticPaint = Paint()

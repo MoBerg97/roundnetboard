@@ -7,12 +7,7 @@ class TutorialTargetIndicator extends StatefulWidget {
   final double radiusPx;
   final Color color;
 
-  const TutorialTargetIndicator({
-    super.key,
-    required this.center,
-    required this.radiusPx,
-    this.color = Colors.cyan,
-  });
+  const TutorialTargetIndicator({super.key, required this.center, required this.radiusPx, this.color = Colors.cyan});
 
   @override
   State<TutorialTargetIndicator> createState() => _TutorialTargetIndicatorState();
@@ -72,9 +67,11 @@ class _TutorialTargetIndicatorState extends State<TutorialTargetIndicator> with 
                 child: Container(
                   width: 8,
                   height: 8,
-                  decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle, boxShadow: const [
-                    BoxShadow(color: Colors.black26, blurRadius: 4, spreadRadius: 1),
-                  ]),
+                  decoration: BoxDecoration(
+                    color: widget.color,
+                    shape: BoxShape.circle,
+                    boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4, spreadRadius: 1)],
+                  ),
                 ),
               ),
             ],
@@ -101,9 +98,7 @@ class _Ring extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: color, width: thickness),
-        boxShadow: [
-          BoxShadow(color: color.withOpacity(0.3), blurRadius: 6, spreadRadius: 2),
-        ],
+        boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 6, spreadRadius: 2)],
       ),
     );
   }

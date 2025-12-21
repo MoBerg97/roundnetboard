@@ -73,11 +73,7 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => TutorialService(),
       child: FeatureDiscovery(
-        child: MaterialApp(
-          title: 'Roundnet Tactical Board',
-          theme: AppTheme.lightTheme(),
-          home: const HomeScreen(),
-        ),
+        child: MaterialApp(title: 'Roundnet Tactical Board', theme: AppTheme.lightTheme(), home: const HomeScreen()),
       ),
     );
   }
