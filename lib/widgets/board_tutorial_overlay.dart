@@ -1,326 +1,445 @@
 import 'package:flutter/material.dart';
-import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import '../services/tutorial_service.dart';
 
-class BoardTutorialOverlay {
-  final BuildContext context;
-  final GlobalKey boardKey;
-  final GlobalKey timelineKey;
-  final GlobalKey player1Key;
-  final GlobalKey player2Key;
-  final GlobalKey ballKey;
-  final GlobalKey frameAddKey;
-  final GlobalKey durationKey;
-  final GlobalKey playKey;
-  final GlobalKey stopKey;
+/// Custom tutorial overlay that highlights UI elements and shows instructions
+/// Uses conditional gesture pass-through to allow interaction with highlighted widgets
+class BoardTutorialOverlay extends StatefulWidget {
+  final List<TutorialStep> steps;
   final VoidCallback onFinish;
-  final Function(VoidCallback)? onAwaitUserAction;
+  final GlobalKey? boardKey;
 
-  TutorialCoachMark? _tutorialCoachMark;
-  int _currentStep = 0;
-
-  BoardTutorialOverlay({
-    required this.context,
-    required this.boardKey,
-    required this.timelineKey,
-    required this.player1Key,
-    required this.player2Key,
-    required this.ballKey,
-    required this.frameAddKey,
-    required this.durationKey,
-    required this.playKey,
-    required this.stopKey,
+  const BoardTutorialOverlay({
+    super.key,
+    required this.steps,
     required this.onFinish,
-    this.onAwaitUserAction,
+    this.boardKey,
   });
 
-  void show() {
-    final targets = <TargetFocus>[];
+  @override
+  State<BoardTutorialOverlay> createState() => _BoardTutorialOverlayState();
+}
 
-    // Step 1: Board area
-    targets.add(
-      TargetFocus(
-        identify: 'board',
-        keyTarget: boardKey,
-        alignSkip: Alignment.topRight,
-        shape: ShapeLightFocus.RRect,
-        contents: [
-          TargetContent(
-            align: ContentAlign.bottom,
-            builder: (context, controller) =>
-                _buildContent('This is your court', 'The roundnet court where you position players and ball', 'Look'),
-          ),
-        ],
-      ),
-    );
+class _BoardTutorialOverlayState extends State<BoardTutorialOverlay> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _pulse;
+  final GlobalKey _overlayKey = GlobalKey();
 
-    // Step 2: Timeline
-    targets.add(
-      TargetFocus(
-        identify: 'timeline',
-        keyTarget: timelineKey,
-        alignSkip: Alignment.topRight,
-        shape: ShapeLightFocus.RRect,
-        contents: [
-          TargetContent(
-            align: ContentAlign.top,
-            builder: (context, controller) => _buildContent(
-              'The frames store everything on court',
-              'Each frame captures positions at a moment in time',
-              'Look',
-            ),
-          ),
-        ],
-      ),
-    );
-
-    // Step 3: Player 1
-    targets.add(
-      TargetFocus(
-        identify: 'player1',
-        keyTarget: player1Key,
-        alignSkip: Alignment.topRight,
-        shape: ShapeLightFocus.Circle,
-        contents: [
-          TargetContent(
-            align: ContentAlign.bottom,
-            builder: (context, controller) =>
-                _buildContent('Choose a starting position for this player', 'Drag to move', 'Drag'),
-          ),
-        ],
-      ),
-    );
-
-    // Step 4: Player 2
-    targets.add(
-      TargetFocus(
-        identify: 'player2',
-        keyTarget: player2Key,
-        alignSkip: Alignment.topRight,
-        shape: ShapeLightFocus.Circle,
-        contents: [
-          TargetContent(
-            align: ContentAlign.bottom,
-            builder: (context, controller) =>
-                _buildContent('Choose a starting position for the next player', 'Drag to move', 'Drag'),
-          ),
-        ],
-      ),
-    );
-
-    // Step 5: Ball
-    targets.add(
-      TargetFocus(
-        identify: 'ball',
-        keyTarget: ballKey,
-        alignSkip: Alignment.topRight,
-        shape: ShapeLightFocus.Circle,
-        contents: [
-          TargetContent(
-            align: ContentAlign.bottom,
-            builder: (context, controller) =>
-                _buildContent('Place ball next to a player to simulate a serve', 'Drag close to any player', 'Drag'),
-          ),
-        ],
-      ),
-    );
-
-    // Step 6: Add frame
-    targets.add(
-      TargetFocus(
-        identify: 'frame_add',
-        keyTarget: frameAddKey,
-        alignSkip: Alignment.topRight,
-        shape: ShapeLightFocus.Circle,
-        contents: [
-          TargetContent(
-            align: ContentAlign.top,
-            builder: (context, controller) =>
-                _buildContent('Add a frame for the next action', 'Creates a new moment in time', 'Tap'),
-          ),
-        ],
-      ),
-    );
-
-    // Step 7: Drag objects
-    targets.add(
-      TargetFocus(
-        identify: 'board_drag',
-        keyTarget: boardKey,
-        alignSkip: Alignment.topRight,
-        shape: ShapeLightFocus.RRect,
-        contents: [
-          TargetContent(
-            align: ContentAlign.bottom,
-            builder: (context, controller) =>
-                _buildContent('Drag players/ball to new positions', 'Shows movement between frames', 'Drag'),
-          ),
-        ],
-      ),
-    );
-
-    // Step 8: Duration
-    targets.add(
-      TargetFocus(
-        identify: 'duration',
-        keyTarget: durationKey,
-        alignSkip: Alignment.topRight,
-        shape: ShapeLightFocus.Circle,
-        contents: [
-          TargetContent(
-            align: ContentAlign.bottom,
-            builder: (context, controller) =>
-                _buildContent('Set duration of current movement', 'How long the movement takes', 'Tap'),
-          ),
-        ],
-      ),
-    );
-
-    // Step 9: Play
-    targets.add(
-      TargetFocus(
-        identify: 'play',
-        keyTarget: playKey,
-        alignSkip: Alignment.topRight,
-        shape: ShapeLightFocus.Circle,
-        contents: [
-          TargetContent(
-            align: ContentAlign.bottom,
-            builder: (context, controller) => _buildContent('Play animation', 'Watch your rally come to life', 'Tap'),
-          ),
-        ],
-      ),
-    );
-
-    // Step 10: Stop
-    targets.add(
-      TargetFocus(
-        identify: 'stop',
-        keyTarget: stopKey,
-        alignSkip: Alignment.topRight,
-        shape: ShapeLightFocus.Circle,
-        contents: [
-          TargetContent(
-            align: ContentAlign.bottom,
-            builder: (context, controller) => _buildContent('Stop animation', 'Pause playback', 'Tap'),
-          ),
-        ],
-      ),
-    );
-
-    // Step 11: Final message
-    targets.add(
-      TargetFocus(
-        identify: 'final',
-        keyTarget: frameAddKey,
-        alignSkip: Alignment.topRight,
-        shape: ShapeLightFocus.Circle,
-        contents: [
-          TargetContent(
-            align: ContentAlign.top,
-            builder: (context, controller) =>
-                _buildContent('Add more frames to build a rally', 'Keep creating to tell your story!', 'Create'),
-          ),
-        ],
-      ),
-    );
-
-    _tutorialCoachMark = TutorialCoachMark(
-      targets: targets,
-      colorShadow: Colors.black,
-      textSkip: "Skip",
-      paddingFocus: 10,
-      opacityShadow: 0.8,
-      imageFilter: null,
-      onClickTarget: (target) {
-        _currentStep++;
-      },
-      onFinish: () {
-        TutorialService().finishTutorial();
-        TutorialService().markTutorialCompleted(TutorialType.board);
-        onFinish();
-      },
-      onSkip: () {
-        TutorialService().finishTutorial();
-        TutorialService().markTutorialCompleted(TutorialType.board);
-        onFinish();
-        return true;
-      },
-    );
-
-    TutorialService().startTutorial(TutorialType.board);
-    _tutorialCoachMark!.show(context: context);
+  @override
+  void initState() {
+    super.initState();
+    // Listen to tutorial service for step changes
+    TutorialService().addListener(_onTutorialChanged);
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
+    _pulse = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
   }
 
-  Widget _buildContent(String title, String description, String gesture) {
-    // Icon mapping for gestures
-    IconData? gestureIcon;
-    switch (gesture.toLowerCase()) {
-      case 'tap':
-        gestureIcon = Icons.touch_app;
-        break;
-      case 'drag':
-        gestureIcon = Icons.pan_tool;
-        break;
-      case 'look':
-        gestureIcon = Icons.visibility;
-        break;
-      case 'create':
-        gestureIcon = Icons.add_circle;
-        break;
-      default:
-        gestureIcon = null;
+  @override
+  void dispose() {
+    TutorialService().removeListener(_onTutorialChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onTutorialChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _handleNext() {
+    final tutorial = TutorialService();
+    final currentStep = tutorial.currentStep;
+    if (currentStep == null) return;
+
+    if (currentStep.isConditional) {
+      // Special case for step 7 (board_drag)
+      if (currentStep.id == 'board_drag' && tutorial.movedObjectsCount < 2) {
+        return;
+      }
+
+      if (currentStep.autoPerformAction != null) {
+        currentStep.autoPerformAction!();
+        // After auto-performing, we should advance
+        tutorial.nextStep();
+      }
+      return;
     }
 
-    return SafeArea(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        margin: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.85),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 10,
-              spreadRadius: 2,
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 8),
-            Text(description, style: const TextStyle(fontSize: 15, color: Colors.white70)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
+    // Don't allow manual advance on drag-required steps unless it's a skip
+    if (currentStep.requiresDrag) {
+      return;
+    }
+
+    final isLastStep = tutorial.currentStepIndex == widget.steps.length - 1;
+    tutorial.nextStep();
+    if (isLastStep) {
+      widget.onFinish();
+    }
+  }
+
+  void _handleSkip() {
+    TutorialService().finishTutorial();
+    widget.onFinish();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tutorial = TutorialService();
+    final currentStep = tutorial.currentStep;
+
+    if (!tutorial.isActive || currentStep == null) {
+      return const SizedBox.shrink();
+    }
+
+    // Only show backdrop for non-drag steps (when not interacting on board)
+    final shouldShowBackdrop = !currentStep.requiresDrag;
+
+    return Stack(
+      key: _overlayKey,
+      children: [
+        // Semi-transparent backdrop with hole for highlighted UI element
+        if (shouldShowBackdrop)
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: true,
+              child: _TutorialBackdrop(
+                targetKey: currentStep.targetKey,
+                overlayKey: _overlayKey,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (gestureIcon != null) ...[
-                    Icon(gestureIcon, size: 16, color: Colors.white),
-                    const SizedBox(width: 6),
+            ),
+          ),
+
+        // Pulsing glow around target key to create consistent highlight (only for non-drag steps)
+        if (currentStep.targetKey != null && !currentStep.requiresDrag)
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _pulse,
+              builder: (context, _) => IgnorePointer(
+                ignoring: true,
+                child: _TargetKeyPulseGlow(
+                  targetKey: currentStep.targetKey,
+                  t: _pulse.value,
+                  overlayKey: _overlayKey,
+                ),
+              ),
+            ),
+          ),
+
+          // Instruction card - positioned at top, smaller and more transparent
+          Positioned(
+            left: 12,
+            right: 12,
+            top: currentStep.id == 'ball_modifier' || currentStep.id == 'ball_hit' ? 80 : 12,
+            child: Card(
+              elevation: 4,
+              color: Colors.black87.withOpacity(0.85),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            currentStep.title,
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _handleSkip,
+                          style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 32)),
+                          child: const Text('Skip', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      currentStep.description,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Step ${tutorial.currentStepIndex + 1}/${widget.steps.length}',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.white54),
+                        ),
+                        if (!currentStep.requiresDrag)
+                          ElevatedButton(
+                            onPressed: _handleNext,
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                              backgroundColor: (currentStep.isConditional && (currentStep.id != 'board_drag' || tutorial.movedObjectsCount < 2)) ? Colors.grey.withOpacity(0.5) : null,
+                            ),
+                            child: Text(
+                              tutorial.currentStepIndex == widget.steps.length - 1 ? 'Finish' : 'Next',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: (currentStep.isConditional && (currentStep.id != 'board_drag' || tutorial.movedObjectsCount < 2)) ? Colors.white60 : null,
+                              ),
+                            ),
+                          ),
+                        if (currentStep.requiresDrag)
+                          Text(
+                            'Perform the action →',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              fontStyle: FontStyle.italic,
+                              color: Colors.white54,
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
-                  Text(
-                    gesture,
-                    style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w500),
-                  ),
-                ],
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+
+          // Success Effect Overlay
+          if (tutorial.showSuccessEffect)
+            const _SuccessEffect(),
+        ],
+      );
+  }
+}
+
+class _SuccessEffect extends StatefulWidget {
+  const _SuccessEffect();
+
+  @override
+  State<_SuccessEffect> createState() => _SuccessEffectState();
+}
+
+class _SuccessEffectState extends State<_SuccessEffect> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+  late Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _scale = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
+    );
+    _opacity = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.6, 1.0, curve: Curves.easeIn),
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Container(
+            color: Colors.green.withOpacity(0.15 * (1.0 - _opacity.value)),
+            child: Center(
+              child: Transform.scale(
+                scale: _scale.value,
+                child: Opacity(
+                  opacity: 1.0 - _opacity.value,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.green, size: 100),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Great!',
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
+  }
+}
+
+/// Backdrop with a cutout hole for the highlighted UI element
+class _TutorialBackdrop extends StatelessWidget {
+  final GlobalKey? targetKey;
+  final GlobalKey overlayKey;
+
+  const _TutorialBackdrop({this.targetKey, required this.overlayKey});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _BackdropPainter(targetKey: targetKey, overlayKey: overlayKey),
+      child: const SizedBox.expand(),
+    );
+  }
+}
+
+/// Custom painter that draws a semi-transparent dim with a hole around UI element
+class _BackdropPainter extends CustomPainter {
+  final GlobalKey? targetKey;
+  final GlobalKey overlayKey;
+
+  _BackdropPainter({required this.targetKey, required this.overlayKey});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Draw semi-transparent dim overlay
+    final dimPaint = Paint()
+      ..color = Colors.black.withOpacity(0.5)
+      ..style = PaintingStyle.fill;
+
+    // If we have a target widget, try to cut a hole for it
+    if (targetKey != null) {
+      try {
+        final renderObject = targetKey!.currentContext?.findRenderObject();
+        final overlayObject = overlayKey.currentContext?.findRenderObject();
+
+        if (renderObject is RenderBox && renderObject.attached && overlayObject is RenderBox && overlayObject.attached) {
+          final targetSize = renderObject.size;
+          final targetGlobalPos = renderObject.localToGlobal(Offset.zero);
+          final overlayGlobalPos = overlayObject.localToGlobal(Offset.zero);
+          final targetPosition = targetGlobalPos - overlayGlobalPos;
+
+          // Create path with hole around the UI element
+          // Clamp the hole to be at least partially visible and ensure glow is visible
+          final highlightRect = Rect.fromLTWH(
+            targetPosition.dx - 6,
+            targetPosition.dy - 6,
+            targetSize.width + 12,
+            targetSize.height + 12,
+          );
+
+          final path = Path()
+            ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
+            ..addRRect(
+              RRect.fromRectAndRadius(
+                highlightRect,
+                const Radius.circular(10),
+              ),
+            )
+            ..fillType = PathFillType.evenOdd;
+
+          canvas.drawPath(path, dimPaint);
+
+          // Draw glowing highlight border around the hole
+          final glowPaint = Paint()
+            ..color = Colors.cyan.withOpacity(0.8)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3
+            ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 6);
+
+          canvas.drawRRect(
+            RRect.fromRectAndRadius(highlightRect, const Radius.circular(10)),
+            glowPaint,
+          );
+
+          return;
+        }
+      } catch (e) {
+        // Target not found or not ready, fall through to full backdrop
+      }
+    }
+
+    // No target or target not ready, just draw full dim
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), dimPaint);
+  }
+
+  @override
+  bool shouldRepaint(_BackdropPainter oldDelegate) {
+    return targetKey != oldDelegate.targetKey || overlayKey != oldDelegate.overlayKey;
+  }
+}
+
+/// Animated pulsing glow around a target widget identified by GlobalKey.
+class _TargetKeyPulseGlow extends StatelessWidget {
+  final GlobalKey? targetKey;
+  final double t; // 0..1
+  final GlobalKey overlayKey;
+
+  const _TargetKeyPulseGlow({required this.targetKey, required this.t, required this.overlayKey});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _KeyPulsePainter(targetKey: targetKey, t: t, overlayKey: overlayKey),
+      child: const SizedBox.expand(),
+    );
+  }
+}
+
+class _KeyPulsePainter extends CustomPainter {
+  final GlobalKey? targetKey;
+  final double t;
+  final GlobalKey overlayKey;
+
+  _KeyPulsePainter({required this.targetKey, required this.t, required this.overlayKey});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (targetKey == null) return;
+    final ro = targetKey!.currentContext?.findRenderObject();
+    final oo = overlayKey.currentContext?.findRenderObject();
+
+    if (ro is! RenderBox || !ro.attached || oo is! RenderBox || !oo.attached) return;
+
+    final targetSize = ro.size;
+    final targetGlobalPos = ro.localToGlobal(Offset.zero);
+    final overlayGlobalPos = oo.localToGlobal(Offset.zero);
+    final targetPos = targetGlobalPos - overlayGlobalPos;
+
+    final baseRect = Rect.fromLTWH(
+      targetPos.dx - 6,
+      targetPos.dy - 6,
+      targetSize.width + 12,
+      targetSize.height + 12,
+    );
+
+    // Draw a static highlight border first
+    final staticPaint = Paint()
+      ..color = Colors.cyan.withOpacity(1.0)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4;
+    canvas.drawRRect(RRect.fromRectAndRadius(baseRect, const Radius.circular(12)), staticPaint);
+
+    // Pulse scales outward and fades
+    final scale = 1.0 + 0.4 * t;
+    final pulseRect = Rect.fromCenter(
+      center: baseRect.center,
+      width: baseRect.width * scale,
+      height: baseRect.height * scale,
+    );
+
+    final opacity = (1.0 - t).clamp(0.0, 1.0);
+    final glowPaint = Paint()
+      ..color = Colors.cyan.withOpacity(0.8 * opacity)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 12);
+
+    canvas.drawRRect(RRect.fromRectAndRadius(pulseRect, Radius.circular(12 * scale)), glowPaint);
+  }
+
+  @override
+  bool shouldRepaint(_KeyPulsePainter oldDelegate) {
+    return oldDelegate.targetKey != targetKey || oldDelegate.t != t || oldDelegate.overlayKey != overlayKey;
   }
 }

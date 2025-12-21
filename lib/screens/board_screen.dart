@@ -17,8 +17,8 @@ import 'settings_screen.dart';
 import '../utils/history.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
-import '../services/tutorial_service.dart';
 import '../widgets/board_tutorial_overlay.dart';
+import '../widgets/tutorial_target_indicator.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // BOARD SCREEN - Main Animation Editor
@@ -112,6 +112,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   int? _activePathDragIndex; // Index of the control point being dragged (currently first only)
 
   // ──────────────────────────────────────────────────────────────────────────
+  // TUTORIAL STATE
+  // ──────────────────────────────────────────────────────────────────────────
+  bool _showTutorialTarget = false; // Should tutorial target indicator be shown?
+  final Set<String> _tutorialMovedObjects = {}; // Track objects moved in step 7
+
+  // ──────────────────────────────────────────────────────────────────────────
   // UI REFERENCES
   // ──────────────────────────────────────────────────────────────────────────
   final GlobalKey _boardKey = GlobalKey(debugLabel: 'board'); // Key for board RenderBox (coordinate conversion)
@@ -132,15 +138,21 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   final GlobalKey _durationKey = GlobalKey(debugLabel: 'duration');
   final GlobalKey _playKey = GlobalKey(debugLabel: 'play');
   final GlobalKey _stopKey = GlobalKey(debugLabel: 'stop');
+  final GlobalKey _firstThumbnailKey = GlobalKey(debugLabel: 'first_thumbnail');
+  final GlobalKey _undoKey = GlobalKey(debugLabel: 'undo');
+  final GlobalKey _redoKey = GlobalKey(debugLabel: 'redo');
+  final GlobalKey _setButtonKey = GlobalKey(debugLabel: 'set_button');
+  final GlobalKey _hitButtonKey = GlobalKey(debugLabel: 'hit_button');
 
   @override
   void initState() {
     super.initState();
     print('🎲 BoardScreen: initState called');
 
-    // Listen for tutorial requests
+    // Listen for tutorial requests and step changes
     TutorialService().addListener(_checkForPendingTutorial);
-    print('🎲 BoardScreen: Listener added to TutorialService');
+    TutorialService().addListener(_updateTutorialTarget);
+    print('🎲 BoardScreen: Listeners added to TutorialService');
 
     // Initialize settings
     if (widget.project.settings == null) {
@@ -189,9 +201,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final keys = {
       'board_canvas': _boardKey,
       'timeline': _timelineKey,
-      'play_button': _playButtonKey,
-      'frame_add_button': _frameAddButtonKey,
+      'timeline_area': _timelineAreaKey,
+      'play_button': _playKey,
+      'frame_add_button': _frameAddKey,
       'annotation_button': _annotationModeButtonKey,
+      'undo_button': _undoKey,
+      'redo_button': _redoKey,
+      'duration_button': _durationKey,
+      'stop_button': _stopKey,
     };
     widget.onProvideTutorialKeys?.call(keys);
   }
@@ -221,50 +238,245 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   // TUTORIAL METHODS
   // ══════════════════════════════════════════════════════════════════════════
 
-  void _checkForPendingTutorial() {
-    print('🎲 BoardScreen: _checkForPendingTutorial called');
+  /// Update tutorial target visibility based on current step
+  void _updateTutorialTarget() {
     final tutorialService = TutorialService();
-    print('🎲 BoardScreen: Pending tutorial = ${tutorialService.pendingTutorial?.name ?? 'none'}');
-    print('🎲 BoardScreen: Is active = ${tutorialService.isActive}');
+    if (!tutorialService.isActive) {
+      setState(() => _showTutorialTarget = false);
+      return;
+    }
 
+    final step = tutorialService.currentStep;
+    final shouldShow = step != null && step.requiresDrag && step.targetPosition != null && step.targetProximity != null;
+
+    if (_showTutorialTarget != shouldShow) {
+      setState(() => _showTutorialTarget = shouldShow);
+    }
+  }
+
+  /// Check if tutorial is currently active
+  bool _isTutorialActive() => TutorialService().isActive;
+
+  void _checkForPendingTutorial() {
+    final tutorialService = TutorialService();
+
+    // Only start if there's a pending tutorial AND it's not already active
     if (tutorialService.pendingTutorial == TutorialType.board && !tutorialService.isActive) {
-      print('🎲 BoardScreen: Conditions met, scheduling tutorial start');
       // Use post-frame callback to ensure UI is ready
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        print('🎲 BoardScreen: Post-frame callback for tutorial start');
         if (mounted) {
-          print('🎲 BoardScreen: Widget is mounted, starting tutorial');
+          // Ensure keys are provided before starting
+          _provideTutorialKeys();
           _startBoardTutorial();
-        } else {
-          print('⚠️ BoardScreen: Widget not mounted, skipping tutorial');
+          tutorialService.clearPendingTutorial();
         }
       });
-    } else {
-      print('🎲 BoardScreen: Conditions not met for tutorial');
+    }
+  }
+
+  /// Validate if a drag gesture completes the current tutorial step
+  void _validateTutorialDrag(String label, Offset from, Offset to, Size size) {
+    final tutorial = TutorialService();
+    if (!tutorial.isActive) return;
+
+    final step = tutorial.currentStep;
+    if (step?.id == 'board_drag') {
+      _tutorialMovedObjects.add(label);
+      tutorial.setMovedObjectsCount(_tutorialMovedObjects.length);
+      if (_tutorialMovedObjects.length >= 2) {
+        tutorial.nextStep();
+      }
+      return;
+    }
+
+    // Check if this drag completes the current step
+    if (tutorial.validateDragForCurrentStep(label, to)) {
+      tutorial.nextStep();
     }
   }
 
   void _startBoardTutorial() {
-    print('🎲 BoardScreen: _startBoardTutorial called');
+    final steps = [
+      TutorialStep(
+        id: 'board',
+        title: 'Welcome to the Board!',
+        description: 'This is where you create your animations. Players and the ball can be moved around.',
+        targetKey: _boardKey,
+      ),
+      TutorialStep(
+        id: 'timeline',
+        title: 'Timeline',
+        description: 'Frames capture positions at different moments. Add frames to create movement.',
+        targetKey: _timelineAreaKey,
+      ),
+      TutorialStep(
+        id: 'player1',
+        title: 'Position Player 1',
+        description: 'Drag this player to the blue target zone in the top-left area.',
+        targetKey: null, // Don't highlight the player, show the zone
+        requiresDrag: true,
+        dragTargetId: 'P1',
+        targetPosition: const Offset(-150, -150),
+        targetProximity: 100,
+        showSuccess: true,
+      ),
+      TutorialStep(
+        id: 'player2',
+        title: 'Position Player 2',
+        description: 'Drag this player to the blue target zone in the top-right area.',
+        targetKey: null,
+        requiresDrag: true,
+        dragTargetId: 'P2',
+        targetPosition: const Offset(150, -150),
+        targetProximity: 100,
+        showSuccess: true,
+      ),
+      TutorialStep(
+        id: 'ball',
+        title: 'Position the Ball',
+        description: 'Drag the ball to the blue target zone near Player 1.',
+        targetKey: _ballKey,
+        requiresDrag: true,
+        dragTargetId: 'BALL',
+        // Dynamic target: near P1
+        targetPosition: currentFrame.p1 + const Offset(40, 40),
+        targetProximity: 80,
+        showSuccess: true,
+      ),
+      TutorialStep(
+        id: 'frame_add',
+        title: 'Add a Frame',
+        description: 'Tap this button to add a new frame and capture the current positions.',
+        targetKey: _frameAddKey,
+        isConditional: true,
+        showSuccess: true,
+        autoPerformAction: () => _insertFrameAfterCurrent(),
+      ),
+      TutorialStep(
+        id: 'board_drag_long',
+        title: 'Long Movement',
+        description: 'Drag the ball across at least half the court to see how paths are created.',
+        targetKey: _ballKey,
+        requiresDrag: true,
+        dragTargetId: 'BALL',
+        targetPosition: currentFrame.ball.dx > 0 ? const Offset(-150, 0) : const Offset(150, 0),
+        targetProximity: 150, // Large proximity but requires distance
+        showSuccess: true,
+      ),
+      TutorialStep(
+        id: 'board_drag',
+        title: 'Create Movement',
+        description: 'Drag any player or ball to a new position to show movement between frames.',
+        targetKey: null,
+        requiresDrag: true,
+        showSuccess: true,
+      ),
+      TutorialStep(
+        id: 'multi_frame',
+        title: 'Build Your Play',
+        description: 'Add at least 3 frames to create a complete sequence of movement.',
+        targetKey: _frameAddKey,
+        isConditional: true,
+        showSuccess: true,
+        autoPerformAction: () {
+          // Add frames until we have at least 3
+          while (widget.project.frames.length < 3) {
+            _insertFrameAfterCurrent();
+          }
+        },
+      ),
+      TutorialStep(
+        id: 'ball_modifier',
+        title: 'Ball Modifiers',
+        description: 'Tap the ball to open the modifier menu. You can set "Hit" or "Set" effects.',
+        targetKey: _ballKey,
+        isConditional: true,
+        showSuccess: true,
+        autoPerformAction: () {
+          setState(() {
+            _showModifierMenu = true;
+          });
+        },
+      ),
+      TutorialStep(
+        id: 'ball_hit',
+        title: 'Set a Hit',
+        description: 'Select "Hit" and then tap anywhere on the ball path to mark where the ball was hit.',
+        targetKey: _hitButtonKey,
+        isConditional: true,
+        showSuccess: true,
+        autoPerformAction: () {
+          setState(() {
+            currentFrame.ballHitT = 0.5;
+            _showModifierMenu = false;
+          });
+        },
+      ),
+      TutorialStep(
+        id: 'hit_marker_move',
+        title: 'Move Hit Marker',
+        description: 'You can drag the hit marker along the path to adjust the timing of the hit.',
+        targetKey: null, // The hit marker is dynamic, so no fixed key
+        isConditional: true,
+        showSuccess: true,
+        autoPerformAction: () {
+          setState(() {
+            currentFrame.ballHitT = 0.75;
+          });
+        },
+      ),
+      TutorialStep(
+        id: 'duration',
+        title: 'Frame Duration',
+        description: 'Tap frames to select them and adjust their duration.',
+        targetKey: _durationKey,
+        isConditional: true,
+        showSuccess: true,
+        autoPerformAction: () => _showDurationPicker(),
+      ),
+      TutorialStep(
+        id: 'undo_redo',
+        title: 'Undo & Redo',
+        description: 'Made a mistake? Use undo to go back or redo to restore your changes.',
+        targetKey: _undoKey,
+        isConditional: true,
+        showSuccess: true,
+        autoPerformAction: () {
+          if (_history.canUndo) {
+            final idx = _history.undo();
+            if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
+              setState(() => currentFrame = widget.project.frames[idx]);
+              _scrollToSelectedFrame();
+            }
+          }
+        },
+      ),
+      TutorialStep(
+        id: 'play',
+        title: 'Play Animation',
+        description: 'Press play to see your animation in action!',
+        targetKey: _playKey,
+        isConditional: true,
+        showSuccess: true,
+        autoPerformAction: () => _startPlayback(),
+      ),
+      TutorialStep(
+        id: 'stop',
+        title: 'Stop Playback',
+        description: 'Use stop to return to editing mode.',
+        targetKey: _stopKey,
+        isConditional: true,
+        autoPerformAction: () => _stopPlayback(),
+      ),
+      TutorialStep(
+        id: 'final',
+        title: 'You\'re All Set!',
+        description: 'You now know the basics. Experiment with paths, annotations, and more!',
+        targetKey: null,
+      ),
+    ];
 
-    final overlay = BoardTutorialOverlay(
-      context: context,
-      boardKey: _boardKey,
-      timelineKey: _timelineAreaKey,
-      player1Key: _player1Key,
-      player2Key: _player2Key,
-      ballKey: _ballKey,
-      frameAddKey: _frameAddKey,
-      durationKey: _durationKey,
-      playKey: _playKey,
-      stopKey: _stopKey,
-      onFinish: () {
-        print('🎲 BoardScreen: Tutorial finished');
-      },
-    );
-
-    print('🎲 BoardScreen: Calling overlay.show()');
-    overlay.show();
+    TutorialService().startTutorial(TutorialType.board, steps);
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -446,6 +658,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     });
     _ticker.start();
     _scrollToPlaybackFrame();
+
+    // Tutorial progression
+    final tutorial = TutorialService();
+    if (tutorial.isActive && tutorial.currentStep?.id == 'play') {
+      tutorial.nextStep();
+    }
   }
 
   /// Stop playback and return to edit mode
@@ -459,6 +677,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _playbackT = 0.0;
     });
     _ticker.stop();
+
+    // Tutorial progression
+    final tutorial = TutorialService();
+    if (tutorial.isActive && tutorial.currentStep?.id == 'stop') {
+      tutorial.nextStep();
+    }
   }
 
   /// Pause playback (can be resumed)
@@ -518,6 +742,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 setState(() => currentFrame.duration = d);
                 _saveProject();
                 Navigator.pop(context);
+
+                // Tutorial progression
+                final tutorial = TutorialService();
+                if (tutorial.isActive && tutorial.currentStep?.id == 'duration') {
+                  tutorial.nextStep();
+                }
               },
               // ─────────────────────────────────────────────────────────────
               // DURATION OPTION BUTTON (Pill-Shaped)
@@ -660,6 +890,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       switch (label) {
         case "P1":
           currentFrame.p1 = newPos;
+          // Update ball target if it's the current tutorial step
+          final tutorial = TutorialService();
+          if (tutorial.isActive && tutorial.currentStep?.id == 'ball') {
+            tutorial.updateStepTarget('ball', newPos + const Offset(40, 40));
+          }
           break;
         case "P2":
           currentFrame.p2 = newPos;
@@ -693,6 +928,21 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       currentFrame = widget.project.frames[newIdx + 1];
     });
     _scrollToSelectedFrame();
+
+    // Tutorial progression
+    final tutorial = TutorialService();
+    if (tutorial.isActive) {
+      if (tutorial.currentStep?.id == 'frame_add') {
+        // Use a small delay to ensure the frame is actually added and UI updated
+        Future.delayed(const Duration(milliseconds: 50), () {
+          tutorial.nextStep();
+        });
+      } else if (tutorial.currentStep?.id == 'multi_frame' && widget.project.frames.length >= 3) {
+        Future.delayed(const Duration(milliseconds: 50), () {
+          tutorial.nextStep();
+        });
+      }
+    }
   }
 
   /// Confirm and delete a frame
@@ -1307,7 +1557,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             _saveProject();
           }
         },
-        onPanEnd: (_) => setState(() => _pendingBallMark = null),
+        onPanEnd: (_) {
+          setState(() => _pendingBallMark = null);
+          _saveProject();
+
+          // Tutorial progression
+          final tutorial = TutorialService();
+          if (tutorial.isActive && tutorial.currentStep?.id == 'hit_marker_move') {
+            tutorial.nextStep();
+          }
+        },
         child: CustomPaint(size: const Size(32, 32), painter: _StarPainter()),
       ),
     );
@@ -1431,12 +1690,19 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// Build player widgets (P1, P2, P3, P4) with drag handling
   Widget _buildPlayer(Offset posCm, double rotation, Color color, String label, Size size, {GlobalKey? key}) {
     final screenPos = _toScreenPosition(posCm, size);
+    
+    // Check if this player is the current drag target in a tutorial step
+    final tutorial = TutorialService();
+    final isCurrentDragTarget = tutorial.isActive &&
+        tutorial.currentStep?.requiresDrag == true &&
+        tutorial.currentStep?.dragTargetId == label;
+
     return Positioned(
       key: key,
       left: screenPos.dx - 20,
       top: screenPos.dy - 20,
       child: IgnorePointer(
-        ignoring: _annotationMode,
+        ignoring: _annotationMode && !_isTutorialActive(),
         child: GestureDetector(
           onPanStart: (details) {
             _dragStartLogical[label] = posCm;
@@ -1461,6 +1727,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               "P4" => currentFrame.p4,
               _ => currentFrame.ball,
             };
+
+            // Validate tutorial drag before committing to history
+            _validateTutorialDrag(label, from, to, size);
+
             final idx = widget.project.frames.indexOf(currentFrame);
             final newIdx = _history.push(MoveEntityAction(frameIndex: idx, label: label, from: from, to: to));
             setState(() {
@@ -1470,14 +1740,25 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             _dragStartLogical.remove(label);
             _dragStartScreen.remove(label);
           },
-          child: Transform.rotate(
-            angle: rotation,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              // Arrow hidden by default for now
-            ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Pulsating glow when this player is the tutorial drag target
+              if (isCurrentDragTarget)
+                TutorialPulseGlow(
+                  size: 50,
+                  glowColor: Colors.cyan,
+                ),
+              // Player circle
+              Transform.rotate(
+                angle: rotation,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1487,12 +1768,19 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// Build the ball widget with optional scale and star opacity
   Widget _buildBall(Offset posCm, Size size, {double scale = 1.0, double starOpacity = 0.0, GlobalKey? key}) {
     final screenPos = _toScreenPosition(posCm, size);
+    
+    // Check if ball is the current drag target in a tutorial step
+    final tutorial = TutorialService();
+    final isCurrentDragTarget = tutorial.isActive &&
+        tutorial.currentStep?.requiresDrag == true &&
+        tutorial.currentStep?.dragTargetId == "BALL";
+
     return Positioned(
       key: key,
       left: screenPos.dx - 15 * scale,
       top: screenPos.dy - 15 * scale,
       child: IgnorePointer(
-        ignoring: _annotationMode,
+        ignoring: _annotationMode && !_isTutorialActive(),
         child: GestureDetector(
           onTap: () {
             if (!_isPlaying && !_endedAtLastFrame) {
@@ -1533,6 +1821,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           onPanEnd: (_) {
             final from = _dragStartLogical["BALL"] ?? posCm;
             final to = currentFrame.ball;
+
+            // Validate tutorial drag before committing to history
+            _validateTutorialDrag("BALL", from, to, size);
+
             final idx = widget.project.frames.indexOf(currentFrame);
             final newIdx = _history.push(MoveEntityAction(frameIndex: idx, label: "BALL", from: from, to: to));
             setState(() {
@@ -1545,6 +1837,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           child: Stack(
             alignment: Alignment.center,
             children: [
+              // Pulsating glow when ball is the tutorial drag target
+              if (isCurrentDragTarget)
+                TutorialPulseGlow(
+                  size: 50 * scale,
+                  glowColor: Colors.cyan,
+                ),
+              // Ball circle
               Container(
                 width: 30 * scale,
                 height: 30 * scale,
@@ -1679,6 +1978,23 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           painter: BoardBackgroundPainter(screenSize: screenSize, settings: _settings),
                         ),
                       ),
+                      // Tutorial target indicator for drag-required steps
+                      if (_showTutorialTarget)
+                        (() {
+                          final step = TutorialService().currentStep;
+                          if (step == null || step.targetPosition == null || step.targetProximity == null) {
+                            return const SizedBox.shrink();
+                          }
+                          final centerPx = _toScreenPosition(step.targetPosition!, screenSize);
+                          final radiusPx = _settings.cmToLogical(step.targetProximity!, screenSize).abs();
+                          return Positioned(
+                            left: 0,
+                            top: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: TutorialTargetIndicator(center: centerPx, radiusPx: radiusPx),
+                          );
+                        })(),
                       if (!(_isPlaying || _endedAtLastFrame))
                         // ┌─────────────────────────────────────────────────────┐
                         // │ PATH PAINTER (Repaints on every build for live update)
@@ -1888,12 +2204,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             ),
             // Layer 2: Timeline - fixed at bottom
             Positioned(
-              key: _timelineAreaKey,
               left: 0,
               right: 0,
               bottom: 0,
               height: 120,
               child: AnimatedContainer(
+                key: _timelineAreaKey,
                 height: 120,
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
@@ -1920,6 +2236,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             final frame = _isPlaying ? widget.project.frames[index + 1] : widget.project.frames[index];
                             final isSelected = frame == currentFrame;
                             return GestureDetector(
+                              key: index == 0 ? _firstThumbnailKey : null,
                               onTap: () {
                                 if (!(_isPlaying || _endedAtLastFrame)) {
                                   setState(() => currentFrame = frame);
@@ -2251,6 +2568,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               ),
                             const SizedBox(width: 12),
                             IconButton(
+                              key: _undoKey,
                               icon: const Icon(Icons.undo),
                               tooltip: "Undo",
                               iconSize: 18,
@@ -2265,11 +2583,18 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                             } else {
                                               setState(() {});
                                             }
+
+                                            // Tutorial progression
+                                            final tutorial = TutorialService();
+                                            if (tutorial.isActive && tutorial.currentStep?.id == 'undo_redo') {
+                                              tutorial.nextStep();
+                                            }
                                           }
                                         : null),
                             ),
                             const SizedBox(width: 4),
                             IconButton(
+                              key: _redoKey,
                               icon: const Icon(Icons.redo),
                               tooltip: "Redo",
                               iconSize: 18,
@@ -2283,6 +2608,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                               _scrollToSelectedFrame();
                                             } else {
                                               setState(() {});
+                                            }
+
+                                            // Tutorial progression
+                                            final tutorial = TutorialService();
+                                            if (tutorial.isActive && tutorial.currentStep?.id == 'undo_redo') {
+                                              tutorial.nextStep();
                                             }
                                           }
                                         : null),
@@ -2309,6 +2640,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     children: [
                       // Set button - toggle, mutually exclusive with Hit
                       GestureDetector(
+                        key: _setButtonKey,
                         onTap: () {
                           setState(() {
                             // Toggle Set: if already set, unset it; otherwise set it and clear Hit
@@ -2320,6 +2652,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             }
                           });
                           _saveProject();
+
+                          // Tutorial progression
+                          final tutorial = TutorialService();
+                          if (tutorial.isActive && tutorial.currentStep?.id == 'ball_modifier') {
+                            tutorial.nextStep();
+                          }
                         },
                         child: Container(
                           width: 80,
@@ -2357,6 +2695,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       ),
                       // Hit button - toggle, mutually exclusive with Set
                       GestureDetector(
+                        key: _hitButtonKey,
                         onTap: () {
                           final prev = _getPreviousFrame();
                           if (prev != null) {
@@ -2372,6 +2711,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               }
                             });
                             _saveProject();
+
+                            // Tutorial progression
+                            final tutorial = TutorialService();
+                            if (tutorial.isActive && tutorial.currentStep?.id == 'ball_hit') {
+                              tutorial.nextStep();
+                            }
                           }
                         },
                         child: Container(
@@ -2494,6 +2839,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       ),
                     ],
                   ),
+                ),
+              ),
+            // Tutorial overlay (on top of everything)
+            if (TutorialService().isActive)
+              Positioned.fill(
+                child: BoardTutorialOverlay(
+                  steps: TutorialService().steps,
+                  boardKey: _boardKey,
+                  onFinish: () {
+                    TutorialService().markTutorialCompleted(TutorialType.board);
+                  },
                 ),
               ),
           ],
@@ -2627,4 +2983,66 @@ class _EraserCirclePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _EraserCirclePainter oldDelegate) =>
       oldDelegate.centerCm != centerCm || oldDelegate.radiusCm != radiusCm;
+}
+
+/// Pulsating glow widget for highlighting draggable tutorial elements
+class TutorialPulseGlow extends StatefulWidget {
+  final double size;
+  final Color glowColor;
+
+  const TutorialPulseGlow({
+    super.key,
+    this.size = 50,
+    this.glowColor = Colors.cyan,
+  });
+
+  @override
+  State<TutorialPulseGlow> createState() => _TutorialPulseGlowState();
+}
+
+class _TutorialPulseGlowState extends State<TutorialPulseGlow>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // Pulse from 0.6 to 1.0 and back
+        final scale = 0.6 + (_controller.value * 0.4);
+        final opacity = 0.8 - (_controller.value * 0.6);
+
+        return Container(
+          width: widget.size,
+          height: widget.size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: widget.glowColor.withOpacity(opacity),
+                blurRadius: 15,
+                spreadRadius: scale * 5,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }

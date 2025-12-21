@@ -1,7 +1,5 @@
-import 'package:feature_discovery/feature_discovery.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:provider/provider.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
 import '../models/animation_project.dart';
@@ -82,18 +80,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _startHomeTutorial() {
     print('🏠 HomeScreen: _startHomeTutorial called');
-    final Box<AnimationProject> projectBox = Hive.box<AnimationProject>('projects');
 
     print('🏠 HomeScreen: Creating HomeTutorialOverlay');
-    print('🏠 HomeScreen: Project count = ${projectBox.length}');
 
     final overlay = HomeTutorialOverlay(
       context: context,
-      fabAddKey: _fabAddKey,
-      fabImportKey: _fabImportKey,
-      firstProjectKey: projectBox.isNotEmpty ? _projectTileKeys[0] : null,
-      projectMenuKey: projectBox.isNotEmpty ? _projectMenuKeys[0] : null,
-      helpIconKey: _helpIconKey,
       onFinish: () {
         print('🏠 HomeScreen: Tutorial finished');
       },
@@ -237,27 +228,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 );
-
-                if (index == 0) {
-                  return DescribedFeatureOverlay(
-                    featureId: TutorialIds.homeOpenProject,
-                    tapTarget: const Icon(Icons.folder_open),
-                    title: const Text('Open your project'),
-                    description: _buildStepDescription(
-                      context,
-                      primary: 'Tap a card to jump into the board.',
-                      gestureHint: 'Tap once to open',
-                    ),
-                    backgroundColor: AppTheme.darkGrey,
-                    contentLocation: ContentLocation.below,
-                    pulseDuration: const Duration(milliseconds: 950),
-                    overflowMode: OverflowMode.clipContent,
-                    onComplete: context.read<TutorialService>().acknowledgeStepCompletion,
-                    child: listTile,
-                  );
-                }
-
-                return listTile;
               },
             );
           },
@@ -275,42 +245,16 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Icon(Icons.file_upload),
           ),
           const SizedBox(height: AppConstants.padding),
-          DescribedFeatureOverlay(
-            featureId: TutorialIds.homeAddProject,
-            tapTarget: const Icon(Icons.add),
-            title: const Text('Create your first project'),
-            description: _buildStepDescription(
-              context,
-              primary: 'Start a new animation board.',
-              gestureHint: 'Tap once to create',
-            ),
-            backgroundColor: AppTheme.darkGrey,
-            contentLocation: ContentLocation.below,
-            pulseDuration: const Duration(milliseconds: 950),
-            overflowMode: OverflowMode.clipContent,
-            onComplete: context.read<TutorialService>().acknowledgeStepCompletion,
-            child: FloatingActionButton(
-              key: _fabAddKey,
-              heroTag: 'add',
-              backgroundColor: AppTheme.primaryBlue,
-              tooltip: 'Create New Project',
-              onPressed: () => _addProject(context, projectBox),
-              child: const Icon(Icons.add),
-            ),
+          FloatingActionButton(
+            key: _fabAddKey,
+            heroTag: 'add',
+            backgroundColor: AppTheme.primaryBlue,
+            tooltip: 'Create New Project',
+            onPressed: () => _addProject(context, projectBox),
+            child: const Icon(Icons.add),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStepDescription(BuildContext context, {required String primary, required String gestureHint}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(primary, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white)),
-        const SizedBox(height: 8),
-        _GestureHintPill(label: gestureHint),
-      ],
     );
   }
 
@@ -473,27 +417,3 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _GestureHintPill extends StatelessWidget {
-  final String label;
-  const _GestureHintPill({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.14),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.touch_app, size: 16, color: Colors.white70),
-          const SizedBox(width: 6),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-        ],
-      ),
-    );
-  }
-}

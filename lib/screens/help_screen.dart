@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:provider/provider.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
 import '../services/tutorial_service.dart';
-import 'onboarding_screen.dart';
-import 'home_screen.dart';
 
 class HelpScreen extends StatefulWidget {
   const HelpScreen({super.key});
@@ -90,33 +86,6 @@ class _HelpScreenState extends State<HelpScreen> {
                     Future.delayed(const Duration(milliseconds: 300), () {
                       TutorialService().requestTutorial(TutorialType.annotation);
                     });
-                  },
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.school),
-                  label: const Text('Replay Onboarding'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryBlue,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 44),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (_) => OnboardingScreen(
-                          onFinish: () {
-                            Navigator.of(
-                              context,
-                            ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
-                            // Auto-trigger Home tutorial after onboarding
-                            Future.delayed(const Duration(milliseconds: 500), () {
-                              TutorialService().requestTutorial(TutorialType.home);
-                            });
-                          },
-                        ),
-                      ),
-                    );
                   },
                 ),
               ],
@@ -344,10 +313,5 @@ class _HelpScreenState extends State<HelpScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _startHomeTutorialFromHelp(BuildContext context) async {
-    final box = Hive.box<AnimationProject>('projects');
-    await context.read<TutorialService>().startHomeTutorial(context, hasProject: box.isNotEmpty);
   }
 }

@@ -15,7 +15,7 @@ All tutorial overlays now show icons alongside gesture text:
 
 All tutorial content is now wrapped in `SafeArea` to ensure:
 
-- Text doesn't appear under notches on mobile
+- Text doesn't appear under notches on mobile or on chrome.
 - Content stays visible on all screen sizes
 - Proper margins and padding
 
