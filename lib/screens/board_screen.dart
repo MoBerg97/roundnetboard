@@ -1821,14 +1821,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             // Add Ball button - only in training mode
             if (widget.project.projectType == ProjectType.training && !_isPlaying && !_endedAtLastFrame)
               IconButton(
-                icon: const Icon(Icons.sports_volleyball),
+                icon: const Icon(Icons.control_point_duplicate),
                 tooltip: 'Add Ball',
                 onPressed: _addBall,
               ),
             // Edit Court button - only show for training projects
             if (widget.project.projectType == ProjectType.training && !_isPlaying && !_endedAtLastFrame)
               IconButton(
-                icon: const Icon(Icons.grid_3x3),
+                icon: const Icon(Icons.border_outer),
                 tooltip: 'Edit Court',
                 onPressed: () async {
                   await Navigator.push(

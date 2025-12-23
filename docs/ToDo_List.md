@@ -119,6 +119,8 @@ timeline:
 
 - [ ] **account for virtual navigation bar on some android phones such as Redmi Note 13 Pro 5G by using a safe area**
 - [ ] **when playback is through, meaning the playback reached the end while playing, the timeline should only go back to the editing controls after the stop button is tapped, not automatically after playback reached the end**
+- [ ] **when exporting a project on web browser, the export project throws the error: **Export failed: Failed to export project: UnimplementedError: saveFile() has not been implemented.**
+- [ ] **when sharing a project on web browser, the share project throws the error: **Share failed: MissingPluginException(No implementation found for method getApplicationDocumentsDirectory on channel plugins.flutter.io/path_proivider)**
 
 ### Other fixes
 
@@ -142,3 +144,5 @@ timeline:
 ## Else
 
 - [x] setup a github repository, that contains all code, that should be accessible for public and keeps files that should not be public protected
+- [ ] set icon for the app for web and windows applications
+- [ ] setup a disclaimer for incompatible web browsers (e.g. safari)

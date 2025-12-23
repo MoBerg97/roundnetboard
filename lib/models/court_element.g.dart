@@ -21,7 +21,7 @@ class CourtElementAdapter extends TypeAdapter<CourtElement> {
       radius: fields[2] as double?,
       endPosition: fields[3] as Offset?,
       strokeWidth: fields[5] as double,
-      isVisible: fields[6] as bool,
+      isVisible: (fields[6] as bool?) ?? true,
     )
       ..typeIndex = fields[0] as int
       ..colorValue = fields[4] as int;

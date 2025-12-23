@@ -20,6 +20,28 @@ enum CourtEditorTool {
   eraser,
 }
 
+/// Represents a snapshot of the editor state for undo/redo functionality
+class _EditorSnapshot {
+  final List<CourtElement> elements;
+  final Color currentColor;
+  final ZoneMode zoneMode;
+
+  _EditorSnapshot({
+    required this.elements,
+    required this.currentColor,
+    required this.zoneMode,
+  });
+
+  /// Create a deep copy of this snapshot
+  _EditorSnapshot copy() {
+    return _EditorSnapshot(
+      elements: elements.map((e) => e.copy()).toList(),
+      currentColor: currentColor,
+      zoneMode: zoneMode,
+    );
+  }
+}
+
 enum ZoneMode { inner, serve, outer }
 
 class CourtEditingScreen extends StatefulWidget {
@@ -41,11 +63,21 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   Offset? _startPos;
   Offset? _currentPos;
   CourtElement? _draggingElement;
+  Offset? _dragOffset; // Offset from touch point to element position for dragging
+  Offset? _dragEndOffset; // Offset for endPosition when dragging shapes
   double _eraserRadius = 30.0;
   final GlobalKey _canvasKey = GlobalKey(debugLabel: 'court_editor_canvas');
   Color _currentColor = Colors.white;
   ZoneMode _zoneMode = ZoneMode.inner;
   CourtElement? _previewElement;
+  // Incremented whenever elements change to force background repaint
+  int _elementsRevision = 0;
+  // Prevent duplicate history pushes within a gesture
+  bool _pushedHistoryThisGesture = false;
+  
+  // History stacks for undo/redo
+  final List<_EditorSnapshot> _undoStack = [];
+  final List<_EditorSnapshot> _redoStack = [];
 
   @override
   void initState() {
@@ -98,9 +130,11 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                           child: CustomPaint(
                             size: boardSize,
                             painter: BoardBackgroundPainter(
-                              screenSize: screenSize,
+                              screenSize: screenSize, // Use full screenSize for proper center calculation
                               settings: _settings,
-                              customElements: null,
+                              customElements: _elements, // Show live-updating elements, not saved ones
+                              projectType: widget.project.projectType,
+                              elementsRevision: _elementsRevision,
                             ),
                           ),
                         ),
@@ -111,7 +145,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                               elements: _elements,
                               eraserPos: _currentTool == CourtEditorTool.eraser ? _currentPos : null,
                               eraserRadius: _eraserRadius,
-                              screenSize: screenSize,
+                              screenSize: screenSize, // Use full screenSize for proper center calculation
                               previewElement: _previewElement,
                             ),
                           ),
@@ -172,6 +206,22 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                   const SizedBox(width: 8),
                   _buildColorPickerButton(),
                   const SizedBox(width: 8),
+                  // Undo button
+                  IconButton(
+                    icon: const Icon(Icons.undo),
+                    color: _undoStack.isEmpty ? Colors.grey : Colors.white,
+                    tooltip: 'Undo',
+                    onPressed: _undoStack.isEmpty ? null : _undo,
+                  ),
+                  const SizedBox(width: 4),
+                  // Redo button
+                  IconButton(
+                    icon: const Icon(Icons.redo),
+                    color: _redoStack.isEmpty ? Colors.grey : Colors.white,
+                    tooltip: 'Redo',
+                    onPressed: _redoStack.isEmpty ? null : _redo,
+                  ),
+                  const SizedBox(width: 8),
                   // Clear all button
                   IconButton(
                     icon: const Icon(Icons.delete_sweep, color: Colors.red),
@@ -189,17 +239,14 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
 
   Widget _buildToolButton(CourtEditorTool tool, dynamic icon, String label) {
     final isActive = _currentTool == tool;
-    final iconWidget = icon is IconData ? Icon(icon) : icon;
+    final iconWidget = icon is IconData ? Icon(icon, color: isActive ? _currentColor : Colors.white) : icon;
 
     return Tooltip(
       message: label,
       child: FloatingActionButton.small(
-        backgroundColor: isActive ? _currentColor : AppTheme.mediumGrey,
+        backgroundColor: isActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
         onPressed: () => setState(() => _currentTool = tool),
-        child: IconTheme(
-          data: IconThemeData(color: isActive ? Colors.black : Colors.white),
-          child: iconWidget,
-        ),
+        child: iconWidget,
       ),
     );
   }
@@ -243,21 +290,21 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     switch (_zoneMode) {
       case ZoneMode.inner:
         label = 'Inner';
-        icon = _buildSmallCircleIcon(zoneActive ? _currentColor : Colors.white);
+        icon = _buildSmallCircleIcon(_currentColor);
         break;
       case ZoneMode.serve:
         label = 'Serve';
-        icon = _buildLargeCircleIcon(zoneActive ? _currentColor : Colors.white);
+        icon = _buildLargeCircleIcon(_currentColor);
         break;
       case ZoneMode.outer:
         label = 'Outer';
-        icon = _buildLargeCircleIcon(zoneActive ? _currentColor : Colors.white);
+        icon = _buildLargeCircleIcon(_currentColor);
         break;
     }
     return Tooltip(
       message: 'Zone ($label)',
       child: FloatingActionButton.small(
-        backgroundColor: zoneActive ? _currentColor : AppTheme.mediumGrey,
+        backgroundColor: zoneActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
         onPressed: () => setState(() {
           _currentTool = CourtEditorTool.zone;
           // Cycle mode on repeated taps
@@ -273,14 +320,14 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             IconTheme(
-              data: IconThemeData(color: zoneActive ? Colors.black : Colors.white),
+              data: IconThemeData(color: zoneActive ? _currentColor : Colors.white),
               child: icon,
             ),
             Text(
               label,
               style: TextStyle(
                 fontSize: 9,
-                color: zoneActive ? Colors.black : Colors.white,
+                color: zoneActive ? _currentColor : Colors.white,
               ),
             ),
           ],
@@ -301,18 +348,31 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     _startPos = localPos;
     _currentPos = localPos;
     _previewElement = null;
+    _pushedHistoryThisGesture = false;
 
     if (_currentTool == CourtEditorTool.select) {
       for (final element in _elements.reversed) {
         if (_isPointNearElement(localPos, element)) {
           _draggingElement = element;
           _currentColor = element.color;
+          // Store offset from touch to element position for smooth dragging
+          _dragOffset = element.position - localPos;
+          if (element.endPosition != null) {
+            _dragEndOffset = element.endPosition! - localPos;
+          }
+          // Save pre-change snapshot once at drag start
+          _saveToHistory();
+          _pushedHistoryThisGesture = true;
           break;
         }
       }
     } else if (_currentTool == CourtEditorTool.eraser) {
+      // Save pre-change snapshot once at erase start
+      _saveToHistory();
+      _pushedHistoryThisGesture = true;
       _eraseAtPosition(localPos);
-    } else if (_currentTool == CourtEditorTool.customCircle || _currentTool == CourtEditorTool.zone) {
+    } else {
+      // Show live preview for all creation tools (circle, zone, line, rectangle, net)
       _previewElement = _createElementFromTool(_currentTool, localPos, localPos, preview: true);
     }
   }
@@ -326,10 +386,19 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       _currentPos = localPos;
 
       if (_currentTool == CourtEditorTool.select && _draggingElement != null) {
-        _draggingElement!.position = localPos;
+        // Apply drag offset to maintain shape
+        _draggingElement!.position = localPos + (_dragOffset ?? Offset.zero);
+        if (_draggingElement!.endPosition != null && _dragEndOffset != null) {
+          _draggingElement!.endPosition = localPos + _dragEndOffset!;
+        }
+        // Bump revision so background repaints while dragging
+        _elementsRevision++;
       } else if (_currentTool == CourtEditorTool.eraser) {
         _eraseAtPosition(localPos);
-      } else if (_currentTool == CourtEditorTool.customCircle || _currentTool == CourtEditorTool.zone) {
+        // Bump revision so background repaints while erasing
+        _elementsRevision++;
+      } else {
+        // Show live preview for all creation tools while dragging
         _previewElement = _createElementFromTool(_currentTool, _startPos ?? localPos, localPos, preview: true);
       }
     });
@@ -343,24 +412,34 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     final end = _currentPos!;
     
     if (tool == CourtEditorTool.select) {
+      // History was saved at drag start; do not save again to avoid duplicates
       _draggingElement = null;
+      _dragOffset = null;
+      _dragEndOffset = null;
+      _pushedHistoryThisGesture = false;
       return;
     }
 
     if (tool == CourtEditorTool.eraser) {
+      // History was saved at erase start; do not save again here
       _draggingElement = null;
+      _pushedHistoryThisGesture = false;
       return;
     }
 
     // Create new element based on tool
     final element = _createElementFromTool(tool, start, end);
     if (element != null) {
+      // Save pre-change snapshot before committing element
+      _saveToHistory();
       setState(() => _elements.add(element));
+      _elementsRevision++;
     }
 
     _startPos = null;
     _currentPos = null;
     _previewElement = null;
+    _pushedHistoryThisGesture = false;
   }
 
   void _eraseAtPosition(Offset pos) {
@@ -385,16 +464,18 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
           _distanceToLineSegment(pos, bl, tl),
         ];
         final minD = ds.reduce(math.min);
-        final inside = pos.dx >= tl.dx && pos.dx <= br.dx && pos.dy >= tl.dy && pos.dy <= br.dy;
-        return inside || minD <= _eraserRadius;
+        // Only delete if hitting outline, not interior
+        return minD <= _eraserRadius;
       }
+      // For circles/zones: only hit outline (not filled interior)
       final radius = e.radius ?? 0;
-      final dist = (e.position - pos).distance;
       if (radius > 0) {
-        return dist <= radius + _eraserRadius;
+        final dist = (e.position - pos).distance;
+        final distFromOutline = (dist - radius).abs();
+        return distFromOutline <= _eraserRadius;
       }
       // Fallback to point distance (e.g., net end with no radius)
-      return dist <= _eraserRadius;
+      return (e.position - pos).distance <= _eraserRadius;
     }
 
     _elements.removeWhere(intersects);
@@ -476,12 +557,46 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
 
   bool _isPointNearElement(Offset point, CourtElement element) {
     const threshold = 15.0;
+    
+    // Check center point
     final dist = (element.position - point).distance;
     if (dist < threshold) return true;
 
+    // For shapes with end position (lines, rectangles)
     if (element.endPosition != null) {
       final endDist = (element.endPosition! - point).distance;
       if (endDist < threshold) return true;
+      
+      // For rectangles, check all four edges
+      if (element.type == CourtElementType.customRectangle) {
+        final a = element.position;
+        final b = element.endPosition!;
+        final tl = Offset(math.min(a.dx, b.dx), math.min(a.dy, b.dy));
+        final tr = Offset(math.max(a.dx, b.dx), math.min(a.dy, b.dy));
+        final bl = Offset(math.min(a.dx, b.dx), math.max(a.dy, b.dy));
+        final br = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
+        
+        final edges = [
+          _distanceToLineSegment(point, tl, tr),
+          _distanceToLineSegment(point, tr, br),
+          _distanceToLineSegment(point, br, bl),
+          _distanceToLineSegment(point, bl, tl),
+        ];
+        return edges.any((d) => d < threshold);
+      }
+      
+      // For lines, check distance to line segment
+      if (element.type == CourtElementType.customLine) {
+        return _distanceToLineSegment(point, element.position, element.endPosition!) < threshold;
+      }
+    }
+    
+    // For circles/zones, check if point is on outline
+    final radius = element.radius ?? 0;
+    if (radius > 0) {
+      final distFromCenter = (element.position - point).distance;
+      final distFromOutline = (distFromCenter - radius).abs();
+      return distFromOutline < threshold;
     }
 
     return false;
@@ -497,8 +612,16 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           FilledButton(
             onPressed: () {
-              setState(() => _elements.clear());
-              _previewElement = null;
+              setState(() {
+                _elements.clear();
+                _previewElement = null;
+              });
+              // Also clear and save the project state
+              widget.project.customCourtElements = [];
+              widget.project.save();
+              // Save to history after clearing all elements
+              _saveToHistory();
+              _elementsRevision++;
               Navigator.pop(context);
             },
             child: const Text('Clear'),
@@ -568,8 +691,89 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       ),
     );
   }
-}
 
+  /// Save the current editor state to the undo stack and clear the redo stack
+  void _saveToHistory() {
+    // Avoid pushing duplicate snapshot equal to the current state
+    if (_undoStack.isNotEmpty && _isSameAsSnapshot(_undoStack.last)) {
+      return;
+    }
+    _undoStack.add(_EditorSnapshot(
+      elements: _elements.map((e) => e.copy()).toList(),
+      currentColor: _currentColor,
+      zoneMode: _zoneMode,
+    ));
+    _redoStack.clear();
+    
+    // Limit undo history to 50 snapshots to prevent memory issues
+    if (_undoStack.length > 50) {
+      _undoStack.removeAt(0);
+    }
+  }
+
+  bool _isSameAsSnapshot(_EditorSnapshot snap) {
+    if (snap.elements.length != _elements.length) return false;
+    for (int i = 0; i < _elements.length; i++) {
+      final a = _elements[i];
+      final b = snap.elements[i];
+      if (a.type != b.type) return false;
+      if (a.position != b.position) return false;
+      if (a.endPosition != b.endPosition) return false;
+      if ((a.radius ?? 0) != (b.radius ?? 0)) return false;
+      if (a.color.value != b.color.value) return false;
+      if (a.strokeWidth != b.strokeWidth) return false;
+    }
+    if (snap.currentColor.value != _currentColor.value) return false;
+    if (snap.zoneMode != _zoneMode) return false;
+    return true;
+  }
+
+  /// Restore the editor to the previous state
+  void _undo() {
+    if (_undoStack.isEmpty) return;
+    
+    // Save current state to redo stack before undoing
+    _redoStack.add(_EditorSnapshot(
+      elements: _elements.map((e) => e.copy()).toList(),
+      currentColor: _currentColor,
+      zoneMode: _zoneMode,
+    ));
+    
+    // Pop the previous state and restore it
+    final snapshot = _undoStack.removeLast();
+    setState(() {
+      _elements = snapshot.elements.map((e) => e.copy()).toList();
+      _currentColor = snapshot.currentColor;
+      _zoneMode = snapshot.zoneMode;
+      _previewElement = null;
+      _draggingElement = null;
+      _elementsRevision++;
+    });
+  }
+
+  /// Restore the editor to the next state (redo)
+  void _redo() {
+    if (_redoStack.isEmpty) return;
+    
+    // Save current state to undo stack before redoing
+    _undoStack.add(_EditorSnapshot(
+      elements: _elements.map((e) => e.copy()).toList(),
+      currentColor: _currentColor,
+      zoneMode: _zoneMode,
+    ));
+    
+    // Pop the next state and restore it
+    final snapshot = _redoStack.removeLast();
+    setState(() {
+      _elements = snapshot.elements.map((e) => e.copy()).toList();
+      _currentColor = snapshot.currentColor;
+      _zoneMode = snapshot.zoneMode;
+      _previewElement = null;
+      _draggingElement = null;
+      _elementsRevision++;
+    });
+  }
+}
 class _NetIconPainter extends CustomPainter {
   final Color color;
   _NetIconPainter(this.color);

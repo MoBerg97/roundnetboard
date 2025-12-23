@@ -10,12 +10,15 @@ class BoardBackgroundPainter extends CustomPainter {
   final Settings settings;
   final List<CourtElement>? customElements;
   final ProjectType? projectType; // null for play mode, training for training mode
+  // Revision counter to force repaint when elements mutate in-place
+  final int elementsRevision;
 
   BoardBackgroundPainter({
     required this.screenSize,
     required this.settings,
     this.customElements,
     this.projectType,
+    this.elementsRevision = 0,
   });
 
   Offset _boardCenter() {
@@ -37,7 +40,12 @@ class BoardBackgroundPainter extends CustomPainter {
     canvas.drawRect(Offset.zero & size, bgPaint);
 
     // In training mode, skip drawing net and zones - only show background
+    // BUT still draw custom elements (user-created overlays)
     if (projectType == ProjectType.training) {
+      // Draw custom elements even in training mode
+      if (customElements != null && customElements!.isNotEmpty) {
+        _drawCustomElements(canvas, center, customElements!);
+      }
       return;
     }
 
@@ -140,63 +148,69 @@ class BoardBackgroundPainter extends CustomPainter {
     }
   }
 
-  void _drawNet(Canvas canvas, Offset center, double radius, Paint paint) {
-    // Draw outer circle
-    canvas.drawCircle(center, radius, paint);
+  void _drawNet(Canvas canvas, Offset center, double radius, Paint strokePaint) {
+    // Outer filled donut to mimic board background net (same as CourtEditorPainter)
+    final bgPaint = Paint()
+      ..color = AppTheme.courtGreen
+      ..style = PaintingStyle.fill;
+    final rimPaint = Paint()
+      ..color = AppTheme.lightGrey
+      ..style = PaintingStyle.fill;
 
-    // Draw inner circle (rim)
-    canvas.drawCircle(center, radius * 0.5, paint);
+    canvas.drawCircle(center, radius + 5, rimPaint);
+    canvas.drawCircle(center, radius, bgPaint);
 
-    // Draw hash pattern
-    for (double angle = 0; angle < 360; angle += 15) {
-      final radians = angle * 3.14159 / 180;
-      final x1 = radius * 0.5 * (angle % 2 == 0 ? 0.6 : 0.4);
-      final y1 = radius * 0.5 * (angle % 2 == 0 ? 0.6 : 0.4);
-      
-      final x = x1 * cos(radians);
-      final y = y1 * sin(radians);
-      
+    // Grid hash pattern similar to board background
+    final gridPaint = Paint()
+      ..color = AppTheme.netBlack.withAlpha((0.4 * 255).round())
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    const step = 6.0;
+    for (double dx = -radius; dx <= radius; dx += step) {
+      final term = radius * radius - dx * dx;
+      if (term < 0) continue;
+      final dy = math.sqrt(term);
       canvas.drawLine(
-        Offset(center.dx - x * 0.3, center.dy - y * 0.3),
-        Offset(center.dx + x, center.dy + y),
-        paint,
+        center + Offset(dx, -dy),
+        center + Offset(dx, dy),
+        gridPaint,
       );
     }
+    for (double dy = -radius; dy <= radius; dy += step) {
+      final term = radius * radius - dy * dy;
+      if (term < 0) continue;
+      final dx = math.sqrt(term);
+      canvas.drawLine(
+        center + Offset(-dx, dy),
+        center + Offset(dx, dy),
+        gridPaint,
+      );
+    }
+
+    // Outer stroke highlight
+    canvas.drawCircle(center, radius + 5, strokePaint);
   }
 
   @override
   bool shouldRepaint(covariant BoardBackgroundPainter oldDelegate) {
-    return oldDelegate.settings != settings || 
-           oldDelegate.screenSize != screenSize ||
-           oldDelegate.customElements != customElements ||
-           oldDelegate.projectType != projectType;
+    // Repaint when:
+    // - Settings or screen size or project type changed
+    // - Elements revision changed (in-place mutations in editor)
+    // - Elements list reference changed or length changed (BoardScreen rebuild after save)
+    final listsDiffer = () {
+      final a = oldDelegate.customElements;
+      final b = customElements;
+      if (a == null && b == null) return false;
+      if (a == null || b == null) return true;
+      if (!identical(a, b)) return true; // different list instance
+      if (a.length != b.length) return true; // length change
+      return false;
+    }();
+
+    return oldDelegate.settings != settings ||
+        oldDelegate.screenSize != screenSize ||
+        oldDelegate.projectType != projectType ||
+        oldDelegate.elementsRevision != elementsRevision ||
+        listsDiffer;
   }
-}
-
-double cos(double angle) {
-  angle = angle % (3.14159 * 2);
-  if (angle < 0) angle += 3.14159 * 2;
-  
-  if (angle < 3.14159 / 2) return sin(3.14159 / 2 - angle);
-  if (angle < 3.14159) return -sin(angle - 3.14159 / 2);
-  if (angle < 3.14159 * 1.5) return -sin(3.14159 * 1.5 - angle);
-  return sin(angle - 3.14159 * 1.5);
-}
-
-double sin(double angle) {
-  angle = angle % (3.14159 * 2);
-  if (angle < 0) angle += 3.14159 * 2;
-  
-  const lookup = [
-    0.0, 0.052, 0.105, 0.156, 0.208, 0.259, 0.309, 0.358, 0.407, 0.454,
-    0.5, 0.545, 0.588, 0.629, 0.669, 0.707, 0.743, 0.777, 0.809, 0.839,
-    0.866, 0.891, 0.914, 0.934, 0.951, 0.966, 0.978, 0.988, 0.995, 0.999, 1.0
-  ];
-  
-  final index = ((angle / (3.14159 / 2)) * 30).toInt().clamp(0, 30);
-  
-  if (angle <= 3.14159 / 2) return lookup[index];
-  if (angle <= 3.14159) return lookup[60 - index];
-  if (angle <= 3 * 3.14159 / 2) return -lookup[index - 30];
-  return -lookup[90 - index];
 }
