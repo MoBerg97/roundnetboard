@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
 import '../models/animation_project.dart';
+import '../models/court_templates.dart';
 import '../services/project_service.dart';
 import '../services/export_service.dart';
 import '../services/tutorial_service.dart';
@@ -272,44 +273,140 @@ class _HomeScreenState extends State<HomeScreen> {
   void _addProject(BuildContext context, Box<AnimationProject> box) {
     final controller = TextEditingController();
     final projectService = ProjectService(box);
+    var isTrainingMode = false;
+    var selectedTemplateIndex = 0;
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.dialogBorderRadius)),
-        title: const Text("New Project"),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: "Project Name",
-            hintText: "Enter project name",
-            prefixIcon: Icon(Icons.edit),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.dialogBorderRadius)),
+          title: const Text("New Project"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: "Project Name",
+                    hintText: "Enter project name",
+                    prefixIcon: Icon(Icons.edit),
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                ),
+                const SizedBox(height: 24),
+                // Project type toggle (modern slider style)
+                Text(
+                  'Project Type',
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderThemeData(
+                          trackHeight: 4.0,
+                          thumbShape: RoundSliderThumbShape(
+                            elevation: 0,
+                            enabledThumbRadius: 14.0,
+                          ),
+                          overlayShape: RoundSliderOverlayShape(overlayRadius: 18.0),
+                        ),
+                        child: Slider(
+                          value: isTrainingMode ? 1.0 : 0.0,
+                          min: 0.0,
+                          max: 1.0,
+                          divisions: 1,
+                          onChanged: (value) {
+                            setState(() {
+                              isTrainingMode = value > 0.5;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  isTrainingMode ? 'Training' : 'Play',
+                  style: Theme.of(context).textTheme.bodySmall,
+                  textAlign: TextAlign.center,
+                ),
+                // Template selection for training mode
+                if (isTrainingMode) ...[
+                  const SizedBox(height: 24),
+                  Text(
+                    'Court Template',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Column(
+                    children: List.generate(3, (index) {
+                      final isSelected = selectedTemplateIndex == index;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: isSelected ? AppTheme.primaryBlue : Colors.transparent,
+                              width: 2.0,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            color: isSelected ? AppTheme.primaryBlue.withOpacity(0.1) : Colors.transparent,
+                          ),
+                          child: ListTile(
+                            title: Text(
+                              CourtTemplates.templateNames[index],
+                              style: TextStyle(
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                            onTap: () {
+                              setState(() {
+                                selectedTemplateIndex = index;
+                              });
+                            },
+                            selected: isSelected,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              ],
+            ),
           ),
-          textCapitalization: TextCapitalization.words,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          FilledButton.icon(
-            onPressed: () async {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
-                try {
-                  await projectService.createProject(name);
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error creating project: $e')));
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+            FilledButton.icon(
+              onPressed: () async {
+                final name = controller.text.trim();
+                if (name.isNotEmpty) {
+                  try {
+                    await projectService.createProject(
+                      name,
+                      projectType: isTrainingMode ? ProjectType.training : ProjectType.play,
+                      courtTemplate: isTrainingMode ? selectedTemplateIndex : 0,
+                    );
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error creating project: $e')));
+                    }
                   }
                 }
-              }
-            },
-            icon: const Icon(Icons.check, size: 18),
-            label: const Text("Create"),
-          ),
-        ],
+              },
+              icon: const Icon(Icons.check, size: 18),
+              label: const Text("Create"),
+            ),
+          ],
+        ),
       ),
     );
   }

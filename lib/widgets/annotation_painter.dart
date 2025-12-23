@@ -82,6 +82,8 @@ class _AnnotationCustomPainter extends CustomPainter {
           _paintLine(canvas, annotation);
         case AnnotationType.circle:
           _paintCircle(canvas, annotation);
+        case AnnotationType.rectangle:
+          _paintRectangle(canvas, annotation);
       }
     }
     // draw temporary/staged annotations (if any) with lighter style
@@ -92,6 +94,8 @@ class _AnnotationCustomPainter extends CustomPainter {
             _paintTempLine(canvas, annotation);
           case AnnotationType.circle:
             _paintTempCircle(canvas, annotation);
+          case AnnotationType.rectangle:
+            _paintTempRectangle(canvas, annotation);
         }
       }
     }
@@ -103,6 +107,8 @@ class _AnnotationCustomPainter extends CustomPainter {
             _paintErasingLine(canvas, annotation);
           case AnnotationType.circle:
             _paintErasingCircle(canvas, annotation);
+          case AnnotationType.rectangle:
+            _paintErasingRectangle(canvas, annotation);
         }
       }
     }
@@ -110,6 +116,61 @@ class _AnnotationCustomPainter extends CustomPainter {
     if (dragPreviewLine != null && dragPreviewLine!.length >= 2) {
       _paintDragPreviewLine(canvas, dragPreviewLine![0], dragPreviewLine![1]);
     }
+  }
+
+  void _paintRectangle(Canvas canvas, Annotation annotation) {
+    if (annotation.points.length < 2) return;
+    final a = annotation.points[0];
+    final b = annotation.points[1];
+    final topLeft = Offset(math.min(a.dx, b.dx), math.min(a.dy, b.dy));
+    final bottomRight = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
+    final tl = _cmToScreen(topLeft);
+    final br = _cmToScreen(bottomRight);
+    final rect = Rect.fromPoints(tl, br);
+    final paint = Paint()
+      ..color = annotation.color.withOpacity(0.8)
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke;
+    canvas.drawRect(rect, paint);
+  }
+
+  void _paintTempRectangle(Canvas canvas, Annotation annotation) {
+    if (annotation.points.length < 2) return;
+    final a = annotation.points[0];
+    final b = annotation.points[1];
+    final topLeft = Offset(math.min(a.dx, b.dx), math.min(a.dy, b.dy));
+    final bottomRight = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
+    final tl = _cmToScreen(topLeft);
+    final br = _cmToScreen(bottomRight);
+    final rect = Rect.fromPoints(tl, br);
+    final paint = Paint()
+      ..color = annotation.color.withOpacity(0.35)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawRect(rect, paint);
+  }
+
+  void _paintErasingRectangle(Canvas canvas, Annotation annotation) {
+    if (annotation.points.length < 2) return;
+    final a = annotation.points[0];
+    final b = annotation.points[1];
+    final topLeft = Offset(math.min(a.dx, b.dx), math.min(a.dy, b.dy));
+    final bottomRight = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
+    final tl = _cmToScreen(topLeft);
+    final br = _cmToScreen(bottomRight);
+    final rect = Rect.fromPoints(tl, br);
+    final fade = Paint()
+      ..color = annotation.color.withOpacity(0.2)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawRect(rect, fade);
+    // draw X across rectangle
+    final strike = Paint()
+      ..color = Colors.red.withOpacity(0.6)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(tl, br, strike);
+    canvas.drawLine(Offset(br.dx, tl.dy), Offset(tl.dx, br.dy), strike);
   }
 
   void _paintTempLine(Canvas canvas, Annotation annotation) {

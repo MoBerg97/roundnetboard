@@ -1,5 +1,19 @@
 # ToDo List for Features and Fixes
 
+# feature branches
+
+## trainings-court
+The court editing screen should show the same background as the last saved state of the court. Currently when a preset without zones or net is chosen, in court editing screen, the zones and nets are still drawn. Use the same blank default screen.
+There are still issues persisting with added balls and players, that show no path and so on. Make sure, that each object has a unique id that refers to it, so that if a object before that in the list is deleted, the attribution does not change.
+Additionally, the paths should be object specific to their unique object, as well as any attribute such as modifer settings etc.
+If a ball is created in a later frame (frame>1) then the initial position of the ball is set for all other frames.
+when a ball or player is deleted, all paths and attributes related to that object should also be deleted.
+align the ui design of annotation, zone creation, line creation, rectangle creation to the same style as in the main board screen.
+delete circles only if the eraser tool hits the outline of shapes (rectangles, zones, circles) not on hitting any point inside the shape.
+shapes should be able to be dragged on their outline, instead of their center point.
+the outline of icons should be aligned to the current selected color in the color picker, not the background of the icon.
+
+
 ## Design
 
 ### main aspects: 
@@ -110,7 +124,7 @@ timeline:
 
 - [ ] **after the animaiton reached the end, the scrubber is not accessible anymore (touching it leaves playback view) and the edit timeline instantly shows up. instead only the stop button should make the screen switch back to editing mode.**
 - [ ] the undo and redo history should also track annotation edits (creation, deletion, etc).
-- [ ] **the eraser tool should show no preview of which annotations to delete, instead annotations touched during tapping or dragging of the eraser tool (10px radius) are instantly deleted.**
+- [x] **the eraser tool should show no preview of which annotations to delete, instead annotations touched during tapping or dragging of the eraser tool (10px radius) are instantly deleted.**
 - [ ] the numerated suffix does not supply increasing numbers in brackets. Instead each copy gets another (1) suffix resulting in e.g. framename (1) (1) (1)
 - [ ] the annotations are not copied and displayed in a new frame when this is added.
 - [x] the playback timeline divides the frame thumbnail into n thumbnails as in the editing timeline. but the first frame has no duration, only giving the start positions. therefore the cursor of the thumbnail should start at time 0 at the left hand side of the thumbnail of frame 1

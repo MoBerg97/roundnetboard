@@ -56,6 +56,8 @@ class AnnotationTypeAdapter extends TypeAdapter<AnnotationType> {
         return AnnotationType.line;
       case 1:
         return AnnotationType.circle;
+      case 2:
+        return AnnotationType.rectangle;
       default:
         return AnnotationType.line;
     }
@@ -69,6 +71,9 @@ class AnnotationTypeAdapter extends TypeAdapter<AnnotationType> {
         break;
       case AnnotationType.circle:
         writer.writeByte(1);
+        break;
+      case AnnotationType.rectangle:
+        writer.writeByte(2);
         break;
     }
   }

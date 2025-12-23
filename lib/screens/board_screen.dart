@@ -6,6 +6,8 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import '../models/animation_project.dart';
 import '../models/frame.dart';
+import '../models/player.dart';
+import '../models/ball.dart';
 import '../widgets/path_painter.dart';
 import '../widgets/board_background_painter.dart';
 import '../models/annotation.dart';
@@ -14,6 +16,7 @@ import '../models/settings.dart';
 import '../utils/path_engine.dart';
 import '../services/tutorial_service.dart';
 import 'settings_screen.dart';
+import 'court_editing_screen.dart';
 import '../utils/history.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
@@ -52,7 +55,7 @@ class BoardScreen extends StatefulWidget {
 // ANNOTATION TOOLS ENUM
 // ────────────────────────────────────────────────────────────────────────────
 // Available drawing tools for annotations on the board
-enum AnnotationTool { none, line, circle }
+enum AnnotationTool { none, line, circle, rectangle }
 
 class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin {
   // ──────────────────────────────────────────────────────────────────────────
@@ -87,6 +90,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   bool _showModifierMenu = false; // Show ball modifier menu (set/hit/clear)?
 
   // ──────────────────────────────────────────────────────────────────────────
+  // PLAYER MODIFIER STATE
+  // ──────────────────────────────────────────────────────────────────────────
+  bool _showPlayerMenu = false; // Show player modifier menu (color/delete)?
+  int? _activePlayerIndex; // Which player is currently selected for modifier menu
+
+  // ──────────────────────────────────────────────────────────────────────────
   // ANNOTATION STATE
   // ──────────────────────────────────────────────────────────────────────────
   bool _annotationMode = false; // Is annotation mode active?
@@ -108,6 +117,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   final Map<String, Offset> _dragStartScreen = {}; // Starting position in screen pixels
   String? _activePathDragLabel; // Which path control is being dragged
   int? _activePathDragIndex; // Index of the control point being dragged (currently first only)
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // TRAINING MODE STATE (for dynamic player/ball management)
+  // ──────────────────────────────────────────────────────────────────────────
+  Color? _lastTappedPlayerColor; // Last tapped player color (for new player color inheritance)
+  int? _activeBallIndex; // Which ball is currently selected for modifier menu (training mode only)
 
   // ──────────────────────────────────────────────────────────────────────────
   // UI REFERENCES
@@ -134,21 +149,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     // Create default frame if project is empty
     if (widget.project.frames.isEmpty) {
       final r = _settings.outerCircleRadiusCm;
+      
       final defaultFrame = Frame(
-        p1: Offset(0, -r),
-        p2: Offset(r, 0),
-        p3: Offset(0, r),
-        p4: Offset(-r, 0),
-        ball: Offset.zero,
-        p1Rotation: 0,
-        p2Rotation: 0,
-        p3Rotation: 0,
-        p4Rotation: 0,
-        p1PathPoints: [],
-        p2PathPoints: [],
-        p3PathPoints: [],
-        p4PathPoints: [],
-        ballPathPoints: [],
+        players: [
+          Player(position: Offset(0, -r), color: Colors.blue),
+          Player(position: Offset(r, 0), color: Colors.blue),
+          Player(position: Offset(0, r), color: Colors.red),
+          Player(position: Offset(-r, 0), color: Colors.red),
+        ],
+        balls: [
+          Ball(position: Offset.zero, color: Colors.orange),
+        ],
       );
       widget.project.frames.add(defaultFrame);
       currentFrame = defaultFrame;
@@ -182,6 +193,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _ticker.dispose();
     _timelineController.dispose();
     super.dispose();
+  }
+
+  void _saveProject() {
+    widget.project.save();
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -490,33 +505,56 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       if (pathPoints.isNotEmpty) {
         final engine = PathEngine.fromTwoQuadratics(start: start, control: pathPoints.first, end: end, resolution: 400);
         return engine.sample(t);
-      } else {
-        return Offset.lerp(start, end, t)!;
       }
+      return Offset.lerp(start, end, t)!;
+    }
+
+    // Ensure we have at least 4 players and 1 ball for interpolation
+    final players = fB.players.toList();
+    while (players.length < 4) {
+      players.add(Player(position: Offset.zero, color: Colors.blue));
+    }
+    final balls = fB.balls.isEmpty ? [Ball(position: Offset.zero, color: Colors.orange)] : fB.balls;
+
+    // Interpolate player positions
+    final interpPlayers = <Player>[];
+    for (int i = 0; i < players.length && i < 4; i++) {
+      final pA = i < fA.players.length ? fA.players[i] : players[i];
+      final pB = players[i];
+
+      final interpPos = getPathOrLinear('P${i + 1}', pA.position, pB.position, pB.pathPoints);
+      final interpRot = _interpolateRotation(pA.rotation, pB.rotation, t);
+
+      interpPlayers.add(Player(
+        position: interpPos,
+        rotation: interpRot,
+        color: pB.color,
+      ));
+    }
+
+    // Interpolate ball positions
+    final interpBalls = <Ball>[];
+    for (int i = 0; i < balls.length; i++) {
+      final bA = i < fA.balls.length ? fA.balls[i] : balls[i];
+      final bB = balls[i];
+
+      final interpPos = getPathOrLinear('BALL', bA.position, bB.position, bB.pathPoints);
+
+      interpBalls.add(Ball(
+        position: interpPos,
+        hitT: bB.hitT,
+        isSet: bB.isSet,
+        color: bB.color,
+      ));
     }
 
     return Frame(
-      p1: getPathOrLinear('P1', fA.p1, fB.p1, fB.p1PathPoints),
-      p2: getPathOrLinear('P2', fA.p2, fB.p2, fB.p2PathPoints),
-      p3: getPathOrLinear('P3', fA.p3, fB.p3, fB.p3PathPoints),
-      p4: getPathOrLinear('P4', fA.p4, fB.p4, fB.p4PathPoints),
-      ball: getPathOrLinear('BALL', fA.ball, fB.ball, fB.ballPathPoints),
-      p1Rotation: _interpolateRotation(fA.p1Rotation, fB.p1Rotation, t),
-      p2Rotation: _interpolateRotation(fA.p2Rotation, fB.p2Rotation, t),
-      p3Rotation: _interpolateRotation(fA.p3Rotation, fB.p3Rotation, t),
-      p4Rotation: _interpolateRotation(fA.p4Rotation, fB.p4Rotation, t),
-      p1PathPoints: [],
-      p2PathPoints: [],
-      p3PathPoints: [],
-      p4PathPoints: [],
-      ballPathPoints: [],
+      players: interpPlayers,
+      balls: interpBalls,
+      duration: fB.duration,
       annotations: fB.annotations,
     );
   }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // BALL EFFECT ANIMATIONS (Set swell, Hit shrink)
-  // ══════════════════════════════════════════════════════════════════════════
 
   /// Calculate ball scale during playback based on set/hit effects
   double _ballScaleAt(double t) {
@@ -574,22 +612,38 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   void _updateFramePosition(String label, Offset newPos) {
     if (_isPlaying) return;
     setState(() {
-      switch (label) {
-        case "P1":
-          currentFrame.p1 = newPos;
-          break;
-        case "P2":
-          currentFrame.p2 = newPos;
-          break;
-        case "P3":
-          currentFrame.p3 = newPos;
-          break;
-        case "P4":
-          currentFrame.p4 = newPos;
-          break;
-        case "BALL":
-          currentFrame.ball = newPos;
-          break;
+      // In training mode, use index-based access for dynamic entities
+      if (widget.project.projectType == ProjectType.training) {
+        if (label.startsWith('P')) {
+          final playerIndex = int.tryParse(label.substring(1)) ?? 1;
+          final idx = playerIndex - 1;
+          if (idx >= 0 && idx < currentFrame.players.length) {
+            currentFrame.players[idx].position = newPos;
+          }
+        } else if (label == "BALL" && _activeBallIndex != null) {
+          if (_activeBallIndex! >= 0 && _activeBallIndex! < currentFrame.balls.length) {
+            currentFrame.balls[_activeBallIndex!].position = newPos;
+          }
+        }
+      } else {
+        // Play mode: use convenience getters
+        switch (label) {
+          case "P1":
+            currentFrame.p1 = newPos;
+            break;
+          case "P2":
+            currentFrame.p2 = newPos;
+            break;
+          case "P3":
+            currentFrame.p3 = newPos;
+            break;
+          case "P4":
+            currentFrame.p4 = newPos;
+            break;
+          case "BALL":
+            currentFrame.ball = newPos;
+            break;
+        }
       }
       final idx = widget.project.frames.indexOf(currentFrame);
       if (idx >= 0) widget.project.frames[idx] = currentFrame;
@@ -638,20 +692,15 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           // Create default frame if all frames deleted
           final r = _settings.outerCircleRadiusCm;
           final defaultFrame = Frame(
-            p1: Offset(0, -r),
-            p2: Offset(r, 0),
-            p3: Offset(0, r),
-            p4: Offset(-r, 0),
-            ball: Offset.zero,
-            p1Rotation: 0,
-            p2Rotation: 0,
-            p3Rotation: 0,
-            p4Rotation: 0,
-            p1PathPoints: [],
-            p2PathPoints: [],
-            p3PathPoints: [],
-            p4PathPoints: [],
-            ballPathPoints: [],
+            players: [
+              Player(position: Offset(0, -r), color: Colors.blue),
+              Player(position: Offset(r, 0), color: Colors.blue),
+              Player(position: Offset(0, r), color: Colors.red),
+              Player(position: Offset(-r, 0), color: Colors.red),
+            ],
+            balls: [
+              Ball(position: Offset.zero, color: Colors.orange),
+            ],
           );
           widget.project.frames.add(defaultFrame);
           currentFrame = defaultFrame;
@@ -662,12 +711,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         }
       });
     }
-  }
-
-  /// Save the project to Hive database
-  void _saveProject() {
-    widget.project.save();
-    debugPrint("Project saved with ${widget.project.frames.length} frames");
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -797,7 +840,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       });
       return;
     }
-    if (_activeAnnotationTool != AnnotationTool.line) return;
+    if (_activeAnnotationTool == AnnotationTool.none) return;
 
     // Close ball modifier menu if open and annotations are being touched
     if (_showModifierMenu) {
@@ -812,6 +855,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _pendingAnnotationPoints.clear();
       _pendingAnnotationPoints.add(cmPos);
       _currentDragPos = cmPos;
+      _stagedAnnotations.clear();
     });
   }
 
@@ -836,10 +880,24 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         currentFrame.annotations.removeWhere((ann) => _isAnnotationTouchedByCircle(ann, cmPos, _eraserRadiusCm));
       });
       _saveProject();
-    } else if (_activeAnnotationTool == AnnotationTool.line && _pendingAnnotationPoints.isNotEmpty) {
-      // Update preview position for line drag
+    } else if (_pendingAnnotationPoints.isNotEmpty && _activeAnnotationTool != AnnotationTool.none) {
+      // Update preview position for active tool
       setState(() {
         _currentDragPos = cmPos;
+        _stagedAnnotations.clear();
+        if (_activeAnnotationTool == AnnotationTool.rectangle) {
+          _stagedAnnotations.add(Annotation(
+            type: AnnotationType.rectangle,
+            color: _annotationColor,
+            points: [_pendingAnnotationPoints.first, cmPos],
+          ));
+        } else if (_activeAnnotationTool == AnnotationTool.circle) {
+          _stagedAnnotations.add(Annotation(
+            type: AnnotationType.circle,
+            color: _annotationColor,
+            points: [_pendingAnnotationPoints.first, cmPos],
+          ));
+        }
       });
     }
   }
@@ -874,6 +932,22 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       // Check if annotation circle overlaps with eraser circle
       final circleWidth = 10.0; // cm width of the circle line
       return distToCenter <= (eraserRadiusCm + radius + circleWidth / 2);
+    } else if (ann.type == AnnotationType.rectangle && ann.points.length >= 2) {
+       final a = ann.points[0];
+       final b = ann.points[1];
+       final topLeft = Offset(math.min(a.dx, b.dx), math.min(a.dy, b.dy));
+       final bottomRight = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
+       final tl = topLeft;
+       final tr = Offset(bottomRight.dx, topLeft.dy);
+       final bl = Offset(topLeft.dx, bottomRight.dy);
+       final br = bottomRight;
+       // Check distance to each edge of rectangle
+       final dTop = _distanceToLineSegment(eraserCenterCm, tl, tr);
+       final dBottom = _distanceToLineSegment(eraserCenterCm, bl, br);
+       final dLeft = _distanceToLineSegment(eraserCenterCm, tl, bl);
+       final dRight = _distanceToLineSegment(eraserCenterCm, tr, br);
+       final minD = math.min(math.min(dTop, dBottom), math.min(dLeft, dRight));
+       return minD <= eraserRadiusCm;
     }
     return false;
   }
@@ -901,26 +975,34 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       return;
     }
 
-    if (_activeAnnotationTool == AnnotationTool.line &&
-        _pendingAnnotationPoints.isNotEmpty &&
-        _currentDragPos != null) {
+    if (_pendingAnnotationPoints.isNotEmpty && _currentDragPos != null) {
       final start = _pendingAnnotationPoints[0];
       final end = _currentDragPos!;
 
-      if ((end - start).distance > 10) {
-        // Only create if drag distance > 10cm
-        final ann = Annotation(type: AnnotationType.line, color: _annotationColor, points: [start, end]);
-        setState(() {
-          currentFrame.annotations.add(ann);
-          _pendingAnnotationPoints.clear();
-          _currentDragPos = null;
-        });
-        _saveProject();
+      final dist = (end - start).distance;
+      if (dist > 10) {
+        Annotation? ann;
+        if (_activeAnnotationTool == AnnotationTool.line) {
+          ann = Annotation(type: AnnotationType.line, color: _annotationColor, points: [start, end]);
+        } else if (_activeAnnotationTool == AnnotationTool.circle) {
+          ann = Annotation(type: AnnotationType.circle, color: _annotationColor, points: [start, end]);
+        } else if (_activeAnnotationTool == AnnotationTool.rectangle) {
+          ann = Annotation(type: AnnotationType.rectangle, color: _annotationColor, points: [start, end]);
+        }
+        if (ann != null) {
+          setState(() {
+            currentFrame.annotations.add(ann!);
+            _pendingAnnotationPoints.clear();
+            _currentDragPos = null;
+            _stagedAnnotations.clear();
+          });
+          _saveProject();
+        }
       } else {
-        // Drag too short, discard
         setState(() {
           _pendingAnnotationPoints.clear();
           _currentDragPos = null;
+          _stagedAnnotations.clear();
         });
       }
     }
@@ -1354,6 +1436,42 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       child: IgnorePointer(
         ignoring: _annotationMode,
         child: GestureDetector(
+          onTap: () {
+            if (!_isPlaying && !_endedAtLastFrame) {
+              // Store color for new players
+              setState(() => _lastTappedPlayerColor = color);
+              
+              // In training mode, open player menu
+              if (widget.project.projectType == ProjectType.training) {
+                // Determine player index from label 'P{n}'
+                int? playerIndex;
+                if (label.startsWith('P')) {
+                  playerIndex = (int.tryParse(label.substring(1)) ?? 1) - 1;
+                }
+                
+                if (_showPlayerMenu && _activePlayerIndex == playerIndex) {
+                  // Close menu if already open for this player
+                  setState(() {
+                    _showPlayerMenu = false;
+                    _activePlayerIndex = null;
+                  });
+                } else {
+                  // Open menu and close ball menu if open
+                  setState(() {
+                    _showPlayerMenu = true;
+                    _activePlayerIndex = playerIndex;
+                    _showModifierMenu = false; // Close ball menu
+                    _activeBallIndex = null;
+                  });
+                }
+              }
+            }
+          },
+          onLongPress: () {
+            if (!_isPlaying && !_endedAtLastFrame) {
+              _openPlayerMenu(label);
+            }
+          },
           onPanStart: (details) {
             _dragStartLogical[label] = posCm;
             final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
@@ -1401,7 +1519,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   /// Build the ball widget with optional scale and star opacity
-  Widget _buildBall(Offset posCm, Size size, {double scale = 1.0, double starOpacity = 0.0}) {
+  Widget _buildBall(Offset posCm, Size size, {double scale = 1.0, double starOpacity = 0.0, int? ballIndex}) {
     final screenPos = _toScreenPosition(posCm, size);
     return Positioned(
       left: screenPos.dx - 15 * scale,
@@ -1415,6 +1533,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               if (_showModifierMenu) {
                 setState(() {
                   _showModifierMenu = false;
+                  _activeBallIndex = null;
                 });
               } else {
                 // Close annotation menu if open and ball is tapped
@@ -1427,11 +1546,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 }
                 setState(() {
                   _showModifierMenu = true;
+                  _activeBallIndex = ballIndex; // Store which ball was tapped
+                  _showPlayerMenu = false; // Close player menu if open
+                  _activePlayerIndex = null;
                 });
               }
             }
           },
           onPanStart: (details) {
+            if (ballIndex != null) {
+              _activeBallIndex = ballIndex; // Set active ball for dragging
+            }
             _dragStartLogical["BALL"] = posCm;
             final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
             _dragStartScreen["BALL"] = box.globalToLocal(details.globalPosition);
@@ -1447,7 +1572,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           },
           onPanEnd: (_) {
             final from = _dragStartLogical["BALL"] ?? posCm;
-            final to = currentFrame.ball;
+            Offset to;
+            if (widget.project.projectType == ProjectType.training && ballIndex != null) {
+              to = currentFrame.balls[ballIndex].position;
+            } else {
+              to = currentFrame.ball;
+            }
             final idx = widget.project.frames.indexOf(currentFrame);
             final newIdx = _history.push(MoveEntityAction(frameIndex: idx, label: "BALL", from: from, to: to));
             setState(() {
@@ -1477,6 +1607,149 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           ),
         ),
       ),
+    );
+  }
+
+  /// Add a new player in training mode
+  void _addPlayer() {
+    if (widget.project.projectType != ProjectType.training) return;
+    final r = _settings.outerCircleRadiusCm * 0.6;
+    final count = currentFrame.players.length;
+    final angle = (2 * math.pi) * (count % 4) / 4; // place around cardinal angles
+    final pos = Offset(r * math.cos(angle), r * math.sin(angle));
+    final Color color = _lastTappedPlayerColor ?? ((count % 2 == 0) ? Colors.blue : Colors.red);
+    setState(() {
+      currentFrame.players.add(Player(position: pos, color: color));
+      final idx = widget.project.frames.indexOf(currentFrame);
+      if (idx >= 0) widget.project.frames[idx] = currentFrame;
+      _saveProject();
+    });
+  }
+
+  /// Add a new ball in training mode
+  void _addBall() {
+    if (widget.project.projectType != ProjectType.training) return;
+    setState(() {
+      currentFrame.balls.add(Ball(position: Offset.zero, color: Colors.orange));
+      final idx = widget.project.frames.indexOf(currentFrame);
+      if (idx >= 0) widget.project.frames[idx] = currentFrame;
+      _saveProject();
+    });
+  }
+
+  /// Delete a ball in training mode
+  void _deleteBall(int ballIndex) {
+    if (widget.project.projectType != ProjectType.training) return;
+    if (currentFrame.balls.length <= 1) return; // Keep at least 1 ball
+    if (ballIndex < 0 || ballIndex >= currentFrame.balls.length) return;
+    setState(() {
+      currentFrame.balls.removeAt(ballIndex);
+      final idx = widget.project.frames.indexOf(currentFrame);
+      if (idx >= 0) widget.project.frames[idx] = currentFrame;
+      _saveProject();
+    });
+  }
+
+  void _openPlayerMenu(String label) async {
+    // Determine player index from label 'P{n}'
+    int? index;
+    if (label.startsWith('P')) {
+      final numStr = label.substring(1);
+      final n = int.tryParse(numStr);
+      if (n != null) index = n - 1;
+    }
+    if (index == null) return;
+    if (index < 0 || index >= currentFrame.players.length) return;
+    final player = currentFrame.players[index];
+
+    final colors = <Color>[
+      Colors.blue,
+      Colors.red,
+      Colors.orange,
+      Colors.green,
+      Colors.purple,
+      Colors.teal,
+      Colors.cyan,
+      Colors.pink,
+      Colors.yellow,
+      Colors.brown,
+    ];
+
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Player Options', style: Theme.of(ctx).textTheme.titleMedium),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: colors.map((c) {
+                    final isSelected = player.color.value == c.value;
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        setState(() {
+                          player.color = c;
+                          _lastTappedPlayerColor = c;
+                          final idx = widget.project.frames.indexOf(currentFrame);
+                          if (idx >= 0) widget.project.frames[idx] = currentFrame;
+                          _saveProject();
+                        });
+                      },
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: c,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected ? AppTheme.darkGrey : Colors.white,
+                            width: isSelected ? 2 : 1,
+                          ),
+                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 2)],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Close'),
+                    ),
+                    if (widget.project.projectType == ProjectType.training)
+                      TextButton.icon(
+                        onPressed: currentFrame.players.length > 1
+                            ? () {
+                                Navigator.pop(ctx);
+                                setState(() {
+                                  currentFrame.players.removeAt(index!);
+                                  final idx = widget.project.frames.indexOf(currentFrame);
+                                  if (idx >= 0) widget.project.frames[idx] = currentFrame;
+                                  _saveProject();
+                                });
+                              }
+                            : null,
+                        icon: const Icon(Icons.delete, color: AppTheme.errorRed),
+                        label: const Text('Delete', style: TextStyle(color: AppTheme.errorRed)),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1538,6 +1811,36 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             onPressed: () => Navigator.of(context).pop(),
           ),
           actions: [
+            // Add Player button - only in training mode
+            if (widget.project.projectType == ProjectType.training && !_isPlaying && !_endedAtLastFrame)
+              IconButton(
+                icon: const Icon(Icons.person_add),
+                tooltip: 'Add Player',
+                onPressed: _addPlayer,
+              ),
+            // Add Ball button - only in training mode
+            if (widget.project.projectType == ProjectType.training && !_isPlaying && !_endedAtLastFrame)
+              IconButton(
+                icon: const Icon(Icons.sports_volleyball),
+                tooltip: 'Add Ball',
+                onPressed: _addBall,
+              ),
+            // Edit Court button - only show for training projects
+            if (widget.project.projectType == ProjectType.training && !_isPlaying && !_endedAtLastFrame)
+              IconButton(
+                icon: const Icon(Icons.grid_3x3),
+                tooltip: 'Edit Court',
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CourtEditingScreen(project: widget.project),
+                    ),
+                  );
+                  // Refresh board after court editing
+                  setState(() {});
+                },
+              ),
             if (!_isPlaying && !_endedAtLastFrame)
               IconButton(
                 key: _annotationModeButtonKey,
@@ -1572,6 +1875,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             ),
           ],
         ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButton: null, // Moved to app bar actions
         body: Stack(
           children: [
             // Layer 1 (bottom): Board - stays fixed
@@ -1591,7 +1896,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       RepaintBoundary(
                         child: CustomPaint(
                           size: screenSize,
-                          painter: BoardBackgroundPainter(screenSize: screenSize, settings: _settings),
+                          painter: BoardBackgroundPainter(
+                            screenSize: screenSize,
+                            settings: _settings,
+                            customElements: widget.project.customCourtElements,
+                            projectType: widget.project.projectType,
+                          ),
                         ),
                       ),
                       if (!(_isPlaying || _endedAtLastFrame))
@@ -1692,16 +2002,35 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           child: Container(),
                         ),
                       ),
-                      _buildPlayer(frameToShow.p1, frameToShow.p1Rotation, Colors.blue, "P1", screenSize),
-                      _buildPlayer(frameToShow.p2, frameToShow.p2Rotation, Colors.blue, "P2", screenSize),
-                      _buildPlayer(frameToShow.p3, frameToShow.p3Rotation, Colors.red, "P3", screenSize),
-                      _buildPlayer(frameToShow.p4, frameToShow.p4Rotation, Colors.red, "P4", screenSize),
-                      _buildBall(
-                        frameToShow.ball,
-                        screenSize,
-                        scale: isPlayback ? _ballScaleAt(_playbackT) : 1.0,
-                        starOpacity: 0.0,
-                      ),
+                      if (widget.project.projectType == ProjectType.training) ...[
+                        for (int i = 0; i < frameToShow.players.length; i++)
+                          _buildPlayer(
+                            frameToShow.players[i].position,
+                            frameToShow.players[i].rotation,
+                            frameToShow.players[i].color,
+                            "P${i + 1}",
+                            screenSize,
+                          ),
+                        for (int i = 0; i < frameToShow.balls.length; i++)
+                          _buildBall(
+                            frameToShow.balls[i].position,
+                            screenSize,
+                            scale: 1.0,
+                            starOpacity: 0.0,
+                            ballIndex: i,
+                          ),
+                      ] else ...[
+                        _buildPlayer(frameToShow.p1, frameToShow.p1Rotation, Colors.blue, "P1", screenSize),
+                        _buildPlayer(frameToShow.p2, frameToShow.p2Rotation, Colors.blue, "P2", screenSize),
+                        _buildPlayer(frameToShow.p3, frameToShow.p3Rotation, Colors.red, "P3", screenSize),
+                        _buildPlayer(frameToShow.p4, frameToShow.p4Rotation, Colors.red, "P4", screenSize),
+                        _buildBall(
+                          frameToShow.ball,
+                          screenSize,
+                          scale: isPlayback ? _ballScaleAt(_playbackT) : 1.0,
+                          starOpacity: 0.0,
+                        ),
+                      ],
                       // Draw annotations above objects when toggled on
                       if (_annotationsAboveObjects)
                         IgnorePointer(
@@ -2208,12 +2537,23 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       GestureDetector(
                         onTap: () {
                           setState(() {
-                            // Toggle Set: if already set, unset it; otherwise set it and clear Hit
-                            if (currentFrame.ballSet ?? false) {
-                              currentFrame.ballSet = false;
+                            // In training mode, use index-based access
+                            if (widget.project.projectType == ProjectType.training && _activeBallIndex != null) {
+                              final ball = currentFrame.balls[_activeBallIndex!];
+                              if (ball.isSet ?? false) {
+                                ball.isSet = false;
+                              } else {
+                                ball.isSet = true;
+                                ball.hitT = null; // Clear Hit when setting Set
+                              }
                             } else {
-                              currentFrame.ballSet = true;
-                              currentFrame.ballHitT = null; // Clear Hit when setting Set
+                              // Play mode: use convenience getter
+                              if (currentFrame.ballSet ?? false) {
+                                currentFrame.ballSet = false;
+                              } else {
+                                currentFrame.ballSet = true;
+                                currentFrame.ballHitT = null; // Clear Hit when setting Set
+                              }
                             }
                           });
                           _saveProject();
@@ -2223,12 +2563,18 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           height: 44,
                           margin: const EdgeInsets.symmetric(horizontal: 8),
                           decoration: BoxDecoration(
-                            color: (currentFrame.ballSet ?? false)
+                            color: (widget.project.projectType == ProjectType.training && _activeBallIndex != null
+                                    ? (currentFrame.balls[_activeBallIndex!].isSet ?? false)
+                                    : (currentFrame.ballSet ?? false))
                                 ? AppTheme.accentOrange.withOpacity(0.15)
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: (currentFrame.ballSet ?? false) ? AppTheme.accentOrange : AppTheme.mediumGrey,
+                              color: (widget.project.projectType == ProjectType.training && _activeBallIndex != null
+                                      ? (currentFrame.balls[_activeBallIndex!].isSet ?? false)
+                                      : (currentFrame.ballSet ?? false))
+                                  ? AppTheme.accentOrange
+                                  : AppTheme.mediumGrey,
                               width: 2,
                             ),
                           ),
@@ -2237,15 +2583,26 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             children: [
                               CustomPaint(
                                 size: const Size(24, 24),
-                                painter: _SetIconPainter(active: currentFrame.ballSet ?? false),
+                                painter: _SetIconPainter(
+                                    active: widget.project.projectType == ProjectType.training && _activeBallIndex != null
+                                        ? (currentFrame.balls[_activeBallIndex!].isSet ?? false)
+                                        : (currentFrame.ballSet ?? false)),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 'Set',
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color: (currentFrame.ballSet ?? false) ? AppTheme.accentOrange : AppTheme.mediumGrey,
-                                  fontWeight: (currentFrame.ballSet ?? false) ? FontWeight.bold : FontWeight.normal,
+                                  color: (widget.project.projectType == ProjectType.training && _activeBallIndex != null
+                                          ? (currentFrame.balls[_activeBallIndex!].isSet ?? false)
+                                          : (currentFrame.ballSet ?? false))
+                                      ? AppTheme.accentOrange
+                                      : AppTheme.mediumGrey,
+                                  fontWeight: (widget.project.projectType == ProjectType.training && _activeBallIndex != null
+                                          ? (currentFrame.balls[_activeBallIndex!].isSet ?? false)
+                                          : (currentFrame.ballSet ?? false))
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                                 ),
                               ),
                             ],
@@ -2260,12 +2617,23 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             final tMid = 0.5;
                             final tAdjusted = _avoidControlPointOverlap(prev, tMid);
                             setState(() {
-                              // Toggle Hit: if already set, clear it; otherwise set it and clear Set
-                              if (currentFrame.ballHitT != null) {
-                                currentFrame.ballHitT = null;
+                              // In training mode, use index-based access
+                              if (widget.project.projectType == ProjectType.training && _activeBallIndex != null) {
+                                final ball = currentFrame.balls[_activeBallIndex!];
+                                if (ball.hitT != null) {
+                                  ball.hitT = null;
+                                } else {
+                                  ball.hitT = tAdjusted;
+                                  ball.isSet = false; // Clear Set when setting Hit
+                                }
                               } else {
-                                currentFrame.ballHitT = tAdjusted;
-                                currentFrame.ballSet = false; // Clear Set when setting Hit
+                                // Play mode: use convenience getter
+                                if (currentFrame.ballHitT != null) {
+                                  currentFrame.ballHitT = null;
+                                } else {
+                                  currentFrame.ballHitT = tAdjusted;
+                                  currentFrame.ballSet = false; // Clear Set when setting Hit
+                                }
                               }
                             });
                             _saveProject();
@@ -2276,12 +2644,18 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           height: 44,
                           margin: const EdgeInsets.symmetric(horizontal: 8),
                           decoration: BoxDecoration(
-                            color: (currentFrame.ballHitT != null)
+                            color: (widget.project.projectType == ProjectType.training && _activeBallIndex != null
+                                    ? (currentFrame.balls[_activeBallIndex!].hitT != null)
+                                    : (currentFrame.ballHitT != null))
                                 ? AppTheme.warningAmber.withOpacity(0.15)
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: (currentFrame.ballHitT != null) ? AppTheme.warningAmber : AppTheme.mediumGrey,
+                              color: (widget.project.projectType == ProjectType.training && _activeBallIndex != null
+                                      ? (currentFrame.balls[_activeBallIndex!].hitT != null)
+                                      : (currentFrame.ballHitT != null))
+                                  ? AppTheme.warningAmber
+                                  : AppTheme.mediumGrey,
                               width: 2,
                             ),
                           ),
@@ -2290,26 +2664,308 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             children: [
                               CustomPaint(
                                 size: const Size(24, 24),
-                                painter: _HitIconPainter(active: currentFrame.ballHitT != null),
+                                painter: _HitIconPainter(
+                                    active: widget.project.projectType == ProjectType.training && _activeBallIndex != null
+                                        ? (currentFrame.balls[_activeBallIndex!].hitT != null)
+                                        : (currentFrame.ballHitT != null)),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 'Hit',
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color: (currentFrame.ballHitT != null) ? AppTheme.warningAmber : AppTheme.mediumGrey,
-                                  fontWeight: (currentFrame.ballHitT != null) ? FontWeight.bold : FontWeight.normal,
+                                  color: (widget.project.projectType == ProjectType.training && _activeBallIndex != null
+                                          ? (currentFrame.balls[_activeBallIndex!].hitT != null)
+                                          : (currentFrame.ballHitT != null))
+                                      ? AppTheme.warningAmber
+                                      : AppTheme.mediumGrey,
+                                  fontWeight: (widget.project.projectType == ProjectType.training && _activeBallIndex != null
+                                          ? (currentFrame.balls[_activeBallIndex!].hitT != null)
+                                          : (currentFrame.ballHitT != null))
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ),
+                      // Delete button - only in training mode with multiple balls
+                      if (widget.project.projectType == ProjectType.training &&
+                          currentFrame.balls.length > 1 &&
+                          _activeBallIndex != null)
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _deleteBall(_activeBallIndex!);
+                              _showModifierMenu = false;
+                              _activeBallIndex = null;
+                            });
+                          },
+                          child: Container(
+                            width: 80,
+                            height: 44,
+                            margin: const EdgeInsets.symmetric(horizontal: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: AppTheme.errorRed,
+                                width: 2,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.delete,
+                                  size: 24,
+                                  color: AppTheme.errorRed,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Delete',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: AppTheme.errorRed,
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
               ),
-            // Layer 4 (top): Annotation Toolbar - overlay at top
+            // Layer 4 (top): Player Modifier Menu - overlay at top (only in training mode)
+            if (_showPlayerMenu && !_annotationMode && widget.project.projectType == ProjectType.training && _activePlayerIndex != null)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 56,
+                child: Container(
+                  color: AppTheme.lightGrey,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Blue color button
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (_activePlayerIndex != null && _activePlayerIndex! < currentFrame.players.length) {
+                              currentFrame.players[_activePlayerIndex!].color = Colors.blue;
+                              _lastTappedPlayerColor = Colors.blue;
+                              final idx = widget.project.frames.indexOf(currentFrame);
+                              if (idx >= 0) widget.project.frames[idx] = currentFrame;
+                              _saveProject();
+                            }
+                          });
+                        },
+                        child: Container(
+                          width: 60,
+                          height: 44,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(
+                            color: _activePlayerIndex != null && _activePlayerIndex! < currentFrame.players.length &&
+                                    currentFrame.players[_activePlayerIndex!].color == Colors.blue
+                                ? Colors.blue.withOpacity(0.15)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: Colors.blue,
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Red color button
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (_activePlayerIndex != null && _activePlayerIndex! < currentFrame.players.length) {
+                              currentFrame.players[_activePlayerIndex!].color = Colors.red;
+                              _lastTappedPlayerColor = Colors.red;
+                              final idx = widget.project.frames.indexOf(currentFrame);
+                              if (idx >= 0) widget.project.frames[idx] = currentFrame;
+                              _saveProject();
+                            }
+                          });
+                        },
+                        child: Container(
+                          width: 60,
+                          height: 44,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(
+                            color: _activePlayerIndex != null && _activePlayerIndex! < currentFrame.players.length &&
+                                    currentFrame.players[_activePlayerIndex!].color == Colors.red
+                                ? Colors.red.withOpacity(0.15)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: Colors.red,
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Green color button
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (_activePlayerIndex != null && _activePlayerIndex! < currentFrame.players.length) {
+                              currentFrame.players[_activePlayerIndex!].color = Colors.green;
+                              _lastTappedPlayerColor = Colors.green;
+                              final idx = widget.project.frames.indexOf(currentFrame);
+                              if (idx >= 0) widget.project.frames[idx] = currentFrame;
+                              _saveProject();
+                            }
+                          });
+                        },
+                        child: Container(
+                          width: 60,
+                          height: 44,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(
+                            color: _activePlayerIndex != null && _activePlayerIndex! < currentFrame.players.length &&
+                                    currentFrame.players[_activePlayerIndex!].color == Colors.green
+                                ? Colors.green.withOpacity(0.15)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: Colors.green,
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Yellow color button
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (_activePlayerIndex != null && _activePlayerIndex! < currentFrame.players.length) {
+                              currentFrame.players[_activePlayerIndex!].color = Colors.yellow;
+                              _lastTappedPlayerColor = Colors.yellow;
+                              final idx = widget.project.frames.indexOf(currentFrame);
+                              if (idx >= 0) widget.project.frames[idx] = currentFrame;
+                              _saveProject();
+                            }
+                          });
+                        },
+                        child: Container(
+                          width: 60,
+                          height: 44,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(
+                            color: _activePlayerIndex != null && _activePlayerIndex! < currentFrame.players.length &&
+                                    currentFrame.players[_activePlayerIndex!].color == Colors.yellow
+                                ? Colors.yellow.withOpacity(0.15)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: Colors.yellow,
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: Colors.yellow,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Delete button - only show if more than 1 player
+                      if (currentFrame.players.length > 1)
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              if (_activePlayerIndex != null && _activePlayerIndex! < currentFrame.players.length) {
+                                currentFrame.players.removeAt(_activePlayerIndex!);
+                                final idx = widget.project.frames.indexOf(currentFrame);
+                                if (idx >= 0) widget.project.frames[idx] = currentFrame;
+                                _saveProject();
+                                _showPlayerMenu = false;
+                                _activePlayerIndex = null;
+                              }
+                            });
+                          },
+                          child: Container(
+                            width: 80,
+                            height: 44,
+                            margin: const EdgeInsets.symmetric(horizontal: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: AppTheme.errorRed,
+                                width: 2,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.delete,
+                                  size: 24,
+                                  color: AppTheme.errorRed,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Delete',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: AppTheme.errorRed,
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            // Layer 5 (top): Annotation Toolbar - overlay at top
             if (_annotationMode && !_showModifierMenu)
               Positioned(
                 top: 0,
@@ -2340,6 +2996,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.circle
                               ? AnnotationTool.none
                               : AnnotationTool.circle;
+                          _eraserMode = false;
+                        }),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.crop_square),
+                        tooltip: 'Rectangle Tool',
+                        color: _activeAnnotationTool == AnnotationTool.rectangle ? _annotationColor : AppTheme.mediumGrey,
+                        onPressed: () => setState(() {
+                          _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.rectangle
+                              ? AnnotationTool.none
+                              : AnnotationTool.rectangle;
                           _eraserMode = false;
                         }),
                       ),
@@ -2379,15 +3046,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           ),
                           child: const Icon(Icons.palette, size: 16, color: Colors.white),
                         ),
-                      ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => setState(() {
-                          _annotationMode = false;
-                          _activeAnnotationTool = AnnotationTool.none;
-                          _eraserMode = false;
-                        }),
-                        child: const Text('Close'),
                       ),
                     ],
                   ),
