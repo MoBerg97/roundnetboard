@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:uuid/uuid.dart';
 
 part 'player.g.dart';
 
@@ -18,13 +19,18 @@ class Player extends HiveObject {
   @HiveField(3)
   int colorValue; // Store Color as int
 
+  @HiveField(4)
+  String id; // Unique identifier (UUID for training, P1-P4 for play)
+
   Player({
     required this.position,
     this.rotation = 0,
     List<Offset>? pathPoints,
     Color? color,
+    String? id,
   })  : pathPoints = pathPoints ?? [],
-        colorValue = (color ?? Colors.blue).value;
+        colorValue = (color ?? Colors.blue).value,
+        id = id ?? const Uuid().v4();
 
   Color get color => Color(colorValue);
   
@@ -37,6 +43,7 @@ class Player extends HiveObject {
         rotation: rotation,
         pathPoints: List.from(pathPoints),
         color: color,
+        id: id,
       );
 }
 
@@ -46,6 +53,7 @@ extension PlayerMap on Player {
         'rotation': rotation,
         'pathPoints': pathPoints.map((o) => [o.dx, o.dy]).toList(),
         'color': colorValue,
+        'id': id,
       };
 
   static Player fromMap(Map<String, dynamic> m) => Player(
@@ -55,5 +63,6 @@ extension PlayerMap on Player {
             .map((e) => Offset(e[0], e[1]))
             .toList(),
         color: Color(m['color'] as int),
+        id: m['id'] as String?,
       );
 }

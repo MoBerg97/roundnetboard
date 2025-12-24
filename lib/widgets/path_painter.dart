@@ -143,15 +143,18 @@ class PathPainter extends CustomPainter {
       final p2Samples = _sampleSplinePoints([twoFramesAgo!.p2, ...previousFrame!.p2PathPoints, previousFrame!.p2]);
       final p3Samples = _sampleSplinePoints([twoFramesAgo!.p3, ...previousFrame!.p3PathPoints, previousFrame!.p3]);
       final p4Samples = _sampleSplinePoints([twoFramesAgo!.p4, ...previousFrame!.p4PathPoints, previousFrame!.p4]);
-      final ballSamples = _sampleSplinePoints([twoFramesAgo!.ball, ...previousFrame!.ballPathPoints, previousFrame!.ball]);
-      // Older path: fade from 30% at the newer (previous) frame to 5% at the older (twoFramesAgo)
-      // in the following code make sure, that the Frames are in the right order
-      // (canvas, object, Color, olderFrame, newerFrame, 2.0);
       _drawFadedSegments(canvas, p1Samples, Colors.black, 0.05, 0.30, 2.0);
       _drawFadedSegments(canvas, p2Samples, Colors.black, 0.05, 0.30, 2.0);
       _drawFadedSegments(canvas, p3Samples, Colors.black, 0.05, 0.30, 2.0);
       _drawFadedSegments(canvas, p4Samples, Colors.black, 0.05, 0.30, 2.0);
-      _drawFadedSegments(canvas, ballSamples, Colors.black, 0.05, 0.30, 2.0);
+      
+      // Draw paths for all balls in twoFramesAgo
+      for (int i = 0; i < twoFramesAgo!.balls.length && i < previousFrame!.balls.length; i++) {
+        final prevBall = twoFramesAgo!.balls[i];
+        final currBall = previousFrame!.balls[i];
+        final ballSamples = _sampleSplinePoints([prevBall.position, ...currBall.pathPoints, currBall.position]);
+        _drawFadedSegments(canvas, ballSamples, Colors.black, 0.05, 0.30, 2.0);
+      }
     }
 
     // solid path: previousFrame -> currentFrame (preview)
@@ -160,14 +163,18 @@ class PathPainter extends CustomPainter {
     final s2 = _sampleSplinePoints([previousFrame!.p2, ...currentFrame!.p2PathPoints, currentFrame!.p2]);
     final s3 = _sampleSplinePoints([previousFrame!.p3, ...currentFrame!.p3PathPoints, currentFrame!.p3]);
     final s4 = _sampleSplinePoints([previousFrame!.p4, ...currentFrame!.p4PathPoints, currentFrame!.p4]);
-    final sBall = _sampleSplinePoints([previousFrame!.ball, ...currentFrame!.ballPathPoints, currentFrame!.ball]);
-    // in the following code make sure, that the Frames are in the right order
-    // (canvas, object, Color, olderFrame, newerFrame, 2.0);
     _drawFadedSegments(canvas, s1, Colors.black, 0.30, 1.0, 2.0);
     _drawFadedSegments(canvas, s2, Colors.black, 0.30, 1.0, 2.0);
     _drawFadedSegments(canvas, s3, Colors.black, 0.30, 1.0, 2.0);
     _drawFadedSegments(canvas, s4, Colors.black, 0.30, 1.0, 2.0);
-    _drawFadedSegments(canvas, sBall, Colors.black, 0.30, 1.0, 2.0);
+    
+    // Draw paths for all balls from previousFrame to currentFrame
+    for (int i = 0; i < previousFrame!.balls.length && i < currentFrame!.balls.length; i++) {
+      final prevBall = previousFrame!.balls[i];
+      final currBall = currentFrame!.balls[i];
+      final ballSamples = _sampleSplinePoints([prevBall.position, ...currBall.pathPoints, currBall.position]);
+      _drawFadedSegments(canvas, ballSamples, Colors.black, 0.30, 1.0, 2.0);
+    }
   }
 
   @override

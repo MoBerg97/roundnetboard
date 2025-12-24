@@ -55,6 +55,21 @@ class Frame extends HiveObject {
         annotations: annotations.map((a) => a.copy()).toList(),
       );
 
+  /// Copy frame but clear hit/set properties on balls
+  /// Used when inserting new frames so hit/set doesn't carry over
+  Frame copyWithoutHitSetMarkers() => Frame(
+        players: players.map((p) => p.copy()).toList(),
+        balls: balls.map((b) => Ball(
+          position: b.position,
+          pathPoints: List.from(b.pathPoints),
+          color: b.color,
+          id: b.id,
+          // hitT and isSet are NOT copied
+        )).toList(),
+        duration: duration,
+        annotations: annotations.map((a) => a.copy()).toList(),
+      );
+
   // --------------------------
   // Copy frame and initialize control points at midpoints to previous frame
   // if movement > 50 units
@@ -93,6 +108,48 @@ class Frame extends HiveObject {
     }
 
     return newFrame;
+  }
+
+  // --------------------------
+  // ID-based lookup and removal helpers
+  // --------------------------
+
+  /// Get player by ID, returns null if not found
+  Player? getPlayerById(String id) {
+    try {
+      return players.firstWhere((p) => p.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Get ball by ID, returns null if not found
+  Ball? getBallById(String id) {
+    try {
+      return balls.firstWhere((b) => b.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Remove player by ID, returns true if removed
+  bool removePlayerById(String id) {
+    final index = players.indexWhere((p) => p.id == id);
+    if (index >= 0) {
+      players.removeAt(index);
+      return true;
+    }
+    return false;
+  }
+
+  /// Remove ball by ID, returns true if removed
+  bool removeBallById(String id) {
+    final index = balls.indexWhere((b) => b.id == id);
+    if (index >= 0) {
+      balls.removeAt(index);
+      return true;
+    }
+    return false;
   }
 
   // --------------------------

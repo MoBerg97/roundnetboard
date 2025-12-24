@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/animation_project.dart';
 import '../models/frame.dart';
 import '../models/settings.dart';
+import '../models/player.dart';
+import '../models/ball.dart';
 
 abstract class ProjectAction {
   int frameIndex;
@@ -12,40 +14,37 @@ abstract class ProjectAction {
 }
 
 class MoveEntityAction extends ProjectAction {
-  final String label; // "P1","P2","P3","P4","BALL"
+  final String id; // UUID or named ID (P1-P4, B1) of the entity
   final Offset from;
   final Offset to;
-  MoveEntityAction({required super.frameIndex, required this.label, required this.from, required this.to})
-      : super(description: 'Move $label');
+  MoveEntityAction({required super.frameIndex, required this.id, required this.from, required this.to})
+      : super(description: 'Move entity');
+  
   @override
   void apply(AnimationProject project) {
     final f = project.frames[frameIndex];
-    _set(f, to);
+    final player = f.getPlayerById(id);
+    if (player != null) {
+      player.position = to;
+    } else {
+      final ball = f.getBallById(id);
+      if (ball != null) {
+        ball.position = to;
+      }
+    }
   }
 
   @override
   void revert(AnimationProject project) {
     final f = project.frames[frameIndex];
-    _set(f, from);
-  }
-
-  void _set(Frame f, Offset v) {
-    switch (label) {
-      case "P1":
-        f.p1 = v;
-        break;
-      case "P2":
-        f.p2 = v;
-        break;
-      case "P3":
-        f.p3 = v;
-        break;
-      case "P4":
-        f.p4 = v;
-        break;
-      case "BALL":
-        f.ball = v;
-        break;
+    final player = f.getPlayerById(id);
+    if (player != null) {
+      player.position = from;
+    } else {
+      final ball = f.getBallById(id);
+      if (ball != null) {
+        ball.position = from;
+      }
     }
   }
 }
@@ -96,6 +95,176 @@ class SetPlaybackSpeedAction extends ProjectAction {
   void revert(AnimationProject project) {
     project.settings ??= Settings();
     project.settings!.playbackSpeed = from;
+  }
+}
+
+/// Cascade delete player from all frames (undoable)
+class RemovePlayerFromAllFramesAction extends ProjectAction {
+  final String id; // Player ID to remove
+  final Map<int, Player> removedPlayers; // Frame index -> removed player state
+  
+  RemovePlayerFromAllFramesAction({required this.id})
+      : removedPlayers = {},
+        super(frameIndex: 0, description: 'Delete player from all frames');
+  
+  @override
+  void apply(AnimationProject project) {
+    removedPlayers.clear();
+    for (int i = 0; i < project.frames.length; i++) {
+      final frame = project.frames[i];
+      final player = frame.getPlayerById(id);
+      if (player != null) {
+        removedPlayers[i] = player.copy(); // Store copy for undo
+        frame.removePlayerById(id);
+      }
+    }
+  }
+
+  @override
+  void revert(AnimationProject project) {
+    // Restore removed players to their original frames
+    removedPlayers.forEach((frameIndex, player) {
+      if (frameIndex < project.frames.length) {
+        project.frames[frameIndex].players.add(player.copy());
+      }
+    });
+  }
+}
+
+/// Cascade delete ball from all frames (undoable)
+class RemoveBallFromAllFramesAction extends ProjectAction {
+  final String id; // Ball ID to remove
+  final Map<int, Ball> removedBalls; // Frame index -> removed ball state
+  
+  RemoveBallFromAllFramesAction({required this.id})
+      : removedBalls = {},
+        super(frameIndex: 0, description: 'Delete ball from all frames');
+  
+  @override
+  void apply(AnimationProject project) {
+    removedBalls.clear();
+    for (int i = 0; i < project.frames.length; i++) {
+      final frame = project.frames[i];
+      final ball = frame.getBallById(id);
+      if (ball != null) {
+        removedBalls[i] = ball.copy(); // Store copy for undo
+        frame.removeBallById(id);
+      }
+    }
+  }
+
+  @override
+  void revert(AnimationProject project) {
+    // Restore removed balls to their original frames
+    removedBalls.forEach((frameIndex, ball) {
+      if (frameIndex < project.frames.length) {
+        project.frames[frameIndex].balls.add(ball.copy());
+      }
+    });
+  }
+}
+
+/// Cascade create player across all frames (undoable)
+class CreatePlayerAction extends ProjectAction {
+  final Player player; // The player object to create
+  
+  CreatePlayerAction({required this.player})
+      : super(frameIndex: 0, description: 'Create player');
+  
+  @override
+  void apply(AnimationProject project) {
+    // Add player copy to all frames
+    for (int i = 0; i < project.frames.length; i++) {
+      project.frames[i].players.add(player.copy());
+    }
+  }
+
+  @override
+  void revert(AnimationProject project) {
+    // Remove the player (by ID) from all frames
+    for (int i = 0; i < project.frames.length; i++) {
+      project.frames[i].removePlayerById(player.id);
+    }
+  }
+}
+
+/// Cascade create ball across all frames (undoable)
+class CreateBallAction extends ProjectAction {
+  final Ball ball; // The ball object to create
+  
+  CreateBallAction({required this.ball})
+      : super(frameIndex: 0, description: 'Create ball');
+  
+  @override
+  void apply(AnimationProject project) {
+    // Add ball copy to all frames
+    for (int i = 0; i < project.frames.length; i++) {
+      project.frames[i].balls.add(ball.copy());
+    }
+  }
+
+  @override
+  void revert(AnimationProject project) {
+    // Remove the ball (by ID) from all frames
+    for (int i = 0; i < project.frames.length; i++) {
+      project.frames[i].removeBallById(ball.id);
+    }
+  }
+}
+
+/// Change player color (undoable)
+class ChangePlayerColorAction extends ProjectAction {
+  final String id; // Player ID
+  final Color from;
+  final Color to;
+  
+  ChangePlayerColorAction({required super.frameIndex, required this.id, required this.from, required this.to})
+      : super(description: 'Change player color');
+  
+  @override
+  void apply(AnimationProject project) {
+    final frame = project.frames[frameIndex];
+    final player = frame.getPlayerById(id);
+    if (player != null) {
+      player.color = to;
+    }
+  }
+
+  @override
+  void revert(AnimationProject project) {
+    final frame = project.frames[frameIndex];
+    final player = frame.getPlayerById(id);
+    if (player != null) {
+      player.color = from;
+    }
+  }
+}
+
+/// Change ball color (undoable)
+class ChangeBallColorAction extends ProjectAction {
+  final String id; // Ball ID
+  final Color from;
+  final Color to;
+  
+  ChangeBallColorAction({required super.frameIndex, required this.id, required this.from, required this.to})
+      : super(description: 'Change ball color');
+  
+  @override
+  void apply(AnimationProject project) {
+    final frame = project.frames[frameIndex];
+    final ball = frame.getBallById(id);
+    if (ball != null) {
+      ball.color = to;
+    }
+  }
+
+  @override
+  void revert(AnimationProject project) {
+    final frame = project.frames[frameIndex];
+    final ball = frame.getBallById(id);
+    if (ball != null) {
+      ball.color = from;
+    }
   }
 }
 

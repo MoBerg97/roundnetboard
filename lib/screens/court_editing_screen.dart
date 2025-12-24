@@ -150,6 +150,17 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                             ),
                           ),
                         ),
+                        // Draw transparent center cross (20cm x 20cm)
+                        IgnorePointer(
+                          ignoring: true,
+                          child: CustomPaint(
+                            size: boardSize,
+                            painter: _CenterCrossPainter(
+                              boardSize: boardSize,
+                              settings: _settings,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -558,6 +569,16 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   bool _isPointNearElement(Offset point, CourtElement element) {
     const threshold = 15.0;
     
+    // NET elements: draggable from anywhere within the widest circle
+    if (element.type == CourtElementType.net) {
+      final radius = element.radius ?? 0;
+      final distFromCenter = (element.position - point).distance;
+      // Allow dragging within the widest outer circle (outerBoundsRadius)
+      // The net has multiple circles, the widest is at radius + net stroke extension
+      final outerBoundsRadius = radius + 10; // approximate outer bound
+      return distFromCenter <= outerBoundsRadius;
+    }
+    
     // Check center point
     final dist = (element.position - point).distance;
     if (dist < threshold) return true;
@@ -591,11 +612,12 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       }
     }
     
-    // For circles/zones, check if point is on outline
+    // For circles/zones, check if point is on outline (NOT anywhere within)
     final radius = element.radius ?? 0;
     if (radius > 0) {
       final distFromCenter = (element.position - point).distance;
       final distFromOutline = (distFromCenter - radius).abs();
+      // Only draggable by the border, not the center area
       return distFromOutline < threshold;
     }
 
@@ -829,3 +851,48 @@ class _CircleIconPainter extends CustomPainter {
   bool shouldRepaint(_CircleIconPainter oldDelegate) =>
       oldDelegate.radius != radius || oldDelegate.color != color;
 }
+
+/// Painter for center screen transparent cross (20cm x 20cm)
+class _CenterCrossPainter extends CustomPainter {
+  final Size boardSize;
+  final Settings settings;
+
+  _CenterCrossPainter({
+    required this.boardSize,
+    required this.settings,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Board center in screen coordinates
+    final boardCenter = Offset(boardSize.width / 2, boardSize.height / 2);
+
+    // Cross dimensions: 20cm x 20cm (10cm in each direction from center)
+    final halfLengthPx = settings.cmToLogical(10, boardSize).abs();
+
+    // Create paint for the cross (very transparent white)
+    final crossPaint = Paint()
+      ..color = Colors.white.withOpacity(0.15) // Very transparent
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    // Draw horizontal line
+    canvas.drawLine(
+      Offset(boardCenter.dx - halfLengthPx, boardCenter.dy),
+      Offset(boardCenter.dx + halfLengthPx, boardCenter.dy),
+      crossPaint,
+    );
+
+    // Draw vertical line
+    canvas.drawLine(
+      Offset(boardCenter.dx, boardCenter.dy - halfLengthPx),
+      Offset(boardCenter.dx, boardCenter.dy + halfLengthPx),
+      crossPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _CenterCrossPainter oldDelegate) =>
+      oldDelegate.boardSize != boardSize || oldDelegate.settings != settings;
+}
+

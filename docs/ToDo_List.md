@@ -1,23 +1,21 @@
 # ToDo List for Features and Fixes
 
-# feature branches
+Issues:
 
-## trainings-court
-The court editing screen should show the same background as the last saved state of the court. Currently when a preset without zones or net is chosen, in court editing screen, the zones and nets are still drawn. Use the same blank default screen.
-There are still issues persisting with added balls and players, that show no path and so on. Make sure, that each object has a unique id that refers to it, so that if a object before that in the list is deleted, the attribution does not change.
-Additionally, the paths should be object specific to their unique object, as well as any attribute such as modifer settings etc.
-If a ball is created in a later frame (frame>1) then the initial position of the ball is set for all other frames.
-when a ball or player is deleted, all paths and attributes related to that object should also be deleted.
-align the ui design of annotation, zone creation, line creation, rectangle creation to the same style as in the main board screen.
-delete circles only if the eraser tool hits the outline of shapes (rectangles, zones, circles) not on hitting any point inside the shape.
-shapes should be able to be dragged on their outline, instead of their center point.
-the outline of icons should be aligned to the current selected color in the color picker, not the background of the icon.
-
+- [ ] The appearance of objects on board_screen only update after the next other action when adding an object on board. This should be instantly visible after adding the object (update state after adding object).
+- [ ] the set marker should ignore pointer events, so that the user can still drag the ball path or control points while the set marker is shown on top of it.
+- [ ] add a color picker similar to the one in annotations to pick player colors in the player modifier menu (board_screen.dart line ~2133): one button (color palette icon) opens a color picker dialog to select player color, same colors as in annotations color picker. Therefore remove the current color selection buttons.
+- [ ] the hit marker should ignore pointer events, when on top of the ball, so that the user can still drag the ball while the hit marker is shown on top of it. It should however still be draggable when the user taps near the hit marker when it is not on top of the ball.
+- [ ] add a color picker similar to the one in annotations to pick ball colors in the ball modifier menu (board_screen.dart line ~2200): one button (color palette icon) opens a color picker dialog to select ball color, same colors as in annotations color picker.
+- [ ] the added balls currently have no unique properties (hit/set markers, path control points, color). Investigate why this is the case and fix it. Each ball should have its own unique properties(hit/set markers, path control points, color).
 
 ## Design
 
-### main aspects: 
+### main aspects:
+
 less clutter
+alignment of all icons, buttons and menus
+intuitive usage
 
 ### design ideas
 
@@ -119,8 +117,8 @@ timeline:
 
 - [ ] **account for virtual navigation bar on some android phones such as Redmi Note 13 Pro 5G by using a safe area**
 - [ ] **when playback is through, meaning the playback reached the end while playing, the timeline should only go back to the editing controls after the stop button is tapped, not automatically after playback reached the end**
-- [ ] **when exporting a project on web browser, the export project throws the error: **Export failed: Failed to export project: UnimplementedError: saveFile() has not been implemented.**
-- [ ] **when sharing a project on web browser, the share project throws the error: **Share failed: MissingPluginException(No implementation found for method getApplicationDocumentsDirectory on channel plugins.flutter.io/path_proivider)**
+- [ ] **when exporting a project on web browser, the export project throws the error: **Export failed: Failed to export project: UnimplementedError: saveFile() has not been implemented.\*\*
+- [ ] **when sharing a project on web browser, the share project throws the error: **Share failed: MissingPluginException(No implementation found for method getApplicationDocumentsDirectory on channel plugins.flutter.io/path_proivider)\*\*
 
 ### Other fixes
 

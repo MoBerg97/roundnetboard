@@ -21,13 +21,14 @@ class BallAdapter extends TypeAdapter<Ball> {
       pathPoints: (fields[1] as List?)?.cast<Offset>(),
       hitT: fields[2] as double?,
       isSet: fields[3] as bool?,
+      id: fields[5] as String?,
     )..colorValue = fields[4] as int;
   }
 
   @override
   void write(BinaryWriter writer, Ball obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.position)
       ..writeByte(1)
@@ -37,7 +38,9 @@ class BallAdapter extends TypeAdapter<Ball> {
       ..writeByte(3)
       ..write(obj.isSet)
       ..writeByte(4)
-      ..write(obj.colorValue);
+      ..write(obj.colorValue)
+      ..writeByte(5)
+      ..write(obj.id);
   }
 
   @override

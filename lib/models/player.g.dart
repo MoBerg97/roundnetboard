@@ -20,13 +20,14 @@ class PlayerAdapter extends TypeAdapter<Player> {
       position: fields[0] as Offset,
       rotation: fields[1] as double,
       pathPoints: (fields[2] as List?)?.cast<Offset>(),
+      id: fields[4] as String?,
     )..colorValue = fields[3] as int;
   }
 
   @override
   void write(BinaryWriter writer, Player obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.position)
       ..writeByte(1)
@@ -34,7 +35,9 @@ class PlayerAdapter extends TypeAdapter<Player> {
       ..writeByte(2)
       ..write(obj.pathPoints)
       ..writeByte(3)
-      ..write(obj.colorValue);
+      ..write(obj.colorValue)
+      ..writeByte(4)
+      ..write(obj.id);
   }
 
   @override

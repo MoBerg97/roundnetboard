@@ -84,13 +84,13 @@ class DefaultFrames {
     final r = referenceRadius;
     return Frame(
       players: [
-        Player(position: Offset(0, -r), color: Colors.blue),       // P1: Top
-        Player(position: Offset(r, 0), color: Colors.blue),        // P2: Right
-        Player(position: Offset(0, r), color: Colors.red),         // P3: Bottom
-        Player(position: Offset(-r, 0), color: Colors.red),        // P4: Left
+        Player(position: Offset(0, -r), color: Colors.blue, id: 'P1'),       // P1: Top
+        Player(position: Offset(r, 0), color: Colors.blue, id: 'P2'),        // P2: Right
+        Player(position: Offset(0, r), color: Colors.red, id: 'P3'),         // P3: Bottom
+        Player(position: Offset(-r, 0), color: Colors.red, id: 'P4'),        // P4: Left
       ],
       balls: [
-        Ball(position: Offset.zero, color: Colors.orange),
+        Ball(position: Offset.zero, color: Colors.orange, id: 'B1'),
       ],
       duration: 0.5,
       annotations: [],
@@ -102,11 +102,11 @@ class DefaultFrames {
     final r = referenceRadius;
     return Frame(
       players: [
-        Player(position: Offset(0, -r * 0.5), color: Colors.red),  // P1: Top-center
-        Player(position: Offset(0, r * 0.5), color: Colors.blue),  // P2: Bottom-center
+        Player(position: Offset(0, -r * 0.5), color: Colors.red),  // P1: Top-center (UUID auto-generated)
+        Player(position: Offset(0, r * 0.5), color: Colors.blue),  // P2: Bottom-center (UUID auto-generated)
       ],
       balls: [
-        Ball(position: Offset.zero, color: Colors.orange),
+        Ball(position: Offset.zero, color: Colors.orange), // UUID auto-generated
       ],
       duration: 0.5,
       annotations: [],

@@ -23,8 +23,17 @@ class CourtEditorPainter extends CustomPainter {
     final center = _boardCenter(screenSize);
     const scale = 1.0;
 
+    // Sort elements so NET elements are drawn last (on top)
+    final sortedElements = [...elements];
+    sortedElements.sort((a, b) {
+      // NET elements should always be last (topmost)
+      if (a.type == CourtElementType.net && b.type != CourtElementType.net) return 1;
+      if (a.type != CourtElementType.net && b.type == CourtElementType.net) return -1;
+      return 0;
+    });
+
     // Draw all elements
-    for (final element in elements) {
+    for (final element in sortedElements) {
       _drawElement(canvas, element, center, scale);
     }
 
