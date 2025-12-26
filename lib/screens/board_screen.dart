@@ -121,18 +121,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   int? _activePathDragIndex; // Index of the control point being dragged (currently first only)
 
   // ──────────────────────────────────────────────────────────────────────────
-<<<<<<< HEAD
-  // TUTORIAL STATE
-  // ──────────────────────────────────────────────────────────────────────────
-  bool _showTutorialTarget = false; // Should tutorial target indicator be shown?
-  final Set<String> _tutorialMovedObjects = {}; // Track objects moved in step 7
-=======
   // TRAINING MODE STATE (for dynamic player/ball management)
   // ──────────────────────────────────────────────────────────────────────────
   Color? _lastTappedPlayerColor; // Last tapped player color (for new player color inheritance)
   String? _activeBallId; // Which ball ID is currently selected for modifier menu (training mode only)
   String? _addingObjectType; // Indicates "player" or "ball" when user is in place-object mode, null otherwise
->>>>>>> feature/trainings-court
 
   // ──────────────────────────────────────────────────────────────────────────
   // UI REFERENCES
@@ -243,266 +236,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     super.dispose();
   }
 
-<<<<<<< HEAD
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    print('🎲 BoardScreen: didChangeDependencies called');
-
-    // Check for pending tutorial trigger on first build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('🎲 BoardScreen: Post-frame callback from didChangeDependencies');
-      _checkForPendingTutorial();
-    });
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // TUTORIAL METHODS
-  // ══════════════════════════════════════════════════════════════════════════
-
-  /// Update tutorial target visibility based on current step
-  void _updateTutorialTarget() {
-    final tutorialService = TutorialService();
-    if (!tutorialService.isActive) {
-      setState(() => _showTutorialTarget = false);
-      return;
-    }
-
-    final step = tutorialService.currentStep;
-    final shouldShow = step != null && step.requiresDrag && step.targetPosition != null && step.targetProximity != null;
-
-    if (_showTutorialTarget != shouldShow) {
-      setState(() => _showTutorialTarget = shouldShow);
-    }
-  }
-
-  /// Check if tutorial is currently active
-  bool _isTutorialActive() => TutorialService().isActive;
-
-  void _checkForPendingTutorial() {
-    final tutorialService = TutorialService();
-
-    // Only start if there's a pending tutorial AND it's not already active
-    if (tutorialService.pendingTutorial == TutorialType.board && !tutorialService.isActive) {
-      // Use post-frame callback to ensure UI is ready
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          // Ensure keys are provided before starting
-          _provideTutorialKeys();
-          _startBoardTutorial();
-          tutorialService.clearPendingTutorial();
-        }
-      });
-    }
-  }
-
-  /// Validate if a drag gesture completes the current tutorial step
-  void _validateTutorialDrag(String label, Offset from, Offset to, Size size) {
-    final tutorial = TutorialService();
-    if (!tutorial.isActive) return;
-
-    final step = tutorial.currentStep;
-    if (step?.id == 'board_drag') {
-      _tutorialMovedObjects.add(label);
-      tutorial.setMovedObjectsCount(_tutorialMovedObjects.length);
-      if (_tutorialMovedObjects.length >= 2) {
-        tutorial.nextStep();
-      }
-      return;
-    }
-
-    // Check if this drag completes the current step
-    if (tutorial.validateDragForCurrentStep(label, to)) {
-      tutorial.nextStep();
-    }
-  }
-
-  void _startBoardTutorial() {
-    final steps = [
-      TutorialStep(
-        id: 'board',
-        title: 'Welcome to the Board!',
-        description: 'This is where you create your animations. Players and the ball can be moved around.',
-        targetKey: _boardKey,
-      ),
-      TutorialStep(
-        id: 'timeline',
-        title: 'Timeline',
-        description: 'Frames capture positions at different moments. Add frames to create movement.',
-        targetKey: _timelineAreaKey,
-      ),
-      TutorialStep(
-        id: 'player1',
-        title: 'Position Player 1',
-        description: 'Drag this player to the blue target zone in the top-left area.',
-        targetKey: null, // Don't highlight the player, show the zone
-        requiresDrag: true,
-        dragTargetId: 'P1',
-        targetPosition: const Offset(-150, -150),
-        targetProximity: 100,
-        showSuccess: true,
-      ),
-      TutorialStep(
-        id: 'player2',
-        title: 'Position Player 2',
-        description: 'Drag this player to the blue target zone in the top-right area.',
-        targetKey: null,
-        requiresDrag: true,
-        dragTargetId: 'P2',
-        targetPosition: const Offset(150, -150),
-        targetProximity: 100,
-        showSuccess: true,
-      ),
-      TutorialStep(
-        id: 'ball',
-        title: 'Position the Ball',
-        description: 'Drag the ball to the blue target zone near Player 1.',
-        targetKey: _ballKey,
-        requiresDrag: true,
-        dragTargetId: 'BALL',
-        // Dynamic target: near P1
-        targetPosition: currentFrame.p1 + const Offset(40, 40),
-        targetProximity: 80,
-        showSuccess: true,
-      ),
-      TutorialStep(
-        id: 'frame_add',
-        title: 'Add a Frame',
-        description: 'Tap this button to add a new frame and capture the current positions.',
-        targetKey: _frameAddKey,
-        isConditional: true,
-        showSuccess: true,
-        autoPerformAction: () => _insertFrameAfterCurrent(),
-      ),
-      TutorialStep(
-        id: 'board_drag_long',
-        title: 'Long Movement',
-        description: 'Drag the ball across at least half the court to see how paths are created.',
-        targetKey: _ballKey,
-        requiresDrag: true,
-        dragTargetId: 'BALL',
-        targetPosition: currentFrame.ball.dx > 0 ? const Offset(-150, 0) : const Offset(150, 0),
-        targetProximity: 150, // Large proximity but requires distance
-        showSuccess: true,
-      ),
-      TutorialStep(
-        id: 'board_drag',
-        title: 'Create Movement',
-        description: 'Drag any player or ball to a new position to show movement between frames.',
-        targetKey: null,
-        requiresDrag: true,
-        showSuccess: true,
-      ),
-      TutorialStep(
-        id: 'multi_frame',
-        title: 'Build Your Play',
-        description: 'Add at least 3 frames to create a complete sequence of movement.',
-        targetKey: _frameAddKey,
-        isConditional: true,
-        showSuccess: true,
-        autoPerformAction: () {
-          // Add frames until we have at least 3
-          while (widget.project.frames.length < 3) {
-            _insertFrameAfterCurrent();
-          }
-        },
-      ),
-      TutorialStep(
-        id: 'ball_modifier',
-        title: 'Ball Modifiers',
-        description: 'Tap the ball to open the modifier menu. You can set "Hit" or "Set" effects.',
-        targetKey: _ballKey,
-        isConditional: true,
-        showSuccess: true,
-        autoPerformAction: () {
-          setState(() {
-            _showModifierMenu = true;
-          });
-        },
-      ),
-      TutorialStep(
-        id: 'ball_hit',
-        title: 'Set a Hit',
-        description: 'Select "Hit" and then tap anywhere on the ball path to mark where the ball was hit.',
-        targetKey: _hitButtonKey,
-        isConditional: true,
-        showSuccess: true,
-        autoPerformAction: () {
-          setState(() {
-            currentFrame.ballHitT = 0.5;
-            _showModifierMenu = false;
-          });
-        },
-      ),
-      TutorialStep(
-        id: 'hit_marker_move',
-        title: 'Move Hit Marker',
-        description: 'You can drag the hit marker along the path to adjust the timing of the hit.',
-        targetKey: null, // The hit marker is dynamic, so no fixed key
-        isConditional: true,
-        showSuccess: true,
-        autoPerformAction: () {
-          setState(() {
-            currentFrame.ballHitT = 0.75;
-          });
-        },
-      ),
-      TutorialStep(
-        id: 'duration',
-        title: 'Frame Duration',
-        description: 'Tap frames to select them and adjust their duration.',
-        targetKey: _durationKey,
-        isConditional: true,
-        showSuccess: true,
-        autoPerformAction: () => _showDurationPicker(),
-      ),
-      TutorialStep(
-        id: 'undo_redo',
-        title: 'Undo & Redo',
-        description: 'Made a mistake? Use undo to go back or redo to restore your changes.',
-        targetKey: _undoKey,
-        isConditional: true,
-        showSuccess: true,
-        autoPerformAction: () {
-          if (_history.canUndo) {
-            final idx = _history.undo();
-            if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
-              setState(() => currentFrame = widget.project.frames[idx]);
-              _scrollToSelectedFrame();
-            }
-          }
-        },
-      ),
-      TutorialStep(
-        id: 'play',
-        title: 'Play Animation',
-        description: 'Press play to see your animation in action!',
-        targetKey: _playKey,
-        isConditional: true,
-        showSuccess: true,
-        autoPerformAction: () => _startPlayback(),
-      ),
-      TutorialStep(
-        id: 'stop',
-        title: 'Stop Playback',
-        description: 'Use stop to return to editing mode.',
-        targetKey: _stopKey,
-        isConditional: true,
-        autoPerformAction: () => _stopPlayback(),
-      ),
-      TutorialStep(
-        id: 'final',
-        title: 'You\'re All Set!',
-        description: 'You now know the basics. Experiment with paths, annotations, and more!',
-        targetKey: null,
-      ),
-    ];
-
-    TutorialService().startTutorial(TutorialType.board, steps);
-=======
   void _saveProject() {
     widget.project.save();
->>>>>>> feature/trainings-court
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -932,29 +667,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   void _updateFramePosition(String entityId, Offset newPos) {
     if (_isPlaying) return;
     setState(() {
-<<<<<<< HEAD
-      switch (label) {
-        case "P1":
-          currentFrame.p1 = newPos;
-          // Update ball target if it's the current tutorial step
-          final tutorial = TutorialService();
-          if (tutorial.isActive && tutorial.currentStep?.id == 'ball') {
-            tutorial.updateStepTarget('ball', newPos + const Offset(40, 40));
-          }
-          break;
-        case "P2":
-          currentFrame.p2 = newPos;
-          break;
-        case "P3":
-          currentFrame.p3 = newPos;
-          break;
-        case "P4":
-          currentFrame.p4 = newPos;
-          break;
-        case "BALL":
-          currentFrame.ball = newPos;
-          break;
-=======
       // Try to find player by ID
       final player = currentFrame.getPlayerById(entityId);
       if (player != null) {
@@ -965,7 +677,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         if (ball != null) {
           ball.position = newPos;
         }
->>>>>>> feature/trainings-court
       }
       final idx = widget.project.frames.indexOf(currentFrame);
       if (idx >= 0) widget.project.frames[idx] = currentFrame;
@@ -1876,50 +1587,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   List<Widget> _buildAllHitMarkersForEditing(Size size) {
     if (_isPlaying || _endedAtLastFrame) return [];
     final prev = _getPreviousFrame();
-<<<<<<< HEAD
-    if (prev == null) return const SizedBox.shrink();
-    final hasCtrl = currentFrame.ballPathPoints.isNotEmpty;
-    final posCm = hasCtrl
-        ? PathEngine.fromTwoQuadratics(
-            start: prev.ball,
-            control: currentFrame.ballPathPoints.first,
-            end: currentFrame.ball,
-            resolution: 400,
-          ).sample(t)
-        : Offset.lerp(prev.ball, currentFrame.ball, t)!;
-    final pos = _toScreenPosition(posCm, size);
-    return Positioned(
-      left: pos.dx - 16,
-      top: pos.dy - 16,
-      child: GestureDetector(
-        onPanStart: (details) {
-          // Start dragging the hit marker immediately when the user pans on it
-          setState(() => _pendingBallMark = 'hit');
-        },
-        onPanUpdate: (details) {
-          if (_pendingBallMark == 'hit') {
-            // Convert global coordinates to local coordinates relative to the board
-            final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
-            final localPos = box.globalToLocal(details.globalPosition);
-            final newT = _nearestTOnBallPath(localPos, size);
-            setState(() => currentFrame.ballHitT = newT);
-            _saveProject();
-          }
-        },
-        onPanEnd: (_) {
-          setState(() => _pendingBallMark = null);
-          _saveProject();
-
-          // Tutorial progression
-          final tutorial = TutorialService();
-          if (tutorial.isActive && tutorial.currentStep?.id == 'hit_marker_move') {
-            tutorial.nextStep();
-          }
-        },
-        child: CustomPaint(size: const Size(32, 32), painter: _StarPainter()),
-      ),
-    );
-=======
     if (prev == null) return [];
 
     final widgets = <Widget>[];
@@ -1981,7 +1648,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       );
     }
     return widgets;
->>>>>>> feature/trainings-court
   }
 
   /// Build set preview indicators for all balls with set marker during editing
@@ -2121,13 +1787,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     });
   }
 
-<<<<<<< HEAD
-  /// Build player widgets (P1, P2, P3, P4) with drag handling
-  Widget _buildPlayer(Offset posCm, double rotation, Color color, String label, Size size, {GlobalKey? key}) {
-=======
   /// Build player widgets with drag handling
   Widget _buildPlayer(Offset posCm, double rotation, Color color, String playerId, Size size) {
->>>>>>> feature/trainings-court
     final screenPos = _toScreenPosition(posCm, size);
 
     // Check if this player is the current drag target in a tutorial step
@@ -2189,24 +1850,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             });
           },
           onPanEnd: (_) {
-<<<<<<< HEAD
-            final from = _dragStartLogical[label] ?? posCm;
-            final to = switch (label) {
-              "P1" => currentFrame.p1,
-              "P2" => currentFrame.p2,
-              "P3" => currentFrame.p3,
-              "P4" => currentFrame.p4,
-              _ => currentFrame.ball,
-            };
-
-            // Validate tutorial drag before committing to history
-            _validateTutorialDrag(label, from, to, size);
-
-=======
             final from = _dragStartLogical[playerId] ?? posCm;
             final player = currentFrame.getPlayerById(playerId);
             final to = player?.position ?? posCm;
->>>>>>> feature/trainings-court
             final idx = widget.project.frames.indexOf(currentFrame);
             final newIdx = _history.push(MoveEntityAction(frameIndex: idx, id: playerId, from: from, to: to));
             setState(() {
@@ -2238,16 +1884,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   /// Build the ball widget with optional scale and star opacity
-<<<<<<< HEAD
-  Widget _buildBall(Offset posCm, Size size, {double scale = 1.0, double starOpacity = 0.0, GlobalKey? key}) {
-    final screenPos = _toScreenPosition(posCm, size);
-
-    // Check if ball is the current drag target in a tutorial step
-    final tutorial = TutorialService();
-    final isCurrentDragTarget =
-        tutorial.isActive && tutorial.currentStep?.requiresDrag == true && tutorial.currentStep?.dragTargetId == "BALL";
-
-=======
   Widget _buildBall(
     Offset posCm,
     Size size, {
@@ -2260,7 +1896,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     // Get the actual ball color from the current frame if not provided
     final ballColor =
         color ?? (ballId != null ? (currentFrame.getBallById(ballId)?.color ?? Colors.orange) : Colors.orange);
->>>>>>> feature/trainings-court
     return Positioned(
       key: key,
       left: screenPos.dx - 15 * scale,
@@ -2315,18 +1950,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             });
           },
           onPanEnd: (_) {
-<<<<<<< HEAD
-            final from = _dragStartLogical["BALL"] ?? posCm;
-            final to = currentFrame.ball;
-
-            // Validate tutorial drag before committing to history
-            _validateTutorialDrag("BALL", from, to, size);
-
-=======
             final from = _dragStartLogical[ballId ?? "BALL"] ?? posCm;
             final ball = ballId != null ? currentFrame.getBallById(ballId) : null;
             final to = ball?.position ?? posCm;
->>>>>>> feature/trainings-court
             final idx = widget.project.frames.indexOf(currentFrame);
             final newIdx = _history.push(MoveEntityAction(frameIndex: idx, id: ballId ?? "BALL", from: from, to: to));
             setState(() {
@@ -2740,33 +2366,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           child: Container(),
                         ),
                       ),
-<<<<<<< HEAD
-                      _buildPlayer(
-                        frameToShow.p1,
-                        frameToShow.p1Rotation,
-                        Colors.blue,
-                        "P1",
-                        screenSize,
-                        key: _player1Key,
-                      ),
-                      _buildPlayer(
-                        frameToShow.p2,
-                        frameToShow.p2Rotation,
-                        Colors.blue,
-                        "P2",
-                        screenSize,
-                        key: _player2Key,
-                      ),
-                      _buildPlayer(frameToShow.p3, frameToShow.p3Rotation, Colors.red, "P3", screenSize),
-                      _buildPlayer(frameToShow.p4, frameToShow.p4Rotation, Colors.red, "P4", screenSize),
-                      _buildBall(
-                        frameToShow.ball,
-                        screenSize,
-                        scale: isPlayback ? _ballScaleAt(_playbackT) : 1.0,
-                        starOpacity: 0.0,
-                        key: _ballKey,
-                      ),
-=======
                       if (widget.project.projectType == ProjectType.training) ...[
                         for (final player in frameToShow.players)
                           _buildPlayer(player.position, player.rotation, player.color, player.id, screenSize),
@@ -2792,7 +2391,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             color: ball.color,
                           ),
                       ],
->>>>>>> feature/trainings-court
                       // Draw annotations above objects when toggled on
                       if (_annotationsAboveObjects)
                         IgnorePointer(
@@ -3908,56 +3506,6 @@ class _EraserCirclePainter extends CustomPainter {
       oldDelegate.centerCm != centerCm || oldDelegate.radiusCm != radiusCm;
 }
 
-<<<<<<< HEAD
-/// Pulsating glow widget for highlighting draggable tutorial elements
-class TutorialPulseGlow extends StatefulWidget {
-  final double size;
-  final Color glowColor;
-
-  const TutorialPulseGlow({super.key, this.size = 50, this.glowColor = Colors.cyan});
-
-  @override
-  State<TutorialPulseGlow> createState() => _TutorialPulseGlowState();
-}
-
-class _TutorialPulseGlowState extends State<TutorialPulseGlow> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 1500), vsync: this)..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        // Pulse from 0.6 to 1.0 and back
-        final scale = 0.6 + (_controller.value * 0.4);
-        final opacity = 0.8 - (_controller.value * 0.6);
-
-        return Container(
-          width: widget.size,
-          height: widget.size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(color: widget.glowColor.withOpacity(opacity), blurRadius: 15, spreadRadius: scale * 5),
-            ],
-          ),
-        );
-      },
-    );
-  }
-=======
 /// Painter for center screen transparent cross (20cm x 20cm)
 class _CenterCrossPainter extends CustomPainter {
   final Size screenSize;
@@ -4001,5 +3549,4 @@ class _CenterCrossPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _CenterCrossPainter oldDelegate) =>
       oldDelegate.screenSize != screenSize || oldDelegate.settings != settings;
->>>>>>> feature/trainings-court
 }
