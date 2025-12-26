@@ -1,5 +1,7 @@
+import 'package:feature_discovery/feature_discovery.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
 import '../models/animation_project.dart';
@@ -8,12 +10,12 @@ import '../services/project_service.dart';
 import '../services/export_service.dart';
 import '../services/tutorial_service.dart';
 import '../utils/share_helper.dart';
-import '../widgets/home_tutorial_overlay.dart';
 import 'board_screen.dart';
 import 'help_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool startTutorialOnMount;
+  const HomeScreen({super.key, this.startTutorialOnMount = false});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -22,77 +24,27 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _fabAddKey = GlobalKey(debugLabel: 'fab_add');
   final GlobalKey _fabImportKey = GlobalKey(debugLabel: 'fab_import');
-  final GlobalKey _helpIconKey = GlobalKey(debugLabel: 'help_icon');
   final GlobalKey _projectListKey = GlobalKey(debugLabel: 'project_list');
   final Map<int, GlobalKey> _projectTileKeys = {};
-  final Map<int, GlobalKey> _projectMenuKeys = {};
+  bool _tutorialQueued = false;
 
   @override
   void initState() {
     super.initState();
-    print('🏠 HomeScreen: initState called');
-
-    // Listen for tutorial requests
-    TutorialService().addListener(_checkForPendingTutorial);
-    print('🏠 HomeScreen: Listener added to TutorialService');
-  }
-
-  @override
-  void dispose() {
-    print('🏠 HomeScreen: dispose called');
-    TutorialService().removeListener(_checkForPendingTutorial);
-    super.dispose();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    print('🏠 HomeScreen: didChangeDependencies called');
-
-    // Check for pending tutorial trigger on first build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('🏠 HomeScreen: Post-frame callback from didChangeDependencies');
-      _checkForPendingTutorial();
-    });
-  }
-
-  void _checkForPendingTutorial() {
-    print('🏠 HomeScreen: _checkForPendingTutorial called');
-    final tutorialService = TutorialService();
-    print('🏠 HomeScreen: Pending tutorial = ${tutorialService.pendingTutorial?.name ?? 'none'}');
-    print('🏠 HomeScreen: Is active = ${tutorialService.isActive}');
-
-    if (tutorialService.pendingTutorial == TutorialType.home && !tutorialService.isActive) {
-      print('🏠 HomeScreen: Conditions met, scheduling tutorial start');
-      // Use post-frame callback to ensure UI is ready
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        print('🏠 HomeScreen: Post-frame callback for tutorial start');
-        if (mounted) {
-          print('🏠 HomeScreen: Widget is mounted, starting tutorial');
-          _startHomeTutorial();
-        } else {
-          print('⚠️ HomeScreen: Widget not mounted, skipping tutorial');
-        }
-      });
-    } else {
-      print('🏠 HomeScreen: Conditions not met for tutorial');
+    if (!_tutorialQueued && widget.startTutorialOnMount) {
+      _tutorialQueued = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _startHomeTutorial());
     }
   }
 
-  void _startHomeTutorial() {
-    print('🏠 HomeScreen: _startHomeTutorial called');
-
-    print('🏠 HomeScreen: Creating HomeTutorialOverlay');
-
-    final overlay = HomeTutorialOverlay(
-      context: context,
-      onFinish: () {
-        print('🏠 HomeScreen: Tutorial finished');
-      },
-    );
-
-    print('🏠 HomeScreen: Calling overlay.show()');
-    overlay.show();
+  Future<void> _startHomeTutorial() async {
+    final box = Hive.box<AnimationProject>('projects');
+    await context.read<TutorialService>().startHomeTutorial(context, hasProject: box.isNotEmpty);
   }
 
   @override
@@ -104,7 +56,6 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('My Projects'),
         actions: [
           IconButton(
-            key: _helpIconKey,
             icon: const Icon(Icons.help),
             tooltip: 'Help & Guide',
             onPressed: () {
@@ -130,9 +81,8 @@ class _HomeScreenState extends State<HomeScreen> {
               itemBuilder: (context, index) {
                 final project = box.getAt(index)!;
                 _projectTileKeys[index] = GlobalKey(debugLabel: 'project_tile_$index');
-                _projectMenuKeys[index] = GlobalKey(debugLabel: 'project_menu_$index');
 
-                return Card(
+                final listTile = Card(
                   elevation: AppConstants.cardElevation,
                   margin: const EdgeInsets.only(bottom: AppConstants.padding),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.borderRadius)),
@@ -160,7 +110,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                     trailing: PopupMenuButton<String>(
-                      key: _projectMenuKeys[index],
                       onSelected: (value) {
                         if (value == 'rename') {
                           _renameProject(context, box, index, project);
@@ -229,6 +178,27 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 );
+
+                if (index == 0) {
+                  return DescribedFeatureOverlay(
+                    featureId: TutorialIds.homeOpenProject,
+                    tapTarget: const Icon(Icons.folder_open),
+                    title: const Text('Open your project'),
+                    description: _buildStepDescription(
+                      context,
+                      primary: 'Tap a card to jump into the board.',
+                      gestureHint: 'Tap once to open',
+                    ),
+                    backgroundColor: AppTheme.darkGrey,
+                    contentLocation: ContentLocation.below,
+                    pulseDuration: const Duration(milliseconds: 950),
+                    overflowMode: OverflowMode.clipContent,
+                    onComplete: context.read<TutorialService>().acknowledgeStepCompletion,
+                    child: listTile,
+                  );
+                }
+
+                return listTile;
               },
             );
           },
@@ -237,25 +207,66 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          FloatingActionButton(
-            key: _fabImportKey,
-            heroTag: 'import',
-            backgroundColor: AppTheme.primaryBlue,
-            tooltip: 'Import Project',
-            onPressed: () => _importProject(context, projectBox),
-            child: const Icon(Icons.file_upload),
+          DescribedFeatureOverlay(
+            featureId: TutorialIds.homeImportProject,
+            tapTarget: const Icon(Icons.file_upload),
+            title: const Text('Import an existing project'),
+            description: _buildStepDescription(
+              context,
+              primary: 'Pull in a shared JSON file.',
+              gestureHint: 'Tap once to choose a file',
+            ),
+            backgroundColor: AppTheme.darkGrey,
+            contentLocation: ContentLocation.below,
+            pulseDuration: const Duration(milliseconds: 950),
+            overflowMode: OverflowMode.clipContent,
+            onComplete: context.read<TutorialService>().acknowledgeStepCompletion,
+            child: FloatingActionButton(
+              key: _fabImportKey,
+              heroTag: 'import',
+              backgroundColor: AppTheme.primaryBlue,
+              tooltip: 'Import Project',
+              onPressed: () => _importProject(context, projectBox),
+              child: const Icon(Icons.file_upload),
+            ),
           ),
           const SizedBox(height: AppConstants.padding),
-          FloatingActionButton(
-            key: _fabAddKey,
-            heroTag: 'add',
-            backgroundColor: AppTheme.primaryBlue,
-            tooltip: 'Create New Project',
-            onPressed: () => _addProject(context, projectBox),
-            child: const Icon(Icons.add),
+          DescribedFeatureOverlay(
+            featureId: TutorialIds.homeAddProject,
+            tapTarget: const Icon(Icons.add),
+            title: const Text('Create your first project'),
+            description: _buildStepDescription(
+              context,
+              primary: 'Start a new animation board.',
+              gestureHint: 'Tap once to create',
+            ),
+            backgroundColor: AppTheme.darkGrey,
+            contentLocation: ContentLocation.below,
+            pulseDuration: const Duration(milliseconds: 950),
+            overflowMode: OverflowMode.clipContent,
+            onComplete: context.read<TutorialService>().acknowledgeStepCompletion,
+            child: FloatingActionButton(
+              key: _fabAddKey,
+              heroTag: 'add',
+              backgroundColor: AppTheme.primaryBlue,
+              tooltip: 'Create New Project',
+              onPressed: () => _addProject(context, projectBox),
+              child: const Icon(Icons.add),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStepDescription(BuildContext context, {required String primary, required String gestureHint}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(primary, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white)),
+        const SizedBox(height: 8),
+        _GestureHintPill(label: gestureHint),
+      ],
     );
   }
 
