@@ -22,47 +22,40 @@ class Player extends HiveObject {
   @HiveField(4)
   String id; // Unique identifier (UUID for training, P1-P4 for play)
 
-  Player({
-    required this.position,
-    this.rotation = 0,
-    List<Offset>? pathPoints,
-    Color? color,
-    String? id,
-  })  : pathPoints = pathPoints ?? [],
-        colorValue = (color ?? Colors.blue).value,
-        id = id ?? const Uuid().v4();
+  Player({required this.position, this.rotation = 0, List<Offset>? pathPoints, Color? color, String? id})
+    : pathPoints = pathPoints ?? [],
+      colorValue = (color ?? Colors.blue).toARGB32(),
+      id = id ?? const Uuid().v4();
 
   Color get color => Color(colorValue);
-  
+
   set color(Color value) {
-    colorValue = value.value;
+    colorValue = value.toARGB32();
   }
 
   Player copy() => Player(
-        position: position,
-        rotation: rotation,
-        pathPoints: List.from(pathPoints),
-        color: color,
-        id: id,
-      );
+    position: position,
+    rotation: rotation,
+    pathPoints: [], // Don't copy path points - make them frame-specific
+    color: color,
+    id: id,
+  );
 }
 
 extension PlayerMap on Player {
   Map<String, dynamic> toMap() => {
-        'position': [position.dx, position.dy],
-        'rotation': rotation,
-        'pathPoints': pathPoints.map((o) => [o.dx, o.dy]).toList(),
-        'color': colorValue,
-        'id': id,
-      };
+    'position': [position.dx, position.dy],
+    'rotation': rotation,
+    'pathPoints': pathPoints.map((o) => [o.dx, o.dy]).toList(),
+    'color': colorValue,
+    'id': id,
+  };
 
   static Player fromMap(Map<String, dynamic> m) => Player(
-        position: Offset(m['position'][0], m['position'][1]),
-        rotation: (m['rotation'] ?? 0).toDouble(),
-        pathPoints: (m['pathPoints'] as List? ?? [])
-            .map((e) => Offset(e[0], e[1]))
-            .toList(),
-        color: Color(m['color'] as int),
-        id: m['id'] as String?,
-      );
+    position: Offset(m['position'][0], m['position'][1]),
+    rotation: (m['rotation'] ?? 0).toDouble(),
+    pathPoints: (m['pathPoints'] as List? ?? []).map((e) => Offset(e[0], e[1])).toList(),
+    color: Color(m['color'] as int),
+    id: m['id'] as String?,
+  );
 }

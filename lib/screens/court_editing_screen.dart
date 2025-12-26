@@ -65,15 +65,13 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   CourtElement? _draggingElement;
   Offset? _dragOffset; // Offset from touch point to element position for dragging
   Offset? _dragEndOffset; // Offset for endPosition when dragging shapes
-  double _eraserRadius = 30.0;
+  final double _eraserRadius = 30.0;
   final GlobalKey _canvasKey = GlobalKey(debugLabel: 'court_editor_canvas');
   Color _currentColor = Colors.white;
   ZoneMode _zoneMode = ZoneMode.inner;
   CourtElement? _previewElement;
   // Incremented whenever elements change to force background repaint
   int _elementsRevision = 0;
-  // Prevent duplicate history pushes within a gesture
-  bool _pushedHistoryThisGesture = false;
   
   // History stacks for undo/redo
   final List<_EditorSnapshot> _undoStack = [];
@@ -359,7 +357,6 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     _startPos = localPos;
     _currentPos = localPos;
     _previewElement = null;
-    _pushedHistoryThisGesture = false;
 
     if (_currentTool == CourtEditorTool.select) {
       for (final element in _elements.reversed) {
@@ -373,14 +370,12 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
           }
           // Save pre-change snapshot once at drag start
           _saveToHistory();
-          _pushedHistoryThisGesture = true;
           break;
         }
       }
     } else if (_currentTool == CourtEditorTool.eraser) {
       // Save pre-change snapshot once at erase start
       _saveToHistory();
-      _pushedHistoryThisGesture = true;
       _eraseAtPosition(localPos);
     } else {
       // Show live preview for all creation tools (circle, zone, line, rectangle, net)
@@ -427,14 +422,12 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       _draggingElement = null;
       _dragOffset = null;
       _dragEndOffset = null;
-      _pushedHistoryThisGesture = false;
       return;
     }
 
     if (tool == CourtEditorTool.eraser) {
       // History was saved at erase start; do not save again here
       _draggingElement = null;
-      _pushedHistoryThisGesture = false;
       return;
     }
 
@@ -450,7 +443,6 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     _startPos = null;
     _currentPos = null;
     _previewElement = null;
-    _pushedHistoryThisGesture = false;
   }
 
   void _eraseAtPosition(Offset pos) {
@@ -684,7 +676,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
               Colors.indigo,
               Colors.brown,
             ].map((color) {
-              final isActive = _currentColor.value == color.value;
+              final isActive = _currentColor.toARGB32() == color.toARGB32();
               return GestureDetector(
                 onTap: () {
                   Navigator.pop(context);
@@ -742,10 +734,10 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       if (a.position != b.position) return false;
       if (a.endPosition != b.endPosition) return false;
       if ((a.radius ?? 0) != (b.radius ?? 0)) return false;
-      if (a.color.value != b.color.value) return false;
+      if (a.color.toARGB32() != b.color.toARGB32()) return false;
       if (a.strokeWidth != b.strokeWidth) return false;
     }
-    if (snap.currentColor.value != _currentColor.value) return false;
+    if (snap.currentColor.toARGB32() != _currentColor.toARGB32()) return false;
     if (snap.zoneMode != _zoneMode) return false;
     return true;
   }
@@ -872,7 +864,7 @@ class _CenterCrossPainter extends CustomPainter {
 
     // Create paint for the cross (very transparent white)
     final crossPaint = Paint()
-      ..color = Colors.white.withOpacity(0.15) // Very transparent
+      ..color = Colors.white.withValues(alpha: 0.15) // Very transparent
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 

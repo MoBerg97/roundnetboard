@@ -46,7 +46,7 @@ class CourtElement extends HiveObject {
     this.strokeWidth = 2.0,
     this.isVisible = true,
   })  : typeIndex = (type ?? CourtElementType.net).index,
-        colorValue = (color ?? Colors.white).value;
+      colorValue = (color ?? Colors.white).toARGB32();
 
   CourtElementType get type => CourtElementType.values[typeIndex];
   
@@ -57,7 +57,7 @@ class CourtElement extends HiveObject {
   Color get color => Color(colorValue);
   
   set color(Color value) {
-    colorValue = value.value;
+    colorValue = value.toARGB32();
   }
 
   CourtElement copy() => CourtElement(

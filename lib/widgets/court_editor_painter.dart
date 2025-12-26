@@ -46,7 +46,7 @@ class CourtEditorPainter extends CustomPainter {
         final r = (previewElement!.radius ?? 0) * scale;
         final pos = center + (previewElement!.position - center) * scale;
         final diameterPaint = Paint()
-          ..color = previewElement!.color.withOpacity(0.6)
+          ..color = previewElement!.color.withValues(alpha: 0.6)
           ..strokeWidth = 1.5;
         canvas.drawLine(pos + Offset(-r, 0), pos + Offset(r, 0), diameterPaint);
       }
@@ -55,7 +55,7 @@ class CourtEditorPainter extends CustomPainter {
     // Draw eraser preview
     if (eraserPos != null) {
       final eraserPaint = Paint()
-        ..color = Colors.red.withOpacity(0.3)
+        ..color = Colors.red.withValues(alpha: 0.3)
         ..style = PaintingStyle.fill;
       canvas.drawCircle(eraserPos!, eraserRadius, eraserPaint);
 
@@ -70,7 +70,7 @@ class CourtEditorPainter extends CustomPainter {
   void _drawElement(Canvas canvas, CourtElement element, Offset center, double scale, {bool isPreview = false}) {
     final scaledPos = center + (element.position - center) * scale;
     final paint = Paint()
-      ..color = element.color.withOpacity(isPreview ? 0.6 : 1.0)
+      ..color = element.color.withValues(alpha: isPreview ? 0.6 : 1.0)
       ..strokeWidth = element.strokeWidth
       ..style = PaintingStyle.stroke;
 
@@ -105,7 +105,7 @@ class CourtEditorPainter extends CustomPainter {
       ..color = AppTheme.courtGreen
       ..style = PaintingStyle.fill;
     final rimPaint = Paint()
-      ..color = AppTheme.lightGrey.withOpacity(isPreview ? 0.5 : 1.0)
+      ..color = AppTheme.lightGrey.withValues(alpha: isPreview ? 0.5 : 1.0)
       ..style = PaintingStyle.fill;
 
     canvas.drawCircle(center, radius + 5, rimPaint);

@@ -111,7 +111,7 @@ class _BallPainter extends CustomPainter {
     // Draw shadow if dragging
     if (isDragging) {
       final shadowPaint = Paint()
-        ..color = Colors.black.withOpacity(0.3)
+        ..color = Colors.black.withValues(alpha: 0.3)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
 
       canvas.drawCircle(center + const Offset(2, 2), radius, shadowPaint);

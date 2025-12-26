@@ -6,10 +6,10 @@ class InteractiveTutorialScreen extends StatefulWidget {
   final Map<String, GlobalKey>? highlightKeys;
 
   const InteractiveTutorialScreen({
-    Key? key,
+    super.key,
     required this.onFinish,
     this.highlightKeys,
-  }) : super(key: key);
+  });
 
   @override
   State<InteractiveTutorialScreen> createState() => _InteractiveTutorialScreenState();

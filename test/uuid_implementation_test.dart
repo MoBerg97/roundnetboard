@@ -1,9 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:roundnetboard/models/player.dart';
 import 'package:roundnetboard/models/ball.dart';
 import 'package:roundnetboard/models/frame.dart';
-import 'package:roundnetboard/models/animation_project.dart';
-import 'package:flutter/material.dart';
+import 'package:roundnetboard/models/player.dart';
 
 void main() {
   group('UUID Object Identity System Tests', () {
@@ -160,7 +159,7 @@ void main() {
         final copy = player.copy();
         
         expect(copy.pathPoints, equals(pathPoints));
-        expect(copy.pathPoints, isNot(identical(player.pathPoints)));
+        expect(copy.pathPoints, isNot(same(player.pathPoints)));
       });
 
       test('Ball path points persist through copy', () {
@@ -174,7 +173,7 @@ void main() {
         final copy = ball.copy();
         
         expect(copy.pathPoints, equals(pathPoints));
-        expect(copy.pathPoints, isNot(identical(ball.pathPoints)));
+        expect(copy.pathPoints, isNot(same(ball.pathPoints)));
       });
 
       test('Path points survive frame-level operations', () {

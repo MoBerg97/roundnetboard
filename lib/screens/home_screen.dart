@@ -298,85 +298,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   textCapitalization: TextCapitalization.words,
                 ),
                 const SizedBox(height: 24),
-                // Project type toggle (modern slider style)
-                Text(
-                  'Project Type',
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
+                // Project type toggle (modern switch style)
+                Text('Project Type', style: Theme.of(context).textTheme.labelMedium),
                 const SizedBox(height: 8),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: SliderTheme(
-                        data: SliderThemeData(
-                          trackHeight: 4.0,
-                          thumbShape: RoundSliderThumbShape(
-                            elevation: 0,
-                            enabledThumbRadius: 14.0,
-                          ),
-                          overlayShape: RoundSliderOverlayShape(overlayRadius: 18.0),
-                        ),
-                        child: Slider(
-                          value: isTrainingMode ? 1.0 : 0.0,
-                          min: 0.0,
-                          max: 1.0,
-                          divisions: 1,
-                          onChanged: (value) {
-                            setState(() {
-                              isTrainingMode = value > 0.5;
-                            });
-                          },
-                        ),
-                      ),
+                    Row(
+                      children: [
+                        Switch(value: isTrainingMode, onChanged: (v) => setState(() => isTrainingMode = v)),
+                        const SizedBox(width: 8),
+                        Text(isTrainingMode ? 'Training' : 'Play', style: Theme.of(context).textTheme.bodySmall),
+                      ],
                     ),
                   ],
                 ),
-                Text(
-                  isTrainingMode ? 'Training' : 'Play',
-                  style: Theme.of(context).textTheme.bodySmall,
-                  textAlign: TextAlign.center,
-                ),
-                // Template selection for training mode
-                if (isTrainingMode) ...[
-                  const SizedBox(height: 24),
-                  Text(
-                    'Court Template',
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Column(
-                    children: List.generate(3, (index) {
-                      final isSelected = selectedTemplateIndex == index;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: isSelected ? AppTheme.primaryBlue : Colors.transparent,
-                              width: 2.0,
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                            color: isSelected ? AppTheme.primaryBlue.withOpacity(0.1) : Colors.transparent,
-                          ),
-                          child: ListTile(
-                            title: Text(
-                              CourtTemplates.templateNames[index],
-                              style: TextStyle(
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              ),
-                            ),
-                            onTap: () {
-                              setState(() {
-                                selectedTemplateIndex = index;
-                              });
-                            },
-                            selected: isSelected,
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                ],
               ],
             ),
           ),
@@ -390,7 +326,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     await projectService.createProject(
                       name,
                       projectType: isTrainingMode ? ProjectType.training : ProjectType.play,
-                      courtTemplate: isTrainingMode ? selectedTemplateIndex : 0,
+                      // courtTemplate ignored for training; default to empty court
+                      courtTemplate: 1,
                     );
                     if (context.mounted) {
                       Navigator.pop(context);
@@ -534,7 +471,7 @@ class _GestureHintPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.14),
+        color: Colors.white.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: Colors.white24),
       ),

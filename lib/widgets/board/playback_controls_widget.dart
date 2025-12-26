@@ -165,7 +165,7 @@ class PlaybackControlsWidget extends StatelessWidget {
                         ),
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ],

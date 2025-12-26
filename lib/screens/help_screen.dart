@@ -227,7 +227,7 @@ class _HelpScreenState extends State<HelpScreen> {
   Widget _buildQuickActionsSection(BuildContext context) {
     return Card(
       elevation: AppConstants.cardElevation,
-      color: AppTheme.lightGrey.withOpacity(0.5),
+      color: AppTheme.lightGrey.withValues(alpha: 0.5),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.borderRadius)),
       child: Padding(
         padding: const EdgeInsets.all(AppConstants.padding),

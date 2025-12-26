@@ -16,26 +16,22 @@ class ProjectService {
   /// Creates a new project with the given [name] and optional [projectType] and [courtTemplate].
   ///
   /// Throws [ArgumentError] if name is empty.
-  Future<void> createProject(
-    String name, {
-    ProjectType projectType = ProjectType.play,
-    int courtTemplate = 0,
-  }) async {
+  Future<void> createProject(String name, {ProjectType projectType = ProjectType.play, int courtTemplate = 0}) async {
     if (name.trim().isEmpty) {
       throw ArgumentError('Project name cannot be empty');
     }
 
     final defaultSettings = Settings();
-    
+
     // Create appropriate initial frame based on project type
     final initialFrame = projectType == ProjectType.training
         ? DefaultFrames.createTrainingFrame(defaultSettings.referenceRadiusCm)
         : DefaultFrames.createPlayFrame(defaultSettings.referenceRadiusCm);
-    
+
     // Get court elements based on template
-    final courtElements = projectType == ProjectType.training
-      ? CourtTemplates.getTemplate(courtTemplate)
-      : <CourtElement>[];
+    // For training projects, default to an empty court (no net, no zones)
+    // Court setup options are removed from creation; elements can be edited later in court editor
+    final courtElements = projectType == ProjectType.training ? <CourtElement>[] : <CourtElement>[];
 
     final newProject = AnimationProject(
       name: name.trim(),
@@ -65,7 +61,7 @@ class ProjectService {
     // Create deep copy of the project
     final duplicatedFrames = project.frames.map((f) => f.copy()).toList();
     final duplicatedElements = (project.customCourtElements ?? []).map((e) => e.copy()).toList();
-    
+
     final duplicatedProject = AnimationProject(
       name: newName,
       frames: duplicatedFrames,

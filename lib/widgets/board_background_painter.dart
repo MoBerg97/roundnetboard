@@ -51,14 +51,14 @@ class BoardBackgroundPainter extends CustomPainter {
 
     // --- Net donut (annulus) ---
     final netRadius = settings.netCircleRadiusPx;
-    final RimOuterRadius = netRadius + 5;
+    final rimOuterRadius = netRadius + 5;
 
     // Draw outer filled circle (light grey)
-    final RimPaint = Paint()
+    final rimPaint = Paint()
       ..color = AppTheme.lightGrey
       ..style = PaintingStyle.fill;
 
-    canvas.drawCircle(center, RimOuterRadius, RimPaint);
+    canvas.drawCircle(center, rimOuterRadius, rimPaint);
 
     // Draw inner filled circle (court background color) to "cut out" center
     canvas.drawCircle(center, netRadius, bgPaint);

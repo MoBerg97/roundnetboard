@@ -31,10 +31,7 @@ class PathPainter extends CustomPainter {
 
   Offset _toScreen(Offset cmPos) {
     final center = _boardCenter(screenSize);
-    return center + Offset(
-      settings.cmToLogical(cmPos.dx, screenSize),
-      settings.cmToLogical(cmPos.dy, screenSize),
-    );
+    return center + Offset(settings.cmToLogical(cmPos.dx, screenSize), settings.cmToLogical(cmPos.dy, screenSize));
   }
 
   // Local Catmull-Rom sampler (returns point in same coordinate space as inputs)
@@ -45,12 +42,14 @@ class PathPainter extends CustomPainter {
     final p3 = pts[seg + 3];
     final t2 = t * t;
     final t3 = t2 * t;
-    final x = 0.5 *
+    final x =
+        0.5 *
         ((2 * p1.dx) +
             (-p0.dx + p2.dx) * t +
             (2 * p0.dx - 5 * p1.dx + 4 * p2.dx - p3.dx) * t2 +
             (-p0.dx + 3 * p1.dx - 3 * p2.dx + p3.dx) * t3);
-    final y = 0.5 *
+    final y =
+        0.5 *
         ((2 * p1.dy) +
             (-p0.dy + p2.dy) * t +
             (2 * p0.dy - 5 * p1.dy + 4 * p2.dy - p3.dy) * t2 +
@@ -61,7 +60,14 @@ class PathPainter extends CustomPainter {
   // helper removed: path drawing is handled by _drawFadedSegments and
   // _sampleSplinePoints which generate a Path and shader-based fades.
 
-  void _drawFadedSegments(Canvas canvas, List<Offset> samples, Color baseColor, double startAlpha, double endAlpha, double strokeWidth) {
+  void _drawFadedSegments(
+    Canvas canvas,
+    List<Offset> samples,
+    Color baseColor,
+    double startAlpha,
+    double endAlpha,
+    double strokeWidth,
+  ) {
     if (samples.length < 2) return;
     // Build a path from sampled points
     final path = Path();
@@ -73,14 +79,10 @@ class PathPainter extends CustomPainter {
     // Use a linear gradient shader along the path from start->end to avoid
     // overlapping-segment additive alpha. The shader maps startAlpha at
     // samples.first to endAlpha at samples.last.
-    final shader = ui.Gradient.linear(
-      samples.first,
-      samples.last,
-      [
-        baseColor.withAlpha((startAlpha.clamp(0.0, 1.0) * 255).round()),
-        baseColor.withAlpha((endAlpha.clamp(0.0, 1.0) * 255).round()),
-      ],
-    );
+    final shader = ui.Gradient.linear(samples.first, samples.last, [
+      baseColor.withAlpha((startAlpha.clamp(0.0, 1.0) * 255).round()),
+      baseColor.withAlpha((endAlpha.clamp(0.0, 1.0) * 255).round()),
+    ]);
     final paint = Paint()
       ..shader = shader
       ..style = PaintingStyle.stroke
@@ -139,50 +141,52 @@ class PathPainter extends CustomPainter {
 
     // faded path: twoFramesAgo → previousFrame (older path) - only render if setting enabled
     if (settings.showPreviousFrameLines && twoFramesAgo != null) {
-      final p1Samples = _sampleSplinePoints([twoFramesAgo!.p1, ...previousFrame!.p1PathPoints, previousFrame!.p1]);
-      final p2Samples = _sampleSplinePoints([twoFramesAgo!.p2, ...previousFrame!.p2PathPoints, previousFrame!.p2]);
-      final p3Samples = _sampleSplinePoints([twoFramesAgo!.p3, ...previousFrame!.p3PathPoints, previousFrame!.p3]);
-      final p4Samples = _sampleSplinePoints([twoFramesAgo!.p4, ...previousFrame!.p4PathPoints, previousFrame!.p4]);
-      _drawFadedSegments(canvas, p1Samples, Colors.black, 0.05, 0.30, 2.0);
-      _drawFadedSegments(canvas, p2Samples, Colors.black, 0.05, 0.30, 2.0);
-      _drawFadedSegments(canvas, p3Samples, Colors.black, 0.05, 0.30, 2.0);
-      _drawFadedSegments(canvas, p4Samples, Colors.black, 0.05, 0.30, 2.0);
-      
-      // Draw paths for all balls in twoFramesAgo
-      for (int i = 0; i < twoFramesAgo!.balls.length && i < previousFrame!.balls.length; i++) {
-        final prevBall = twoFramesAgo!.balls[i];
-        final currBall = previousFrame!.balls[i];
-        final ballSamples = _sampleSplinePoints([prevBall.position, ...currBall.pathPoints, currBall.position]);
-        _drawFadedSegments(canvas, ballSamples, Colors.black, 0.05, 0.30, 2.0);
+      // Draw paths for all players
+      for (final player in previousFrame!.players) {
+        final prevPlayer = twoFramesAgo!.getPlayerById(player.id);
+        if (prevPlayer != null) {
+          final playerSamples = _sampleSplinePoints([prevPlayer.position, ...player.pathPoints, player.position]);
+          _drawFadedSegments(canvas, playerSamples, Colors.black, 0.05, 0.30, 2.0);
+        }
+      }
+
+      // Draw paths for all balls by matching IDs
+      for (final ball in previousFrame!.balls) {
+        final prevBall = twoFramesAgo!.getBallById(ball.id);
+        if (prevBall != null) {
+          final ballSamples = _sampleSplinePoints([prevBall.position, ...ball.pathPoints, ball.position]);
+          _drawFadedSegments(canvas, ballSamples, Colors.black, 0.05, 0.30, 2.0);
+        }
       }
     }
 
     // solid path: previousFrame -> currentFrame (preview)
     // Preview path: fade from fully visible at the previous-frame end to 30% at the current-frame end.
-    final s1 = _sampleSplinePoints([previousFrame!.p1, ...currentFrame!.p1PathPoints, currentFrame!.p1]);
-    final s2 = _sampleSplinePoints([previousFrame!.p2, ...currentFrame!.p2PathPoints, currentFrame!.p2]);
-    final s3 = _sampleSplinePoints([previousFrame!.p3, ...currentFrame!.p3PathPoints, currentFrame!.p3]);
-    final s4 = _sampleSplinePoints([previousFrame!.p4, ...currentFrame!.p4PathPoints, currentFrame!.p4]);
-    _drawFadedSegments(canvas, s1, Colors.black, 0.30, 1.0, 2.0);
-    _drawFadedSegments(canvas, s2, Colors.black, 0.30, 1.0, 2.0);
-    _drawFadedSegments(canvas, s3, Colors.black, 0.30, 1.0, 2.0);
-    _drawFadedSegments(canvas, s4, Colors.black, 0.30, 1.0, 2.0);
-    
-    // Draw paths for all balls from previousFrame to currentFrame
-    for (int i = 0; i < previousFrame!.balls.length && i < currentFrame!.balls.length; i++) {
-      final prevBall = previousFrame!.balls[i];
-      final currBall = currentFrame!.balls[i];
-      final ballSamples = _sampleSplinePoints([prevBall.position, ...currBall.pathPoints, currBall.position]);
-      _drawFadedSegments(canvas, ballSamples, Colors.black, 0.30, 1.0, 2.0);
+    // Draw paths for all players
+    for (final player in currentFrame!.players) {
+      final prevPlayer = previousFrame!.getPlayerById(player.id);
+      if (prevPlayer != null) {
+        final playerSamples = _sampleSplinePoints([prevPlayer.position, ...player.pathPoints, player.position]);
+        _drawFadedSegments(canvas, playerSamples, Colors.black, 0.30, 1.0, 2.0);
+      }
+    }
+
+    // Draw paths for all balls by matching IDs
+    for (final ball in currentFrame!.balls) {
+      final prevBall = previousFrame!.getBallById(ball.id);
+      if (prevBall != null) {
+        final ballSamples = _sampleSplinePoints([prevBall.position, ...ball.pathPoints, ball.position]);
+        _drawFadedSegments(canvas, ballSamples, Colors.black, 0.30, 1.0, 2.0);
+      }
     }
   }
 
   @override
   bool shouldRepaint(covariant PathPainter oldDelegate) {
     return oldDelegate.twoFramesAgo != twoFramesAgo ||
-           oldDelegate.previousFrame != previousFrame ||
-           oldDelegate.currentFrame != currentFrame ||
-           oldDelegate.screenSize != screenSize ||
-           oldDelegate.settings != settings;
+        oldDelegate.previousFrame != previousFrame ||
+        oldDelegate.currentFrame != currentFrame ||
+        oldDelegate.screenSize != screenSize ||
+        oldDelegate.settings != settings;
   }
 }
