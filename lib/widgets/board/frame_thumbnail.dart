@@ -82,7 +82,7 @@ class FrameThumbnailWidget extends StatelessWidget {
               boxShadow: isSelected && !isPlaybackMode
                   ? [
                       BoxShadow(
-                        color: AppTheme.primaryBlue.withOpacity(0.3),
+                        color: AppTheme.primaryBlue.withValues(alpha: 0.3),
                         blurRadius: 4, // ← EDIT: Shadow blur
                         spreadRadius: 1, // ← EDIT: Shadow spread
                       ),
@@ -131,7 +131,7 @@ class FrameThumbnailWidget extends StatelessWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
+                        color: Colors.black.withValues(alpha: 0.2),
                         blurRadius: 2, // ← EDIT: Shadow blur
                         spreadRadius: 0.5, // ← EDIT: Shadow spread
                       ),

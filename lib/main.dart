@@ -9,9 +9,12 @@ import 'package:feature_discovery/feature_discovery.dart';
 import 'config/app_theme.dart';
 import 'models/offset_adapter.dart';
 import 'models/frame.dart';
+import 'models/player.dart';
+import 'models/ball.dart';
 import 'models/animation_project.dart';
 import 'models/settings.dart';
 import 'models/annotation.dart';
+import 'models/court_element.dart';
 import 'screens/home_screen.dart';
 import 'services/tutorial_service.dart';
 import 'firebase_options.dart';
@@ -49,6 +52,9 @@ void main() async {
   Hive.registerAdapter(AnimationProjectAdapter()); // typeId = 3 (generated)
   Hive.registerAdapter(SettingsAdapter()); // typeId = 4 (generated)
   Hive.registerAdapter(AnnotationTypeAdapter()); // typeId = 5 (generated)
+  Hive.registerAdapter(PlayerAdapter()); // typeId = 10 (generated)
+  Hive.registerAdapter(BallAdapter()); // typeId = 11 (generated)
+  Hive.registerAdapter(CourtElementAdapter()); // typeId = 12 (generated)
 
   // Open Hive boxes
   await Hive.openBox<AnimationProject>('projects');

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:roundnetboard/models/animation_project.dart';
 import 'package:roundnetboard/models/frame.dart';
+import 'package:roundnetboard/models/player.dart';
+import 'package:roundnetboard/models/ball.dart';
 import 'package:roundnetboard/models/settings.dart';
 import 'package:roundnetboard/screens/board_screen.dart';
 
@@ -75,20 +77,15 @@ AnimationProject _createTestProject({int frameCount = 3}) {
 
   for (int i = 0; i < frameCount; i++) {
     final frame = Frame(
-      p1: const Offset(0, -100),
-      p2: const Offset(100, 0),
-      p3: const Offset(0, 100),
-      p4: const Offset(-100, 0),
-      ball: Offset(i * 10.0, i * 5.0),
-      p1Rotation: 0,
-      p2Rotation: 0,
-      p3Rotation: 0,
-      p4Rotation: 0,
-      p1PathPoints: [],
-      p2PathPoints: [],
-      p3PathPoints: [],
-      p4PathPoints: [],
-      ballPathPoints: [],
+      players: [
+        Player(position: const Offset(0, -100), rotation: 0, pathPoints: const []),
+        Player(position: const Offset(100, 0), rotation: 0, pathPoints: const []),
+        Player(position: const Offset(0, 100), rotation: 0, pathPoints: const []),
+        Player(position: const Offset(-100, 0), rotation: 0, pathPoints: const []),
+      ],
+      balls: [
+        Ball(position: Offset(i * 10.0, i * 5.0), pathPoints: const []),
+      ],
     );
     project.frames.add(frame);
   }

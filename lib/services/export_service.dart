@@ -1,7 +1,10 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+
 import '../models/animation_project.dart';
 import '../utils/export_import.dart';
 
@@ -83,7 +86,7 @@ class ExportService {
       }
     } catch (e) {
       // Log but don't throw - file cleanup is not critical
-      print('Warning: Failed to delete temporary file: $e');
+      debugPrint('Warning: Failed to delete temporary file: $e');
     }
   }
 

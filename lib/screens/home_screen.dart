@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
 import '../models/animation_project.dart';
+import '../models/court_templates.dart';
 import '../services/project_service.dart';
 import '../services/export_service.dart';
 import '../services/tutorial_service.dart';
@@ -261,44 +262,77 @@ class _HomeScreenState extends State<HomeScreen> {
   void _addProject(BuildContext context, Box<AnimationProject> box) {
     final controller = TextEditingController();
     final projectService = ProjectService(box);
+    var isTrainingMode = false;
+    var selectedTemplateIndex = 0;
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.dialogBorderRadius)),
-        title: const Text("New Project"),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: "Project Name",
-            hintText: "Enter project name",
-            prefixIcon: Icon(Icons.edit),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.dialogBorderRadius)),
+          title: const Text("New Project"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: "Project Name",
+                    hintText: "Enter project name",
+                    prefixIcon: Icon(Icons.edit),
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                ),
+                const SizedBox(height: 24),
+                // Project type toggle (modern switch style)
+                Text('Project Type', style: Theme.of(context).textTheme.labelMedium),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Switch(value: isTrainingMode, onChanged: (v) => setState(() => isTrainingMode = v)),
+                        const SizedBox(width: 8),
+                        Text(isTrainingMode ? 'Training' : 'Play', style: Theme.of(context).textTheme.bodySmall),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          textCapitalization: TextCapitalization.words,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          FilledButton.icon(
-            onPressed: () async {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
-                try {
-                  await projectService.createProject(name);
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error creating project: $e')));
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+            FilledButton.icon(
+              onPressed: () async {
+                final name = controller.text.trim();
+                if (name.isNotEmpty) {
+                  try {
+                    await projectService.createProject(
+                      name,
+                      projectType: isTrainingMode ? ProjectType.training : ProjectType.play,
+                      // courtTemplate ignored for training; default to empty court
+                      courtTemplate: 1,
+                    );
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error creating project: $e')));
+                    }
                   }
                 }
-              }
-            },
-            icon: const Icon(Icons.check, size: 18),
-            label: const Text("Create"),
-          ),
-        ],
+              },
+              icon: const Icon(Icons.check, size: 18),
+              label: const Text("Create"),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -414,5 +448,30 @@ class _HomeScreenState extends State<HomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $e')));
       }
     }
+  }
+}
+
+class _GestureHintPill extends StatelessWidget {
+  final String label;
+  const _GestureHintPill({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.touch_app, size: 16, color: Colors.white70),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        ],
+      ),
+    );
   }
 }

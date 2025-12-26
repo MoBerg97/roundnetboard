@@ -158,7 +158,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: FilledButton.tonalIcon(
               onPressed: _resetDefaults,
               style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.warningAmber.withOpacity(0.2),
+                backgroundColor: AppTheme.warningAmber.withValues(alpha: 0.2),
                 foregroundColor: AppTheme.darkGrey,
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppConstants.paddingLarge,

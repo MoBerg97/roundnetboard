@@ -1,43 +1,43 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'animation_project.dart';
+part of 'player.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class AnimationProjectAdapter extends TypeAdapter<AnimationProject> {
+class PlayerAdapter extends TypeAdapter<Player> {
   @override
-  final int typeId = 3;
+  final int typeId = 10;
 
   @override
-  AnimationProject read(BinaryReader reader) {
+  Player read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return AnimationProject(
-      name: fields[0] as String,
-      frames: (fields[1] as List).cast<Frame>(),
-      settings: fields[3] as Settings?,
-      customCourtElements: (fields[5] as List?)?.cast<CourtElement>(),
-    )..projectTypeIndex = fields[4] as int;
+    return Player(
+      position: fields[0] as Offset,
+      rotation: fields[1] as double,
+      pathPoints: (fields[2] as List?)?.cast<Offset>(),
+      id: fields[4] as String?,
+    )..colorValue = fields[3] as int;
   }
 
   @override
-  void write(BinaryWriter writer, AnimationProject obj) {
+  void write(BinaryWriter writer, Player obj) {
     writer
       ..writeByte(5)
       ..writeByte(0)
-      ..write(obj.name)
+      ..write(obj.position)
       ..writeByte(1)
-      ..write(obj.frames)
+      ..write(obj.rotation)
+      ..writeByte(2)
+      ..write(obj.pathPoints)
       ..writeByte(3)
-      ..write(obj.settings)
+      ..write(obj.colorValue)
       ..writeByte(4)
-      ..write(obj.projectTypeIndex)
-      ..writeByte(5)
-      ..write(obj.customCourtElements);
+      ..write(obj.id);
   }
 
   @override
@@ -46,7 +46,7 @@ class AnimationProjectAdapter extends TypeAdapter<AnimationProject> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is AnimationProjectAdapter &&
+      other is PlayerAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

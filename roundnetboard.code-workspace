@@ -70,7 +70,8 @@
 			"editor.suggestSelection": "first",
 			"editor.tabCompletion": "onlySnippets",
 			"editor.wordBasedSuggestions": "off"
-		}
+		},
+		"markdown.validate.enabled": true
 	},
 	"extensions": {
 		"recommendations": [
