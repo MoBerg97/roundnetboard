@@ -1,9 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
+import '../models/animation_project.dart';
+import '../screens/onboarding_screen.dart';
+import '../services/tutorial_service.dart';
 
-class HelpScreen extends StatelessWidget {
+class HelpScreen extends StatefulWidget {
   const HelpScreen({super.key});
+
+  @override
+  State<HelpScreen> createState() => _HelpScreenState();
+}
+
+class _HelpScreenState extends State<HelpScreen> {
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -12,6 +27,31 @@ class HelpScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(AppConstants.padding),
         children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.play_circle_outline),
+              label: const Text('Start Home Tutorial'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryBlue,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(180, 44),
+              ),
+              onPressed: () => _startHomeTutorialFromHelp(context),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.school_outlined),
+              label: const Text('Replay Onboarding Intro'),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => OnboardingScreen(onFinish: () => Navigator.of(context).pop())),
+                );
+              },
+            ),
+          ),
           _buildSection(
             context,
             icon: Icons.add_circle,
@@ -187,7 +227,7 @@ class HelpScreen extends StatelessWidget {
   Widget _buildQuickActionsSection(BuildContext context) {
     return Card(
       elevation: AppConstants.cardElevation,
-      color: AppTheme.lightGrey.withOpacity(0.5),
+      color: AppTheme.lightGrey.withValues(alpha: 0.5),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.borderRadius)),
       child: Padding(
         padding: const EdgeInsets.all(AppConstants.padding),
@@ -234,5 +274,10 @@ class HelpScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _startHomeTutorialFromHelp(BuildContext context) async {
+    final box = Hive.box<AnimationProject>('projects');
+    await context.read<TutorialService>().startHomeTutorial(context, hasProject: box.isNotEmpty);
   }
 }

@@ -1,16 +1,51 @@
+import 'package:feature_discovery/feature_discovery.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
 import '../models/animation_project.dart';
+import '../models/court_templates.dart';
 import '../services/project_service.dart';
 import '../services/export_service.dart';
+import '../services/tutorial_service.dart';
 import '../utils/share_helper.dart';
 import 'board_screen.dart';
 import 'help_screen.dart';
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  final bool startTutorialOnMount;
+  const HomeScreen({super.key, this.startTutorialOnMount = false});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final GlobalKey _fabAddKey = GlobalKey(debugLabel: 'fab_add');
+  final GlobalKey _fabImportKey = GlobalKey(debugLabel: 'fab_import');
+  final GlobalKey _projectListKey = GlobalKey(debugLabel: 'project_list');
+  final Map<int, GlobalKey> _projectTileKeys = {};
+  bool _tutorialQueued = false;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_tutorialQueued && widget.startTutorialOnMount) {
+      _tutorialQueued = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _startHomeTutorial());
+    }
+  }
+
+  Future<void> _startHomeTutorial() async {
+    final box = Hive.box<AnimationProject>('projects');
+    await context.read<TutorialService>().startHomeTutorial(context, hasProject: box.isNotEmpty);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,18 +74,20 @@ class HomeScreen extends StatelessWidget {
                 child: Text("No projects yet. Add one!", style: TextStyle(color: AppTheme.lightGrey)),
               );
             }
-
             return ListView.builder(
+              key: _projectListKey,
               padding: const EdgeInsets.all(AppConstants.padding),
               itemCount: box.length,
               itemBuilder: (context, index) {
                 final project = box.getAt(index)!;
+                _projectTileKeys[index] = GlobalKey(debugLabel: 'project_tile_$index');
 
-                return Card(
+                final listTile = Card(
                   elevation: AppConstants.cardElevation,
                   margin: const EdgeInsets.only(bottom: AppConstants.padding),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.borderRadius)),
                   child: ListTile(
+                    key: _projectTileKeys[index],
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: AppConstants.padding,
                       vertical: AppConstants.paddingSmall,
@@ -141,6 +178,27 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                 );
+
+                if (index == 0) {
+                  return DescribedFeatureOverlay(
+                    featureId: TutorialIds.homeOpenProject,
+                    tapTarget: const Icon(Icons.folder_open),
+                    title: const Text('Open your project'),
+                    description: _buildStepDescription(
+                      context,
+                      primary: 'Tap a card to jump into the board.',
+                      gestureHint: 'Tap once to open',
+                    ),
+                    backgroundColor: AppTheme.darkGrey,
+                    contentLocation: ContentLocation.below,
+                    pulseDuration: const Duration(milliseconds: 950),
+                    overflowMode: OverflowMode.clipContent,
+                    onComplete: context.read<TutorialService>().acknowledgeStepCompletion,
+                    child: listTile,
+                  );
+                }
+
+                return listTile;
               },
             );
           },
@@ -149,67 +207,143 @@ class HomeScreen extends StatelessWidget {
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          FloatingActionButton(
-            heroTag: 'import',
-            backgroundColor: AppTheme.primaryBlue,
-            tooltip: 'Import Project',
-            onPressed: () => _importProject(context, projectBox),
-            child: const Icon(Icons.file_upload),
+          DescribedFeatureOverlay(
+            featureId: TutorialIds.homeImportProject,
+            tapTarget: const Icon(Icons.file_upload),
+            title: const Text('Import an existing project'),
+            description: _buildStepDescription(
+              context,
+              primary: 'Pull in a shared JSON file.',
+              gestureHint: 'Tap once to choose a file',
+            ),
+            backgroundColor: AppTheme.darkGrey,
+            contentLocation: ContentLocation.below,
+            pulseDuration: const Duration(milliseconds: 950),
+            overflowMode: OverflowMode.clipContent,
+            onComplete: context.read<TutorialService>().acknowledgeStepCompletion,
+            child: FloatingActionButton(
+              key: _fabImportKey,
+              heroTag: 'import',
+              backgroundColor: AppTheme.primaryBlue,
+              tooltip: 'Import Project',
+              onPressed: () => _importProject(context, projectBox),
+              child: const Icon(Icons.file_upload),
+            ),
           ),
           const SizedBox(height: AppConstants.padding),
-          FloatingActionButton(
-            heroTag: 'add',
-            backgroundColor: AppTheme.primaryBlue,
-            tooltip: 'Create New Project',
-            onPressed: () => _addProject(context, projectBox),
-            child: const Icon(Icons.add),
+          DescribedFeatureOverlay(
+            featureId: TutorialIds.homeAddProject,
+            tapTarget: const Icon(Icons.add),
+            title: const Text('Create your first project'),
+            description: _buildStepDescription(
+              context,
+              primary: 'Start a new animation board.',
+              gestureHint: 'Tap once to create',
+            ),
+            backgroundColor: AppTheme.darkGrey,
+            contentLocation: ContentLocation.below,
+            pulseDuration: const Duration(milliseconds: 950),
+            overflowMode: OverflowMode.clipContent,
+            onComplete: context.read<TutorialService>().acknowledgeStepCompletion,
+            child: FloatingActionButton(
+              key: _fabAddKey,
+              heroTag: 'add',
+              backgroundColor: AppTheme.primaryBlue,
+              tooltip: 'Create New Project',
+              onPressed: () => _addProject(context, projectBox),
+              child: const Icon(Icons.add),
+            ),
           ),
         ],
       ),
     );
   }
 
+  Widget _buildStepDescription(BuildContext context, {required String primary, required String gestureHint}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(primary, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white)),
+        const SizedBox(height: 8),
+        _GestureHintPill(label: gestureHint),
+      ],
+    );
+  }
+
   void _addProject(BuildContext context, Box<AnimationProject> box) {
     final controller = TextEditingController();
     final projectService = ProjectService(box);
+    var isTrainingMode = false;
+    var selectedTemplateIndex = 0;
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.dialogBorderRadius)),
-        title: const Text("New Project"),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: "Project Name",
-            hintText: "Enter project name",
-            prefixIcon: Icon(Icons.edit),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.dialogBorderRadius)),
+          title: const Text("New Project"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: "Project Name",
+                    hintText: "Enter project name",
+                    prefixIcon: Icon(Icons.edit),
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                ),
+                const SizedBox(height: 24),
+                // Project type toggle (modern switch style)
+                Text('Project Type', style: Theme.of(context).textTheme.labelMedium),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Switch(value: isTrainingMode, onChanged: (v) => setState(() => isTrainingMode = v)),
+                        const SizedBox(width: 8),
+                        Text(isTrainingMode ? 'Training' : 'Play', style: Theme.of(context).textTheme.bodySmall),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          textCapitalization: TextCapitalization.words,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          FilledButton.icon(
-            onPressed: () async {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
-                try {
-                  await projectService.createProject(name);
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error creating project: $e')));
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+            FilledButton.icon(
+              onPressed: () async {
+                final name = controller.text.trim();
+                if (name.isNotEmpty) {
+                  try {
+                    await projectService.createProject(
+                      name,
+                      projectType: isTrainingMode ? ProjectType.training : ProjectType.play,
+                      // courtTemplate ignored for training; default to empty court
+                      courtTemplate: 1,
+                    );
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error creating project: $e')));
+                    }
                   }
                 }
-              }
-            },
-            icon: const Icon(Icons.check, size: 18),
-            label: const Text("Create"),
-          ),
-        ],
+              },
+              icon: const Icon(Icons.check, size: 18),
+              label: const Text("Create"),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -276,7 +410,6 @@ class HomeScreen extends StatelessWidget {
       final filePath = await exportService.exportToJson(project);
 
       if (filePath == null) {
-        // User cancelled the save dialog
         return;
       }
 
@@ -307,19 +440,15 @@ class HomeScreen extends StatelessWidget {
       final exportService = ExportService();
       final projectService = ProjectService(box);
 
-      // Pick and import JSON file
       final importedProject = await exportService.importFromJson();
 
       if (importedProject == null) {
-        // User cancelled
         return;
       }
 
-      // Find unique name if project name already exists
       final newName = projectService.generateUniqueName(importedProject.name);
       importedProject.name = newName;
 
-      // Add to box
       box.add(importedProject);
 
       if (context.mounted) {
@@ -330,5 +459,30 @@ class HomeScreen extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $e')));
       }
     }
+  }
+}
+
+class _GestureHintPill extends StatelessWidget {
+  final String label;
+  const _GestureHintPill({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.touch_app, size: 16, color: Colors.white70),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        ],
+      ),
+    );
   }
 }

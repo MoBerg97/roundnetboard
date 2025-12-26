@@ -1,6 +1,8 @@
 import 'package:hive/hive.dart';
 import 'dart:ui';
 import 'annotation.dart';
+import 'player.dart';
+import 'ball.dart';
 
 part 'frame.g.dart';
 
@@ -10,117 +12,60 @@ part 'frame.g.dart';
 @HiveType(typeId: 1)
 class Frame extends HiveObject {
   // --------------------------
-  // Player and ball positions
+  // Dynamic player and ball lists
   // --------------------------
   @HiveField(0)
-  Offset p1;
+  List<Player> players;
+
   @HiveField(1)
-  Offset p2;
-  @HiveField(2)
-  Offset p3;
-  @HiveField(3)
-  Offset p4;
-  @HiveField(4)
-  Offset ball;
-
-  // --------------------------
-  // Player rotations (radians)
-  // --------------------------
-  @HiveField(5)
-  double p1Rotation;
-  @HiveField(6)
-  double p2Rotation;
-  @HiveField(7)
-  double p3Rotation;
-  @HiveField(8)
-  double p4Rotation;
-
-  // --------------------------
-  // Editable path control points
-  // --------------------------
-  @HiveField(9)
-  List<Offset> p1PathPoints;
-  @HiveField(10)
-  List<Offset> p2PathPoints;
-  @HiveField(11)
-  List<Offset> p3PathPoints;
-  @HiveField(12)
-  List<Offset> p4PathPoints;
-  @HiveField(13)
-  List<Offset> ballPathPoints;
-
-  // --------------------------
-  // Ball event annotations
-  // --------------------------
-  // Hit at param t in [0,1] along previous->current transition
-  @HiveField(14)
-  double? ballHitT;
-  // Set effect toggle for this transition (centered at t=0.5)
-  @HiveField(15)
-  bool? ballSet;
+  List<Ball> balls;
 
   // --------------------------
   // Frame duration (seconds)
   // --------------------------
   // Duration from this frame to the next frame during playback
-  @HiveField(16)
+  @HiveField(2)
   double duration;
 
   // --------------------------
   // Frame-specific annotations (lines, circles, etc.)
   // --------------------------
-  @HiveField(17)
+  @HiveField(3)
   List<Annotation> annotations;
 
   // --------------------------
   // Constructor
   // --------------------------
   Frame({
-    required this.p1,
-    required this.p2,
-    required this.p3,
-    required this.p4,
-    required this.ball,
-    this.p1Rotation = 0,
-    this.p2Rotation = 0,
-    this.p3Rotation = 0,
-    this.p4Rotation = 0,
-    List<Offset>? p1PathPoints,
-    List<Offset>? p2PathPoints,
-    List<Offset>? p3PathPoints,
-    List<Offset>? p4PathPoints,
-    List<Offset>? ballPathPoints,
-    this.ballHitT,
-    this.ballSet,
+    List<Player>? players,
+    List<Ball>? balls,
     this.duration = 0.5,
     List<Annotation>? annotations,
-  })  : p1PathPoints = p1PathPoints ?? [],
-        p2PathPoints = p2PathPoints ?? [],
-        p3PathPoints = p3PathPoints ?? [],
-        p4PathPoints = p4PathPoints ?? [],
-        ballPathPoints = ballPathPoints ?? [],
+  })  : players = players ?? [],
+        balls = balls ?? [],
         annotations = annotations ?? [];
 
   // --------------------------
   // Copy frame (deep copy)
   // --------------------------
   Frame copy() => Frame(
-        p1: p1,
-        p2: p2,
-        p3: p3,
-        p4: p4,
-        ball: ball,
-        p1Rotation: p1Rotation,
-        p2Rotation: p2Rotation,
-        p3Rotation: p3Rotation,
-        p4Rotation: p4Rotation,
-        p1PathPoints: List.from(p1PathPoints),
-        p2PathPoints: List.from(p2PathPoints),
-        p3PathPoints: List.from(p3PathPoints),
-        p4PathPoints: List.from(p4PathPoints),
-        ballPathPoints: List.from(ballPathPoints),
-        ballHitT: ballHitT,
-        ballSet: ballSet,
+        players: players.map((p) => p.copy()).toList(),
+        balls: balls.map((b) => b.copy()).toList(),
+        duration: duration,
+        annotations: annotations.map((a) => a.copy()).toList(),
+      );
+
+  /// Copy frame but clear hit/set properties on balls
+  /// Used when inserting new frames so hit/set doesn't carry over
+  Frame copyWithoutHitSetMarkers() => Frame(
+        players: players.map((p) => p.copy()).toList(),
+        balls: balls.map((b) => Ball(
+          position: b.position,
+          pathPoints: List.from(b.pathPoints),
+          color: b.color,
+          id: b.id,
+          // hitT and isSet are NOT copied
+        )).toList(),
         duration: duration,
         annotations: annotations.map((a) => a.copy()).toList(),
       );
@@ -132,95 +77,183 @@ class Frame extends HiveObject {
   Frame copyWithConditionalControlPoints(Frame previousFrame) {
     final newFrame = copy();
 
-    if ((newFrame.p1 - previousFrame.p1).distance > 50) {
-      newFrame.p1PathPoints = [
-        Offset(
-          (previousFrame.p1.dx + newFrame.p1.dx) / 2,
-          (previousFrame.p1.dy + newFrame.p1.dy) / 2,
-        )
-      ];
+    // Process players
+    for (int i = 0; i < newFrame.players.length && i < previousFrame.players.length; i++) {
+      final currPlayer = newFrame.players[i];
+      final prevPlayer = previousFrame.players[i];
+      
+      if ((currPlayer.position - prevPlayer.position).distance > 50) {
+        currPlayer.pathPoints = [
+          Offset(
+            (prevPlayer.position.dx + currPlayer.position.dx) / 2,
+            (prevPlayer.position.dy + currPlayer.position.dy) / 2,
+          )
+        ];
+      }
     }
 
-    if ((newFrame.p2 - previousFrame.p2).distance > 50) {
-      newFrame.p2PathPoints = [
-        Offset(
-          (previousFrame.p2.dx + newFrame.p2.dx) / 2,
-          (previousFrame.p2.dy + newFrame.p2.dy) / 2,
-        )
-      ];
-    }
-
-    if ((newFrame.p3 - previousFrame.p3).distance > 50) {
-      newFrame.p3PathPoints = [
-        Offset(
-          (previousFrame.p3.dx + newFrame.p3.dx) / 2,
-          (previousFrame.p3.dy + newFrame.p3.dy) / 2,
-        )
-      ];
-    }
-
-    if ((newFrame.p4 - previousFrame.p4).distance > 50) {
-      newFrame.p4PathPoints = [
-        Offset(
-          (previousFrame.p4.dx + newFrame.p4.dx) / 2,
-          (previousFrame.p4.dy + newFrame.p4.dy) / 2,
-        )
-      ];
-    }
-
-    if ((newFrame.ball - previousFrame.ball).distance > 50) {
-      newFrame.ballPathPoints = [
-        Offset(
-          (previousFrame.ball.dx + newFrame.ball.dx) / 2,
-          (previousFrame.ball.dy + newFrame.ball.dy) / 2,
-        )
-      ];
+    // Process balls
+    for (int i = 0; i < newFrame.balls.length && i < previousFrame.balls.length; i++) {
+      final currBall = newFrame.balls[i];
+      final prevBall = previousFrame.balls[i];
+      
+      if ((currBall.position - prevBall.position).distance > 50) {
+        currBall.pathPoints = [
+          Offset(
+            (prevBall.position.dx + currBall.position.dx) / 2,
+            (prevBall.position.dy + currBall.position.dy) / 2,
+          )
+        ];
+      }
     }
 
     return newFrame;
+  }
+
+  // --------------------------
+  // ID-based lookup and removal helpers
+  // --------------------------
+
+  /// Get player by ID, returns null if not found
+  Player? getPlayerById(String id) {
+    try {
+      return players.firstWhere((p) => p.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Get ball by ID, returns null if not found
+  Ball? getBallById(String id) {
+    try {
+      return balls.firstWhere((b) => b.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Remove player by ID, returns true if removed
+  bool removePlayerById(String id) {
+    final index = players.indexWhere((p) => p.id == id);
+    if (index >= 0) {
+      players.removeAt(index);
+      return true;
+    }
+    return false;
+  }
+
+  /// Remove ball by ID, returns true if removed
+  bool removeBallById(String id) {
+    final index = balls.indexWhere((b) => b.id == id);
+    if (index >= 0) {
+      balls.removeAt(index);
+      return true;
+    }
+    return false;
+  }
+
+  // --------------------------
+  // Backward compatibility accessors for existing code
+  // --------------------------
+  
+  /// Get p1 (first player) position - for backward compatibility
+  Offset get p1 => players.isNotEmpty ? players[0].position : Offset.zero;
+  set p1(Offset value) {
+    if (players.isNotEmpty) players[0].position = value;
+  }
+
+  /// Get p2 (second player) position
+  Offset get p2 => players.length > 1 ? players[1].position : Offset.zero;
+  set p2(Offset value) {
+    if (players.length > 1) players[1].position = value;
+  }
+
+  /// Get p3 (third player) position
+  Offset get p3 => players.length > 2 ? players[2].position : Offset.zero;
+  set p3(Offset value) {
+    if (players.length > 2) players[2].position = value;
+  }
+
+  /// Get p4 (fourth player) position
+  Offset get p4 => players.length > 3 ? players[3].position : Offset.zero;
+  set p4(Offset value) {
+    if (players.length > 3) players[3].position = value;
+  }
+
+  /// Get ball position
+  Offset get ball => balls.isNotEmpty ? balls[0].position : Offset.zero;
+  set ball(Offset value) {
+    if (balls.isNotEmpty) balls[0].position = value;
+  }
+
+  /// Get p1 rotation
+  double get p1Rotation => players.isNotEmpty ? players[0].rotation : 0;
+  set p1Rotation(double value) {
+    if (players.isNotEmpty) players[0].rotation = value;
+  }
+
+  /// Get p2 rotation
+  double get p2Rotation => players.length > 1 ? players[1].rotation : 0;
+  set p2Rotation(double value) {
+    if (players.length > 1) players[1].rotation = value;
+  }
+
+  /// Get p3 rotation
+  double get p3Rotation => players.length > 2 ? players[2].rotation : 0;
+  set p3Rotation(double value) {
+    if (players.length > 2) players[2].rotation = value;
+  }
+
+  /// Get p4 rotation
+  double get p4Rotation => players.length > 3 ? players[3].rotation : 0;
+  set p4Rotation(double value) {
+    if (players.length > 3) players[3].rotation = value;
+  }
+
+  /// Get p1 path points
+  List<Offset> get p1PathPoints => players.isNotEmpty ? players[0].pathPoints : [];
+
+  /// Get p2 path points
+  List<Offset> get p2PathPoints => players.length > 1 ? players[1].pathPoints : [];
+
+  /// Get p3 path points
+  List<Offset> get p3PathPoints => players.length > 2 ? players[2].pathPoints : [];
+
+  /// Get p4 path points
+  List<Offset> get p4PathPoints => players.length > 3 ? players[3].pathPoints : [];
+
+  /// Get ball path points
+  List<Offset> get ballPathPoints => balls.isNotEmpty ? balls[0].pathPoints : [];
+
+  /// Get ball hit time
+  double? get ballHitT => balls.isNotEmpty ? balls[0].hitT : null;
+  set ballHitT(double? value) {
+    if (balls.isNotEmpty) balls[0].hitT = value;
+  }
+
+  /// Get ball set flag
+  bool? get ballSet => balls.isNotEmpty ? balls[0].isSet : null;
+  set ballSet(bool? value) {
+    if (balls.isNotEmpty) balls[0].isSet = value;
   }
 }
 
 extension FrameMap on Frame {
   Map<String, dynamic> toMap() => {
-        'p1': [p1.dx, p1.dy],
-        'p2': [p2.dx, p2.dy],
-        'p3': [p3.dx, p3.dy],
-        'p4': [p4.dx, p4.dy],
-        'ball': [ball.dx, ball.dy],
-        'p1Rotation': p1Rotation,
-        'p2Rotation': p2Rotation,
-        'p3Rotation': p3Rotation,
-        'p4Rotation': p4Rotation,
-        'p1PathPoints': p1PathPoints.map((o) => [o.dx, o.dy]).toList(),
-        'p2PathPoints': p2PathPoints.map((o) => [o.dx, o.dy]).toList(),
-        'p3PathPoints': p3PathPoints.map((o) => [o.dx, o.dy]).toList(),
-        'p4PathPoints': p4PathPoints.map((o) => [o.dx, o.dy]).toList(),
-        'ballPathPoints': ballPathPoints.map((o) => [o.dx, o.dy]).toList(),
+        'players': players.map((p) => PlayerMap(p).toMap()).toList(),
+        'balls': balls.map((b) => BallMap(b).toMap()).toList(),
         'duration': duration,
-        'ballHitT': ballHitT,
-        'ballSet': ballSet,
         'annotations': annotations.map((a) => a.toMap()).toList(),
       };
 
   static Frame fromMap(Map<String, dynamic> m) => Frame(
-        p1: Offset(m['p1'][0], m['p1'][1]),
-        p2: Offset(m['p2'][0], m['p2'][1]),
-        p3: Offset(m['p3'][0], m['p3'][1]),
-        p4: Offset(m['p4'][0], m['p4'][1]),
-        ball: Offset(m['ball'][0], m['ball'][1]),
-        p1Rotation: (m['p1Rotation'] ?? 0).toDouble(),
-        p2Rotation: (m['p2Rotation'] ?? 0).toDouble(),
-        p3Rotation: (m['p3Rotation'] ?? 0).toDouble(),
-        p4Rotation: (m['p4Rotation'] ?? 0).toDouble(),
-        p1PathPoints: (m['p1PathPoints'] as List).map((e) => Offset(e[0], e[1])).toList(),
-        p2PathPoints: (m['p2PathPoints'] as List).map((e) => Offset(e[0], e[1])).toList(),
-        p3PathPoints: (m['p3PathPoints'] as List).map((e) => Offset(e[0], e[1])).toList(),
-        p4PathPoints: (m['p4PathPoints'] as List).map((e) => Offset(e[0], e[1])).toList(),
-        ballPathPoints: (m['ballPathPoints'] as List).map((e) => Offset(e[0], e[1])).toList(),
+        players: (m['players'] as List? ?? [])
+            .map((e) => PlayerMap.fromMap(Map<String, dynamic>.from(e)))
+            .toList(),
+        balls: (m['balls'] as List? ?? [])
+            .map((e) => BallMap.fromMap(Map<String, dynamic>.from(e)))
+            .toList(),
         duration: (m['duration'] ?? 0.5).toDouble(),
-        ballHitT: m['ballHitT'] != null ? (m['ballHitT'] as num).toDouble() : null,
-        ballSet: m['ballSet'] as bool?,
         annotations: (m['annotations'] as List? ?? [])
             .map((e) => AnnotationMap.fromMap(Map<String, dynamic>.from(e)))
             .toList(),

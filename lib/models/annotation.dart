@@ -10,6 +10,8 @@ enum AnnotationType {
   line,
   @HiveField(1)
   circle,
+  @HiveField(2)
+  rectangle,
 }
 
 /// Annotation model for frame-specific drawings

@@ -79,7 +79,7 @@ class AnnotationToolbarWidget extends StatelessWidget {
               Container(
                 width: 40, // ← EDIT: Divider width
                 height: 1, // ← EDIT: Divider thickness
-                color: AppTheme.lightGrey.withOpacity(0.3), // ← EDIT: Color
+                color: AppTheme.lightGrey.withValues(alpha: 0.3), // ← EDIT: Color
               ),
 
               const SizedBox(height: 16), // ← EDIT: Separator spacing
@@ -105,7 +105,7 @@ class AnnotationToolbarWidget extends StatelessWidget {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 2, // ← EDIT: Shadow blur
                           spreadRadius: 0.5, // ← EDIT: Shadow spread
                         ),

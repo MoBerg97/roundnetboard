@@ -79,17 +79,17 @@ class PathEngine {
     return Offset(x, y);
   }
 
-  static String _cacheKey(int frameIndex, String entity) => '$frameIndex-$entity';
+  static String _cacheKey(int frameIndex, String entityId) => '$frameIndex-$entityId';
 
   static PathEngine cachedForFrameEntity({
     required int frameIndex,
-    required String entity,
+    required String entityId,
     required Offset start,
     required Offset control,
     required Offset end,
     int resolution = 48,
   }) {
-    final key = _cacheKey(frameIndex, entity);
+    final key = _cacheKey(frameIndex, entityId);
     final existing = _cache[key];
     if (existing != null) return existing;
     final engine = PathEngine.fromTwoQuadratics(
@@ -102,8 +102,8 @@ class PathEngine {
     return engine;
   }
 
-  static void invalidateCacheFor(int frameIndex, String entity) {
-    _cache.remove(_cacheKey(frameIndex, entity));
+  static void invalidateCacheFor(int frameIndex, String entityId) {
+    _cache.remove(_cacheKey(frameIndex, entityId));
   }
 
   static void invalidateAll() => _cache.clear();

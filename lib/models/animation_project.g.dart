@@ -20,19 +20,24 @@ class AnimationProjectAdapter extends TypeAdapter<AnimationProject> {
       name: fields[0] as String,
       frames: (fields[1] as List).cast<Frame>(),
       settings: fields[3] as Settings?,
-    );
+      customCourtElements: (fields[5] as List?)?.cast<CourtElement>(),
+    )..projectTypeIndex = fields[4] as int;
   }
 
   @override
   void write(BinaryWriter writer, AnimationProject obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
       ..write(obj.frames)
       ..writeByte(3)
-      ..write(obj.settings);
+      ..write(obj.settings)
+      ..writeByte(4)
+      ..write(obj.projectTypeIndex)
+      ..writeByte(5)
+      ..write(obj.customCourtElements);
   }
 
   @override

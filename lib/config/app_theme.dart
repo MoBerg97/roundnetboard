@@ -143,10 +143,11 @@ class AppTheme {
       ),
 
       // Dialog styling
-      dialogTheme: const DialogThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-        elevation: 8,
-      ),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: mediumGrey,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+          elevation: 8,
+        ),
 
       // List tile styling
       listTileTheme: const ListTileThemeData(
@@ -173,7 +174,7 @@ class AppTheme {
       ),
       appBarTheme: const AppBarTheme(backgroundColor: mediumGrey, foregroundColor: Colors.white),
       cardColor: mediumGrey,
-      dialogBackgroundColor: mediumGrey,
+      dialogTheme: const DialogThemeData(backgroundColor: mediumGrey),
       // Additional dark theme customizations can be added here
     );
   }
