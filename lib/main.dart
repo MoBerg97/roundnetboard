@@ -16,7 +16,9 @@ import 'models/settings.dart';
 import 'models/annotation.dart';
 import 'models/court_element.dart';
 import 'screens/home_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'services/tutorial_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -68,19 +70,73 @@ void main() async {
       await p.save();
     }
   }
-  runApp(const MyApp());
+  // Check onboarding state
+  final prefs = await SharedPreferences.getInstance();
+  final seenOnboarding = prefs.getBool('seenOnboarding') ?? false;
+  runApp(MyApp(seenOnboarding: seenOnboarding));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  final bool seenOnboarding;
+  const MyApp({super.key, required this.seenOnboarding});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late bool _seenOnboarding;
+  bool _pendingHomeTutorial = false;
+  late TutorialService _tutorialService;
+
+  @override
+  void initState() {
+    super.initState();
+    _seenOnboarding = widget.seenOnboarding;
+    _tutorialService = TutorialService();
+  }
+
+  Future<void> _finishOnboardingAndQueueHomeTutorial(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('seenOnboarding', true);
+    setState(() {
+      _seenOnboarding = true;
+      _pendingHomeTutorial = true;
+    });
+  }
+
+  bool _consumePendingHomeTutorialFlag() {
+    if (_pendingHomeTutorial) {
+      _pendingHomeTutorial = false;
+      return true;
+    }
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => TutorialService(),
-      child: FeatureDiscovery(
-        child: MaterialApp(title: 'Roundnet Tactical Board', theme: AppTheme.lightTheme(), home: const HomeScreen()),
+    return FeatureDiscovery(
+      child: ChangeNotifierProvider.value(
+        value: _tutorialService,
+        child: MaterialApp(
+          title: 'Roundnet Tactical Board',
+          theme: AppTheme.lightTheme(),
+          home: _seenOnboarding
+              ? HomeScreen(startTutorialOnMount: _consumePendingHomeTutorialFlag())
+              : _OnboardingWrapper(onStartTutorial: _finishOnboardingAndQueueHomeTutorial),
+        ),
       ),
     );
+  }
+}
+
+// Wrapper to provide proper context for navigation
+class _OnboardingWrapper extends StatelessWidget {
+  final Future<void> Function(BuildContext) onStartTutorial;
+  const _OnboardingWrapper({required this.onStartTutorial});
+
+  @override
+  Widget build(BuildContext context) {
+    return OnboardingScreen(onFinish: () => onStartTutorial(context));
   }
 }
