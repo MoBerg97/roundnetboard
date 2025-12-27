@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:roundnetboard/models/animation_project.dart';
 import 'package:roundnetboard/models/frame.dart';
+import 'package:roundnetboard/models/player.dart';
+import 'package:roundnetboard/models/ball.dart';
 import 'package:roundnetboard/models/annotation.dart';
 import 'package:roundnetboard/models/settings.dart';
 
@@ -34,40 +36,59 @@ void main() {
       ];
 
       final frame1 = Frame(
-        p1: const Offset(100, 100),
-        p2: const Offset(200, 100),
-        p3: const Offset(100, 200),
-        p4: const Offset(200, 200),
-        ball: const Offset(150, 150),
-        p1Rotation: 0.5,
-        p2Rotation: 1.0,
-        p3Rotation: 1.5,
-        p4Rotation: 2.0,
-        p1PathPoints: [const Offset(110, 110)],
-        p2PathPoints: [const Offset(210, 110)],
-        p3PathPoints: [const Offset(110, 210)],
-        p4PathPoints: [const Offset(210, 210)],
-        ballPathPoints: [const Offset(160, 160), const Offset(165, 165)],
+        players: [
+          Player(
+            position: const Offset(100, 100),
+            rotation: 0.5,
+            pathPoints: [const Offset(110, 110)],
+          ),
+          Player(
+            position: const Offset(200, 100),
+            rotation: 1.0,
+            pathPoints: [const Offset(210, 110)],
+          ),
+          Player(
+            position: const Offset(100, 200),
+            rotation: 1.5,
+            pathPoints: [const Offset(110, 210)],
+          ),
+          Player(
+            position: const Offset(200, 200),
+            rotation: 2.0,
+            pathPoints: [const Offset(210, 210)],
+          ),
+        ],
+        balls: [
+          Ball(
+            position: const Offset(150, 150),
+            pathPoints: [
+              const Offset(160, 160),
+              const Offset(165, 165),
+            ],
+            hitT: 0.7,
+            isSet: true,
+          ),
+        ],
         duration: 1.2,
-        ballHitT: 0.7,
-        ballSet: true,
         annotations: annotations.map((a) => a.copy()).toList(),
       );
 
       final frame2 = Frame(
-        p1: const Offset(120, 120),
-        p2: const Offset(220, 120),
-        p3: const Offset(120, 220),
-        p4: const Offset(220, 220),
-        ball: const Offset(170, 170),
-        p1Rotation: 0.6,
-        p2Rotation: 1.1,
-        p3Rotation: 1.6,
-        p4Rotation: 2.1,
+        players: [
+          Player(position: const Offset(120, 120), rotation: 0.6),
+          Player(position: const Offset(220, 120), rotation: 1.1),
+          Player(position: const Offset(120, 220), rotation: 1.6),
+          Player(position: const Offset(220, 220), rotation: 2.1),
+        ],
+        balls: [
+          Ball(
+            position: const Offset(170, 170),
+            hitT: null,
+            isSet: false,
+          ),
+        ],
         duration: 0.8,
-        ballHitT: null,
-        ballSet: false,
-        annotations: [],
+        annotations: const [],
       );
 
       final originalProject = AnimationProject(
@@ -156,13 +177,19 @@ void main() {
 
     test('Frame with null optional fields', () {
       final frameWithNulls = Frame(
-        p1: const Offset(0, 0),
-        p2: const Offset(100, 0),
-        p3: const Offset(0, 100),
-        p4: const Offset(100, 100),
-        ball: const Offset(50, 50),
-        ballHitT: null,
-        ballSet: null,
+        players: [
+          Player(position: const Offset(0, 0)),
+          Player(position: const Offset(100, 0)),
+          Player(position: const Offset(0, 100)),
+          Player(position: const Offset(100, 100)),
+        ],
+        balls: [
+          Ball(
+            position: const Offset(50, 50),
+            hitT: null,
+            isSet: null,
+          ),
+        ],
         duration: 0.5,
       );
 

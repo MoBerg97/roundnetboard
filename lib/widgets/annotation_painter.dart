@@ -82,6 +82,8 @@ class _AnnotationCustomPainter extends CustomPainter {
           _paintLine(canvas, annotation);
         case AnnotationType.circle:
           _paintCircle(canvas, annotation);
+        case AnnotationType.rectangle:
+          _paintRectangle(canvas, annotation);
       }
     }
     // draw temporary/staged annotations (if any) with lighter style
@@ -92,6 +94,8 @@ class _AnnotationCustomPainter extends CustomPainter {
             _paintTempLine(canvas, annotation);
           case AnnotationType.circle:
             _paintTempCircle(canvas, annotation);
+          case AnnotationType.rectangle:
+            _paintTempRectangle(canvas, annotation);
         }
       }
     }
@@ -103,6 +107,8 @@ class _AnnotationCustomPainter extends CustomPainter {
             _paintErasingLine(canvas, annotation);
           case AnnotationType.circle:
             _paintErasingCircle(canvas, annotation);
+          case AnnotationType.rectangle:
+            _paintErasingRectangle(canvas, annotation);
         }
       }
     }
@@ -112,6 +118,61 @@ class _AnnotationCustomPainter extends CustomPainter {
     }
   }
 
+  void _paintRectangle(Canvas canvas, Annotation annotation) {
+    if (annotation.points.length < 2) return;
+    final a = annotation.points[0];
+    final b = annotation.points[1];
+    final topLeft = Offset(math.min(a.dx, b.dx), math.min(a.dy, b.dy));
+    final bottomRight = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
+    final tl = _cmToScreen(topLeft);
+    final br = _cmToScreen(bottomRight);
+    final rect = Rect.fromPoints(tl, br);
+    final paint = Paint()
+      ..color = annotation.color.withValues(alpha: 0.8)
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke;
+    canvas.drawRect(rect, paint);
+  }
+
+  void _paintTempRectangle(Canvas canvas, Annotation annotation) {
+    if (annotation.points.length < 2) return;
+    final a = annotation.points[0];
+    final b = annotation.points[1];
+    final topLeft = Offset(math.min(a.dx, b.dx), math.min(a.dy, b.dy));
+    final bottomRight = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
+    final tl = _cmToScreen(topLeft);
+    final br = _cmToScreen(bottomRight);
+    final rect = Rect.fromPoints(tl, br);
+    final paint = Paint()
+      ..color = annotation.color.withValues(alpha: 0.35)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawRect(rect, paint);
+  }
+
+  void _paintErasingRectangle(Canvas canvas, Annotation annotation) {
+    if (annotation.points.length < 2) return;
+    final a = annotation.points[0];
+    final b = annotation.points[1];
+    final topLeft = Offset(math.min(a.dx, b.dx), math.min(a.dy, b.dy));
+    final bottomRight = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
+    final tl = _cmToScreen(topLeft);
+    final br = _cmToScreen(bottomRight);
+    final rect = Rect.fromPoints(tl, br);
+    final fade = Paint()
+      ..color = annotation.color.withValues(alpha: 0.2)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawRect(rect, fade);
+    // draw X across rectangle
+    final strike = Paint()
+      ..color = Colors.red.withValues(alpha: 0.6)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(tl, br, strike);
+    canvas.drawLine(Offset(br.dx, tl.dy), Offset(tl.dx, br.dy), strike);
+  }
+
   void _paintTempLine(Canvas canvas, Annotation annotation) {
     if (annotation.points.length < 2) return;
     final start = annotation.points[0];
@@ -119,7 +180,7 @@ class _AnnotationCustomPainter extends CustomPainter {
     final startScreen = _cmToScreen(start);
     final endScreen = _cmToScreen(end);
     final paint = Paint()
-      ..color = annotation.color.withOpacity(0.45)
+      ..color = annotation.color.withValues(alpha: 0.45)
       ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
@@ -154,7 +215,7 @@ class _AnnotationCustomPainter extends CustomPainter {
     final scalePerCm = settings.cmToLogical(1.0, screenSize);
     final radiusScreen = radius * scalePerCm;
     final paint = Paint()
-      ..color = annotation.color.withOpacity(0.35)
+      ..color = annotation.color.withValues(alpha: 0.35)
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
     canvas.drawCircle(centerScreen, radiusScreen, paint);
@@ -171,7 +232,7 @@ class _AnnotationCustomPainter extends CustomPainter {
     final endScreen = _cmToScreen(end);
 
     final paint = Paint()
-      ..color = annotation.color.withOpacity(0.8)
+      ..color = annotation.color.withValues(alpha: 0.8)
       ..strokeWidth = 3.0
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
@@ -203,7 +264,7 @@ class _AnnotationCustomPainter extends CustomPainter {
     final radiusScreen = radius * scalePerCm;
 
     final paint = Paint()
-      ..color = annotation.color.withOpacity(0.6)
+      ..color = annotation.color.withValues(alpha: 0.6)
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
 
@@ -228,7 +289,7 @@ class _AnnotationCustomPainter extends CustomPainter {
 
     // Draw faded line
     final fadePaint = Paint()
-      ..color = annotation.color.withOpacity(0.2)
+      ..color = annotation.color.withValues(alpha: 0.2)
       ..strokeWidth = 3.0
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
@@ -241,7 +302,7 @@ class _AnnotationCustomPainter extends CustomPainter {
     const strokeLength = 15.0;
 
     final strikePaint = Paint()
-      ..color = Colors.red.withOpacity(0.6)
+      ..color = Colors.red.withValues(alpha: 0.6)
       ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round;
 
@@ -249,7 +310,7 @@ class _AnnotationCustomPainter extends CustomPainter {
 
     // Draw faded endpoints
     final endpointPaint = Paint()
-      ..color = annotation.color.withOpacity(0.3)
+      ..color = annotation.color.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(startScreen, 4, endpointPaint);
     canvas.drawCircle(endScreen, 4, endpointPaint);
@@ -267,7 +328,7 @@ class _AnnotationCustomPainter extends CustomPainter {
 
     // Draw faded circle
     final fadePaint = Paint()
-      ..color = annotation.color.withOpacity(0.2)
+      ..color = annotation.color.withValues(alpha: 0.2)
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
     canvas.drawCircle(centerScreen, radiusScreen, fadePaint);
@@ -275,7 +336,7 @@ class _AnnotationCustomPainter extends CustomPainter {
     // Draw X through center as strikethrough
     final xRadius = radiusScreen * 0.3;
     final xPaint = Paint()
-      ..color = Colors.red.withOpacity(0.6)
+      ..color = Colors.red.withValues(alpha: 0.6)
       ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round;
 
@@ -284,7 +345,7 @@ class _AnnotationCustomPainter extends CustomPainter {
 
     // Draw faded center point
     final centerPaint = Paint()
-      ..color = annotation.color.withOpacity(0.3)
+      ..color = annotation.color.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(centerScreen, 4, centerPaint);
   }
