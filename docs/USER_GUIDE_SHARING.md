@@ -1,11 +1,13 @@
 # Quick Start Guide: Sharing RoundnetBoard Projects
 
 ## Overview
+
 You can now share your RoundnetBoard animation projects with others! Every aspect of your project is preserved - all player positions, ball paths, annotations, timing, and settings.
 
 ## Sharing Your Project
 
 ### Option 1: Share via Apps (Recommended)
+
 1. Open RoundnetBoard and view your projects list
 2. Tap the **⋮** (three dots) menu on any project
 3. Select **"Share Project"**
@@ -16,6 +18,7 @@ You can now share your RoundnetBoard animation projects with others! Every aspec
    - AirDrop (iOS) or Nearby Share (Android)
 
 ### Option 2: Export to File
+
 1. Tap the **⋮** menu on a project
 2. Select **"Export JSON"**
 3. The project is saved as a `.json` file
@@ -37,24 +40,29 @@ You can now share your RoundnetBoard animation projects with others! Every aspec
 Everything! Including:
 
 ✅ **All Frames**
+
 - Player positions for every frame
 - Ball positions and paths
 - Frame durations (animation timing)
 
 ✅ **Player & Ball Paths**
+
 - Smooth curved movement paths
 - Control points for custom animations
 
 ✅ **Ball Modifiers**
+
 - Hit markers with precise timing
 - Set effect indicators
 
 ✅ **Annotations**
+
 - Lines drawn on the court
 - Circles and tactical markings
 - Colors and positions
 
 ✅ **Project Settings**
+
 - Court dimensions
 - Playback speed
 - Display preferences
@@ -62,16 +70,19 @@ Everything! Including:
 ## Tips
 
 ### For Coaches
+
 - Create template plays and share with your team
 - Build a library of common plays
 - Collaborate on strategy development
 
 ### For Players
+
 - Share game replays with teammates
 - Analyze and discuss plays together
 - Create playbooks for tournaments
 
 ### File Management
+
 - Shared files are small (typically < 100 KB)
 - Projects are saved as human-readable JSON
 - You can keep backups by exporting to cloud storage
@@ -79,15 +90,18 @@ Everything! Including:
 ## Troubleshooting
 
 **"Import failed" error**
+
 - Make sure the file is a valid `.json` file
 - Check that the file wasn't corrupted during transfer
 - Try sharing/receiving the file again
 
 **Project name conflicts**
+
 - The app automatically adds numbers to avoid overwriting
 - You can rename projects after importing
 
 **Missing features in imported project**
+
 - Verify you're using the latest version of the app
 - Older project files may not include newer features
 
