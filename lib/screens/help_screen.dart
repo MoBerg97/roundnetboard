@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
+import '../models/animation_project.dart';
+import '../screens/onboarding_screen.dart';
 import '../services/tutorial_service.dart';
 
 class HelpScreen extends StatefulWidget {
@@ -12,8 +16,12 @@ class HelpScreen extends StatefulWidget {
 
 class _HelpScreenState extends State<HelpScreen> {
   @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    print('🆘 HelpScreen: build() called');
     return Scaffold(
       appBar: AppBar(title: const Text('Help & Guide')),
       body: ListView(
@@ -21,74 +29,27 @@ class _HelpScreenState extends State<HelpScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 16.0),
-            child: Column(
-              children: [
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.home),
-                  label: const Text('Start Home Tutorial'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryBlue,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 44),
-                  ),
-                  onPressed: () {
-                    print('🆘 HelpScreen: Start Home Tutorial tapped');
-                    Navigator.of(context).pop();
-                    print('🆘 HelpScreen: Navigation popped');
-                    // Delay tutorial request until after navigation completes
-                    Future.delayed(const Duration(milliseconds: 300), () {
-                      print('🆘 HelpScreen: Delay complete, requesting tutorial');
-                      TutorialService().requestTutorial(TutorialType.home);
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.dashboard),
-                  label: const Text('Start Board Tutorial'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryBlue,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 44),
-                  ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Open any project to start the board tutorial'),
-                        duration: Duration(seconds: 3),
-                      ),
-                    );
-                    Navigator.of(context).pop();
-                    // Delay tutorial request until after navigation completes
-                    Future.delayed(const Duration(milliseconds: 300), () {
-                      TutorialService().requestTutorial(TutorialType.board);
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.draw),
-                  label: const Text('Start Annotation Tutorial'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryBlue,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 44),
-                  ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Open any project and tap annotation button to start tutorial'),
-                        duration: Duration(seconds: 3),
-                      ),
-                    );
-                    Navigator.of(context).pop();
-                    // Delay tutorial request until after navigation completes
-                    Future.delayed(const Duration(milliseconds: 300), () {
-                      TutorialService().requestTutorial(TutorialType.annotation);
-                    });
-                  },
-                ),
-              ],
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.play_circle_outline),
+              label: const Text('Start Home Tutorial'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryBlue,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(180, 44),
+              ),
+              onPressed: () => _startHomeTutorialFromHelp(context),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.school_outlined),
+              label: const Text('Replay Onboarding Intro'),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => OnboardingScreen(onFinish: () => Navigator.of(context).pop())),
+                );
+              },
             ),
           ),
           _buildSection(
@@ -313,5 +274,10 @@ class _HelpScreenState extends State<HelpScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _startHomeTutorialFromHelp(BuildContext context) async {
+    final box = Hive.box<AnimationProject>('projects');
+    await context.read<TutorialService>().startHomeTutorial(context, hasProject: box.isNotEmpty);
   }
 }

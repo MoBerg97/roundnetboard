@@ -1,198 +1,78 @@
+import 'package:feature_discovery/feature_discovery.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-enum TutorialType { home, board, annotation }
+/// Feature identifiers grouped by screen/flow for clarity.
+class TutorialIds {
+  // Home flow
+  static const String homeAddProject = 'feature_add_project';
+  static const String homeImportProject = 'feature_import_project';
+  static const String homeOpenProject = 'feature_open_project';
 
-/// Configuration for a single tutorial step
-class TutorialStep {
-  final String id;
-  final String title;
-  final String description;
-  final GlobalKey? targetKey;
-  final bool requiresDrag;
-  final String? dragTargetId; // Which widget should be draggable (e.g., 'P1', 'P2', 'BALL')
-  final Offset? targetPosition; // Target position in cm (for drag steps)
-  final double? targetProximity; // Required proximity in cm
-  final bool isConditional; // If true, Next is disabled until action is performed
-  final bool showSuccess; // If true, show success animation when step is completed
-  final VoidCallback? autoPerformAction; // Action to perform when Next is tapped while disabled
-
-  const TutorialStep({
-    required this.id,
-    required this.title,
-    required this.description,
-    this.targetKey,
-    this.requiresDrag = false,
-    this.dragTargetId,
-    this.targetPosition,
-    this.targetProximity,
-    this.isConditional = false,
-    this.showSuccess = false,
-    this.autoPerformAction,
-  });
+  // Board flow (reserved for future overlay steps)
+  static const String boardTimeline = 'feature_board_timeline';
+  static const String boardCanvas = 'feature_board_canvas';
+  static const String boardAnnotation = 'feature_board_annotation';
 }
 
-class TutorialService extends ChangeNotifier {
-  static final TutorialService _instance = TutorialService._internal();
-  factory TutorialService() => _instance;
-  TutorialService._internal();
+/// High-level tutorial flows. Only the Home flow is wired for now; Board will
+/// reuse the same overlay pattern later.
+enum TutorialFlow { home, board }
 
-  TutorialType? _pendingTutorial;
+/// Centralized tutorial coordinator that drives the overlay experience.
+///
+/// Uses the `feature_discovery` package to render modern spotlights while
+/// keeping state (active flow, isActive flag) in a Provider-friendly service.
+class TutorialService with ChangeNotifier {
   bool _isActive = false;
-  int _currentStepIndex = 0;
-  List<TutorialStep> _steps = [];
-  bool _showSuccessEffect = false;
-  int _movedObjectsCount = 0;
+  TutorialFlow? _activeFlow;
 
-  TutorialType? get pendingTutorial => _pendingTutorial;
   bool get isActive => _isActive;
-  int get currentStepIndex => _currentStepIndex;
-  TutorialStep? get currentStep => _isActive && _currentStepIndex < _steps.length ? _steps[_currentStepIndex] : null;
-  List<TutorialStep> get steps => _steps;
-  bool get showSuccessEffect => _showSuccessEffect;
-  int get movedObjectsCount => _movedObjectsCount;
+  TutorialFlow? get activeFlow => _activeFlow;
 
-  void setMovedObjectsCount(int count) {
-    _movedObjectsCount = count;
-    notifyListeners();
+  /// Start the Home tutorial flow (overlay-only) with optional project step.
+  Future<void> startHomeTutorial(BuildContext context, {required bool hasProject}) async {
+    final features = <String>[
+      TutorialIds.homeAddProject,
+      TutorialIds.homeImportProject,
+      if (hasProject) TutorialIds.homeOpenProject,
+    ];
+    await _startFeatureSequence(context, TutorialFlow.home, features);
   }
 
-  void requestTutorial(TutorialType type) {
-    _pendingTutorial = type;
-    notifyListeners();
+  /// Placeholder: Board tutorial flow will reuse the same overlay infrastructure.
+  Future<void> startBoardTutorial(BuildContext context) async {
+    final features = <String>[TutorialIds.boardTimeline, TutorialIds.boardCanvas, TutorialIds.boardAnnotation];
+    await _startFeatureSequence(context, TutorialFlow.board, features);
   }
 
-  void startTutorial(TutorialType type, List<TutorialStep> steps) {
-    _pendingTutorial = null;
-    _currentStepIndex = 0;
-    _steps = steps;
-    _showSuccessEffect = false;
-
-    // No steps? End immediately so UI stays interactive.
-    if (steps.isEmpty) {
-      _isActive = false;
-      notifyListeners();
-      return;
+  /// Exposed helper to trigger medium haptic feedback when a step completes.
+  Future<bool> acknowledgeStepCompletion() async {
+    try {
+      await HapticFeedback.mediumImpact();
+    } catch (_) {
+      // no-op on platforms without haptics
     }
-
-    _isActive = true;
-    notifyListeners();
-  }
-
-  void updateStepTarget(String id, Offset position) {
-    final index = _steps.indexWhere((s) => s.id == id);
-    if (index != -1) {
-      final oldStep = _steps[index];
-      _steps[index] = TutorialStep(
-        id: oldStep.id,
-        title: oldStep.title,
-        description: oldStep.description,
-        targetKey: oldStep.targetKey,
-        requiresDrag: oldStep.requiresDrag,
-        dragTargetId: oldStep.dragTargetId,
-        targetPosition: position,
-        targetProximity: oldStep.targetProximity,
-        isConditional: oldStep.isConditional,
-        showSuccess: oldStep.showSuccess,
-        autoPerformAction: oldStep.autoPerformAction,
-      );
-      notifyListeners();
-    }
-  }
-
-  void nextStep() {
-    final step = currentStep;
-    final shouldShowEffect = step != null && step.showSuccess;
-
-    if (_currentStepIndex < _steps.length - 1) {
-      if (shouldShowEffect) {
-        _triggerSuccessEffect();
-        Future.delayed(const Duration(milliseconds: 800), () {
-          _currentStepIndex++;
-          _showSuccessEffect = false;
-          notifyListeners();
-        });
-      } else {
-        _currentStepIndex++;
-        notifyListeners();
-      }
-    } else {
-      if (shouldShowEffect) {
-        _triggerSuccessEffect();
-        Future.delayed(const Duration(milliseconds: 800), () {
-          finishTutorial();
-        });
-      } else {
-        finishTutorial();
-      }
-    }
-  }
-
-  void _triggerSuccessEffect() {
-    _showSuccessEffect = true;
-    notifyListeners();
-    // Play a subtle success sound
-    SystemSound.play(SystemSoundType.click);
-  }
-
-  void previousStep() {
-    if (_currentStepIndex > 0) {
-      _currentStepIndex--;
-      notifyListeners();
-    }
-  }
-
-  void finishTutorial() {
-    _isActive = false;
-    _currentStepIndex = 0;
-    _steps = [];
-    _showSuccessEffect = false;
-    notifyListeners();
-  }
-
-  void clearPendingTutorial() {
-    _pendingTutorial = null;
-    notifyListeners();
-  }
-
-  /// Validate if a drag gesture meets the requirements for the current step
-  bool validateDragForCurrentStep(String draggedId, Offset finalPosition) {
-    final step = currentStep;
-    if (step == null || !step.requiresDrag) return false;
-
-    // Check if the dragged object matches the expected target
-    if (step.dragTargetId != null && step.dragTargetId != draggedId) {
-      return false;
-    }
-
-    // Check if position requirement exists
-    if (step.targetPosition != null && step.targetProximity != null) {
-      final distance = (finalPosition - step.targetPosition!).distance;
-      return distance <= step.targetProximity!;
-    }
-
-    // No specific position requirement, any drag is valid
     return true;
   }
 
-  /// Mark tutorial as completed in persistent storage
-  Future<void> markTutorialCompleted(TutorialType type) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('tutorial_${type.name}_completed', true);
-  }
+  Future<void> _startFeatureSequence(BuildContext context, TutorialFlow flow, List<String> featureIds) async {
+    if (featureIds.isEmpty) return;
 
-  /// Check if a tutorial has been completed
-  Future<bool> isTutorialCompleted(TutorialType type) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('tutorial_${type.name}_completed') ?? false;
-  }
+    _isActive = true;
+    _activeFlow = flow;
+    notifyListeners();
 
-  /// Reset all tutorials
-  Future<void> resetAllTutorials() async {
-    final prefs = await SharedPreferences.getInstance();
-    for (final type in TutorialType.values) {
-      await prefs.remove('tutorial_${type.name}_completed');
-    }
+    // Clear previous progress so the user always sees the full flow.
+    await FeatureDiscovery.clearPreferences(context, featureIds);
+
+    // Launch the overlay sequence on next frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FeatureDiscovery.discoverFeatures(context, featureIds);
+    });
+
+    _isActive = false;
+    _activeFlow = null;
+    notifyListeners();
   }
 }
