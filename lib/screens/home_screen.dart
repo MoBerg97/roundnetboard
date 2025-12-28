@@ -63,6 +63,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(4),
+        color: Colors.grey[850],
+        child: Text(
+          'Version 0.1.0+7',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+        ),
+      ),
       body: Container(
         color: AppTheme.mediumGrey,
         child: ValueListenableBuilder(

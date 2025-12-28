@@ -20,6 +20,7 @@ import 'screens/onboarding_screen.dart';
 import 'services/tutorial_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
+import 'utils/version_check.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -94,6 +95,15 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     _seenOnboarding = widget.seenOnboarding;
     _tutorialService = TutorialService();
+    _checkVersion();
+  }
+
+  Future<void> _checkVersion() async {
+    // Wait a bit for the app to load
+    await Future.delayed(const Duration(seconds: 1));
+    if (mounted) {
+      await VersionCheck.checkVersion(context);
+    }
   }
 
   Future<void> _finishOnboardingAndQueueHomeTutorial(BuildContext context) async {
