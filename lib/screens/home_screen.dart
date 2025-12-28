@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
 import '../models/animation_project.dart';
-import '../models/court_templates.dart';
 import '../services/project_service.dart';
 import '../services/export_service.dart';
 import '../services/tutorial_service.dart';
@@ -274,7 +273,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final controller = TextEditingController();
     final projectService = ProjectService(box);
     var isTrainingMode = false;
-    var selectedTemplateIndex = 0;
 
     showDialog(
       context: context,
@@ -409,14 +407,18 @@ class _HomeScreenState extends State<HomeScreen> {
       final exportService = ExportService();
       final filePath = await exportService.exportToJson(project);
 
-      if (filePath == null) {
-        return;
-      }
-
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Project exported to:\n$filePath'), duration: const Duration(seconds: 4)),
-        );
+        if (filePath == null) {
+          // On web, download is initiated directly
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Project download started!'), duration: Duration(seconds: 3)),
+          );
+        } else {
+          // On native platforms, show file path
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Project exported to:\n$filePath'), duration: const Duration(seconds: 4)),
+          );
+        }
       }
     } catch (e) {
       if (context.mounted) {

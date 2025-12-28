@@ -49,7 +49,7 @@ class _TutorialTargetIndicatorState extends State<TutorialTargetIndicator> with 
               Positioned(
                 left: widget.center.dx - widget.radiusPx,
                 top: widget.center.dy - widget.radiusPx,
-                child: _Ring(radius: widget.radiusPx, color: widget.color.withOpacity(0.45), thickness: 2),
+                child: _Ring(radius: widget.radiusPx, color: widget.color.withValues(alpha: 0.45), thickness: 2),
               ),
               // Outer pulsing ring
               Positioned(
@@ -57,7 +57,7 @@ class _TutorialTargetIndicatorState extends State<TutorialTargetIndicator> with 
                 top: widget.center.dy - outerRadius,
                 child: Opacity(
                   opacity: outerOpacity * 0.9,
-                  child: _Ring(radius: outerRadius, color: widget.color.withOpacity(0.35), thickness: 2),
+                  child: _Ring(radius: outerRadius, color: widget.color.withValues(alpha: 0.35), thickness: 2),
                 ),
               ),
               // Center dot
@@ -98,7 +98,7 @@ class _Ring extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: color, width: thickness),
-        boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 6, spreadRadius: 2)],
+        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 6, spreadRadius: 2)],
       ),
     );
   }

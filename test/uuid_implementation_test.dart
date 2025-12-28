@@ -186,7 +186,9 @@ void main() {
         final frame2 = frame1.copy();
         
         // Get same player by ID from both frames
+        // ignore: non_constant_identifier_names
         final p1_in_frame1 = frame1.getPlayerById('P1');
+        // ignore: non_constant_identifier_names
         final p1_in_frame2 = frame2.getPlayerById('P1');
         
         // Path points should be independent copies

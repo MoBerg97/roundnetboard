@@ -132,8 +132,8 @@ timeline:
 - [ ] change background color of project create window to something brighter so that the text is readable
 - [ ] **account for virtual navigation bar on some android phones such as Redmi Note 13 Pro 5G by using a safe area**
 - [ ] **when playback is through, meaning the playback reached the end while playing, the timeline should only go back to the editing controls after the stop button is tapped, not automatically after playback reached the end**
-- [ ] **when exporting a project on web browser, the export project throws the error: Export failed: Failed to export project: UnimplementedError: saveFile() has not been implemented.**
-- [ ] **when sharing a project on web browser, the share project throws the error:Share failed: MissingPluginException(No implementation found for method getApplicationDocumentsDirectory on channel plugins.flutter.io/path_proivider)**
+- [x] **when exporting a project on web browser, the export project throws the error: Export failed: Failed to export project: UnimplementedError: saveFile() has not been implemented.**
+- [x] **when sharing a project on web browser, the share project throws the error:Share failed: MissingPluginException(No implementation found for method getApplicationDocumentsDirectory on channel plugins.flutter.io/path_proivider)**
 - [ ] enlarge the hit box for catching the path control points on mobile devices (currently only about 10px radius, should be at least 30px radius)
 - [ ] the buttons should not overflow on small screen devices, either scale them down or make them scrollable horizontally
 - [ ] the court should fit either 1.5 times the serve zone radius around the center of the court in width or height (which is smaller and based on orientation) instead of always fitting the whole court only in width.
