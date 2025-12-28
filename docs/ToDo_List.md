@@ -10,27 +10,28 @@ intuitive usage
 
 ### design ideas
 
-- [ ] selected objects (players and balls) should be highlighted on court.
+- [ ] #n selected objects (players and balls) should be highlighted on court (e.g. circular sonar waves around object)
 - [ ] hit marker in animation playback should fade out smoothly instead of disappearing instantly
 - [ ] change the hit marker on the board screen to another icon (e.g. circle with bounce arrow inside)
-- [ ] it should be highlighted which object is currently selected for editing (e.g. glowing outline around object)
-- [ ] default color of ball should be white with black outline
-- [ ] default color of players should be red and blue (as is) with black outline
+- [ ] #n default color of ball should be white with black outline
+- [ ] #n default color of players should be red and blue (as is) with black outline
 - [ ] make path control points invisible by default, only show them when a path is edited (more subtle design than current big circles)
-- [ ] the objects (players and balls) should have a slight shadow below them to indicate that they are above the court.
+- [ ] #n the objects (players and balls) should have a slight shadow below them to indicate that they are above the court.
 - [ ] adjust the hit and set marker on the boardscreen during editing:
-  - [ ] set: instead of a circle, the current path is displayed as a line getting thicker in size from start towards the middle and thinner again from middle to end. Alternative: show multiple circles along the path, getting bigger towards the middle and smaller again towards the end, make them very subtle (same color as ball but 30% opacity, always aligned with current ball color)
+  - [ ] set: instead of a circle, the current path is displayed as a line getting thicker in size from start towards the middle and thinner again from middle to end. #n Alternative: show multiple circles along the path, getting bigger towards the middle and smaller again towards the end, make them very subtle (same color as ball but 30% opacity, always aligned with current ball color)
   - [ ] hit: the star icon should be more transparent and only grey color, no outline and a little bigger. it should slowly fade out during the animation playback instead of disappearing instantly.
-- [x] the timeline can be a little lower in height.
-- [x] **the eraser tool icon should be an actual eraser icon (not trash can icon)**
-- [ ] get rid of circle points at start and end points of lines
+- [x] the eraser tool icon should be an actual eraser icon (not trash can icon)
+- [ ] #n get rid of circular endpoints of annotation lines
 - [ ] the annotations should fade in and fade out dynamically in animation playback.
 - [ ] landscape mode orientation changes visual structure (left side is court, right side is controls including annotations and ball modifier menu)
 - [ ] the insert frame thumbnail button should appear right next to the current frame in the timeline instead of below it, indicating that the next frame is created after the currently selected frame as a direct copy.
+- [ ] produce the same preview radius indication for circle elements on court editor as it is implemented for circles in the annotation tools.
+- [ ] get rid of permanent center points for circle annotations.
 
 ### help / tutorial
 
 - [ ] POSTPONED: create a interactive tutorial that comes up upon the first opening of the app on a device.
+
   - [ ] create a tutorial button inside the helper screen, that opens the home screen and starts the tutorial all over again.
 
 - add a helper screen that can be accessed from the home screen and the board screen via a question mark icon in the top right corner.
@@ -61,28 +62,28 @@ Quick tips to add to helper screen:
 
 ### intuitive actions
 
-- [ ] hide all current complex project settings in the board screen under "advanced settings"
+- [ ] #n hide all current complex project settings (anything size on board related) in the board screen under "advanced settings"
 - [ ] when a user drags an object and stays holding that object for more than 1sec on about the same location (within 50px), a magnifying window (1.5x) showing the object and its surrounding 10% of displaymin = min(screenwidth,screenheight) is shown hovering 20% of displaymin above the location that user is holding.
 - [ ] the magnifying window is deactivated as soon as the user changed the position of the object over 50px in the last .5 seconds
+- [ ] #n court elements snap to corners and center points of other court elements when being dragged within 20px of such a point.
 
 ### court
 
 - [ ] the court should be zoomable with two states, first state is as it currently is, showing at least 1.2 times servezone_radius around the center of the court. second zoom stage should be the whole court towards the outer boundary at 850cm radius around the center of court.
-- [ ] the user should be able to select standard court or empty court as a drop down menu setting when opening a new project.
-- [ ] make objects on court relate in size to court (player and ball circle radius, paths in width adjusted for size not in pixels but in relation to court size)
+- [ ] #n make objects on court relate in size to court (player and ball circle radius, paths in width adjusted for size not in pixels but in relation to court size (cm))
 - [ ] default starting position of player and ball should be editable in the global (home screen accesible) settings menu and then new projects start with objects in this position.
-- [ ] user should be able to turn off zones and net in project settings
-- [ ] when a new project is created, the user can decide if he wants the play scenario (with all zones on default radii and 4 players in their default start position and one ball) or training scenario (with all zones deactivated and 1 player red and one player blue and one ball)
+- [x] when a new project is created, the user can decide if he wants the play scenario (with all zones on default radii and 4 players in their default start position and one ball) or training scenario (with all zones deactivated and 1 player red and one player blue and one ball)
+- [ ] #n default width of circle elements when added to court in court editor should be 30cm radius.
 
 ### annotations
 
-- [ ] add a drag and drop tool, that allows to move annotations around on the court, as it is currently implemented in the court editor screen.
+- [ ] #n add a drag and drop tool, that allows to move annotations around on the court, as it is currently implemented in the court editor screen.
 - [x] there should be a foldable menu for annotations that provides frame specific annotations.
 - [x] add a line annotation tool, that also is editable in color, user can manually edit the end points of the line.
 - [x] annotations should be frame specific and also should be copyed along all other objects when a new frame is inserted.
 - [ ] annotations should only be permament (saved per frame) when added in the annotation mode in the editing board screen.
 - [ ] add a text annotation tool, that allows to add text labels on the court. (fixed font color, size adjustable, draggable position, editable text content)
-- [ ] default width for circles when only tapping once should be 30cm radius.
+- [ ] #n default width for circles when only tapping once should be 30cm radius.
 - [ ] right click or long tap on annotation tools should open a small menu to select default color and default size for this annotation tool (line width/stroke size in 3 steps, indicated by small preview icons, for circle and rectangles: filled or outline only, for text: font size in 3 steps)
 - [ ] annotations that are added in paused mode in the animation playback are only temporarely visible during this playback until the current playback is left (going back to the editing screen or back to project overview)
 - [x] add a trash can icon to erase all annotations of the current frame
@@ -121,7 +122,7 @@ Quick tips to add to helper screen:
 timeline:
 
 - [ ] playback scrubber should be time related, taking frame duration into account. Currently the playback scrubber moves with equal speed through all frames, regardless of their duration setting.
-- [ ] the delete current frame button should only appear when a frame is tapped again if already selected and then disappears again if it is tapped again.
+- [ ] the delete current frame button should only appear when a frame is tapped again if it is the currently selected frame and then disappears again if it is tapped again (toggle behavior).
 
 ## Fixes
 
@@ -131,8 +132,8 @@ timeline:
 - [ ] change background color of project create window to something brighter so that the text is readable
 - [ ] **account for virtual navigation bar on some android phones such as Redmi Note 13 Pro 5G by using a safe area**
 - [ ] **when playback is through, meaning the playback reached the end while playing, the timeline should only go back to the editing controls after the stop button is tapped, not automatically after playback reached the end**
-- [ ] **when exporting a project on web browser, the export project throws the error:**Export failed: Failed to export project: UnimplementedError: saveFile() has not been implemented.\*\*
-- [ ] **when sharing a project on web browser, the share project throws the error:**Share failed: MissingPluginException(No implementation found for method getApplicationDocumentsDirectory on channel plugins.flutter.io/path_proivider)
+- [ ] **when exporting a project on web browser, the export project throws the error: Export failed: Failed to export project: UnimplementedError: saveFile() has not been implemented.**
+- [ ] **when sharing a project on web browser, the share project throws the error:Share failed: MissingPluginException(No implementation found for method getApplicationDocumentsDirectory on channel plugins.flutter.io/path_proivider)**
 - [ ] enlarge the hit box for catching the path control points on mobile devices (currently only about 10px radius, should be at least 30px radius)
 - [ ] the buttons should not overflow on small screen devices, either scale them down or make them scrollable horizontally
 - [ ] the court should fit either 1.5 times the serve zone radius around the center of the court in width or height (which is smaller and based on orientation) instead of always fitting the whole court only in width.
@@ -141,16 +142,8 @@ timeline:
 
 - [ ] **after the animaiton reached the end, the scrubber is not accessible anymore (touching it leaves playback view) and the edit timeline instantly shows up. instead only the stop button should make the screen switch back to editing mode.**
 - [ ] the undo and redo history should also track annotation edits (creation, deletion, etc).
-- [x] the eraser tool should show no preview of which annotations to delete, instead annotations touched during tapping or dragging of the eraser tool (10px radius) are instantly deleted.
 - [ ] the numerated suffix does not supply increasing numbers in brackets. Instead each copy gets another (1) suffix resulting in e.g. framename (1) (1) (1)
 - [ ] the annotations are not copied and displayed in a new frame when this is added.
-- [x] instead of tap-and-holding the ball path to trigger the ball set hit icons to appear, the icons should appear when the ball at its current position is tapped.
-- [x] the hit control point is only draggable once after creation. Instead i want the user to be able to drag it any time (triggers when tapped <30cm from middle point of star)
-- [x] the hit control point is dragged by a user, but the actual point of the ball on the path is not corresponding to the tapped location.
-- [x] the dragging od the hit control point is still not on the actual position of the hit control point on screen. There is a bug, showing that the dragging position is shifted vertically in y direciton by a fixed amount.
-- [x] the hit can only be toggled on when the current frames ball path is of a distance greater than 30cm
-- [x] when a frame is selected as current frame in the boardscreen, the timeline should automatically visually scroll to show the selected frame.
-- [x] NOT FUNCTIONAL: older lines of previous frame can be set to be not displayed in current frame as a setting in the settings menu of the board screen (three dots in app bar)
 
 ## Else
 
