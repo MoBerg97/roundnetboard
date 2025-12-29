@@ -76,6 +76,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _saveSettings();
             },
           ),
+          SwitchListTile(
+            title: const Text('Show Path Control Points (always)'),
+            subtitle: const Text('When off, control points only appear while editing a path'),
+            value: _settings.showPathControlPoints,
+            onChanged: (v) {
+              setState(() => _settings.showPathControlPoints = v);
+              _saveSettings();
+            },
+          ),
           const Divider(),
           ListTile(
             title: const Text("Serve Zone Radius"),

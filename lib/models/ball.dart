@@ -27,7 +27,7 @@ class Ball extends HiveObject {
 
   Ball({required this.position, List<Offset>? pathPoints, this.hitT, this.isSet, Color? color, String? id})
     : pathPoints = pathPoints ?? [],
-      colorValue = (color ?? Colors.orange).toARGB32(),
+      colorValue = (color ?? Colors.white).toARGB32(),
       id = id ?? const Uuid().v4();
 
   Color get color => Color(colorValue);

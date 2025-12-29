@@ -56,7 +56,7 @@ Quick tips to add to helper screen:
 
 ### project screen
 
-- [ ] users are not able to share or export projects in web version currently.
+- [x] users are not able to share or export projects in web version currently.
 - [ ] check if all properties of a project (court type, court elements, objects, annotations, settings)
 - [ ] add two exemplary projects that are preloaded when the app is first installed, showcasing all features of the app (one play scenario, one training scenario)
 
@@ -82,7 +82,7 @@ Quick tips to add to helper screen:
 - [x] add a line annotation tool, that also is editable in color, user can manually edit the end points of the line.
 - [x] annotations should be frame specific and also should be copyed along all other objects when a new frame is inserted.
 - [ ] annotations should only be permament (saved per frame) when added in the annotation mode in the editing board screen.
-- [ ] add a text annotation tool, that allows to add text labels on the court. (fixed font color, size adjustable, draggable position, editable text content)
+- [ ] #n add a text annotation tool, that allows to add text labels on the court. (fixed font color, size adjustable, draggable position, editable text content)
 - [ ] #n default width for circles when only tapping once should be 30cm radius.
 - [ ] right click or long tap on annotation tools should open a small menu to select default color and default size for this annotation tool (line width/stroke size in 3 steps, indicated by small preview icons, for circle and rectangles: filled or outline only, for text: font size in 3 steps)
 - [ ] annotations that are added in paused mode in the animation playback are only temporarely visible during this playback until the current playback is left (going back to the editing screen or back to project overview)
@@ -94,7 +94,7 @@ Quick tips to add to helper screen:
 - [ ] footwork statistics shows for each frame the amount of distance each player travels, as small bars on the top side of the screen.
 - [ ] the maximum footwork distance is 850cm and the minimum is 0cm.
 - [ ] if turned on, the footwork statistics will also be depicted in the animation playback with showing the footwork of a certain frame during the playback of this frame.
-- [ ] **during animation playback, when the playback is paused, the user can toggle full path revision of a player or the ball by tapping the player or ball and this shows the path that this object already moved (full line) and the upcoming path of this object (dashed line). toggles off when the object is tapped again.**
+- [ ] #n **during animation playback, when the playback is paused, the user can toggle full path revision of a player or the ball by tapping the player or ball and this shows the path that this object already moved (full line) and the upcoming path of this object (dashed line). toggles off when the object is tapped again.**
 
 ### sharing
 
@@ -117,7 +117,7 @@ Quick tips to add to helper screen:
 ### ball
 
 - [x] the color of the ball object should be editable.
-- [x] **the user should be able to delete a ball and add balls. The color of the added ball object should match the color of the last tapped ball object.**
+- [x] the user should be able to delete a ball and add balls. The color of the added ball object should match the color of the last tapped ball object.
 
 timeline:
 
@@ -130,13 +130,13 @@ timeline:
 
 - [ ] make the annotation tool menu centered for large screen devices (currently aligned to left side of screen, looks bad on large screens)
 - [ ] change background color of project create window to something brighter so that the text is readable
-- [ ] **account for virtual navigation bar on some android phones such as Redmi Note 13 Pro 5G by using a safe area**
-- [ ] **when playback is through, meaning the playback reached the end while playing, the timeline should only go back to the editing controls after the stop button is tapped, not automatically after playback reached the end**
-- [x] **when exporting a project on web browser, the export project throws the error: Export failed: Failed to export project: UnimplementedError: saveFile() has not been implemented.**
-- [x] **when sharing a project on web browser, the share project throws the error:Share failed: MissingPluginException(No implementation found for method getApplicationDocumentsDirectory on channel plugins.flutter.io/path_proivider)**
-- [ ] enlarge the hit box for catching the path control points on mobile devices (currently only about 10px radius, should be at least 30px radius)
+- [x] account for virtual navigation bar on some android phones such as Redmi Note 13 Pro 5G by using a safe area
+- [ ] **test if safe area implementation works on the problematic devices (Redmi Note 13 Pro 5G) and does not break anything on other devices (iOS devices with notch, etc)**
+- [x] when playback is through, meaning the playback reached the end while playing, the timeline should only go back to the editing controls after the stop button is tapped, not automatically after playback reached the end
+- [x] enlarge the hit box for catching the path control points on mobile devices
 - [ ] the buttons should not overflow on small screen devices, either scale them down or make them scrollable horizontally
 - [ ] the court should fit either 1.5 times the serve zone radius around the center of the court in width or height (which is smaller and based on orientation) instead of always fitting the whole court only in width.
+- [ ] there is a small light grey section above the timeline section. this should be removed and the timeline should directly connect to the court area. when creating court elements, they overlap with this grey area which looks bad.
 
 ### Other fixes
 

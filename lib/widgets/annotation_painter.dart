@@ -238,14 +238,7 @@ class _AnnotationCustomPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
 
     canvas.drawLine(startScreen, endScreen, paint);
-
-    // Draw endpoints as small circles for clarity
-    final endpointPaint = Paint()
-      ..color = annotation.color
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(startScreen, 4, endpointPaint);
-    canvas.drawCircle(endScreen, 4, endpointPaint);
+    // Endpoints are no longer drawn as circles for cleaner annotation lines
   }
 
   void _paintCircle(Canvas canvas, Annotation annotation) {
@@ -307,13 +300,7 @@ class _AnnotationCustomPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     canvas.drawLine(center - perpendicular * strokeLength, center + perpendicular * strokeLength, strikePaint);
-
-    // Draw faded endpoints
-    final endpointPaint = Paint()
-      ..color = annotation.color.withValues(alpha: 0.3)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(startScreen, 4, endpointPaint);
-    canvas.drawCircle(endScreen, 4, endpointPaint);
+    // Endpoints no longer drawn for erasing lines
   }
 
   void _paintErasingCircle(Canvas canvas, Annotation annotation) {

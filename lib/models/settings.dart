@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
@@ -26,6 +25,9 @@ class Settings extends HiveObject {
   @HiveField(6)
   bool showPreviousFrameLines;
 
+  @HiveField(7)
+  bool showPathControlPoints;
+
   Settings({
     this.playbackSpeed = 1.0,
     this.outerCircleRadiusCm = 260.0,
@@ -34,9 +36,11 @@ class Settings extends HiveObject {
     this.outerBoundsRadiusCm = 850.0,
     this.referenceRadiusCm = 260.0,
     this.showPreviousFrameLines = true,
+    this.showPathControlPoints = false,
   });
 
   // Converts cm to logical units (pixels)
+  // Adaptive fit: use 1.1× serve zone on narrow (mobile-like) widths, 1.5× otherwise (Windows-friendly)
   double cmToLogical(double cm, Size screenSize) {
     const double padding = 50;
     const double appBarHeight = kToolbarHeight;
@@ -44,9 +48,12 @@ class Settings extends HiveObject {
     final usableHeight = screenSize.height - appBarHeight - timelineHeight;
     final usableWidth = screenSize.width;
     final halfMinScreen = (usableHeight < usableWidth ? usableHeight : usableWidth) / 2 - padding;
-    final bool desktopLike = kIsWeb || defaultTargetPlatform == TargetPlatform.windows;
+
+    // Heuristic: widths up to 800px behave like mobile/tablet; above that treat as desktop.
+    final bool isMobileLikeWidth = screenSize.width <= 800;
     final double serveZoneRadius = outerCircleRadiusCm;
-    final double targetReference = desktopLike ? serveZoneRadius * 1.5 : referenceRadiusCm;
+    final double serveZoneFactor = isMobileLikeWidth ? 1.1 : 1.5;
+    final double targetReference = serveZoneRadius * serveZoneFactor;
     final double safeReference = targetReference == 0 ? 1.0 : targetReference;
     return cm * (halfMinScreen / safeReference);
   }
@@ -70,6 +77,7 @@ class Settings extends HiveObject {
     outerBoundsRadiusCm: outerBoundsRadiusCm,
     referenceRadiusCm: referenceRadiusCm,
     showPreviousFrameLines: showPreviousFrameLines,
+    showPathControlPoints: showPathControlPoints,
   );
 
   @override
@@ -83,7 +91,8 @@ class Settings extends HiveObject {
           netCircleRadiusCm == other.netCircleRadiusCm &&
           outerBoundsRadiusCm == other.outerBoundsRadiusCm &&
           referenceRadiusCm == other.referenceRadiusCm &&
-          showPreviousFrameLines == other.showPreviousFrameLines;
+          showPreviousFrameLines == other.showPreviousFrameLines &&
+          showPathControlPoints == other.showPathControlPoints;
 
   @override
   int get hashCode =>
@@ -93,7 +102,8 @@ class Settings extends HiveObject {
       netCircleRadiusCm.hashCode ^
       outerBoundsRadiusCm.hashCode ^
       referenceRadiusCm.hashCode ^
-      showPreviousFrameLines.hashCode;
+      showPreviousFrameLines.hashCode ^
+      showPathControlPoints.hashCode;
 }
 
 extension SettingsMap on Settings {
@@ -105,6 +115,7 @@ extension SettingsMap on Settings {
     'outerBoundsRadiusCm': outerBoundsRadiusCm,
     'referenceRadiusCm': referenceRadiusCm,
     'showPreviousFrameLines': showPreviousFrameLines,
+    'showPathControlPoints': showPathControlPoints,
   };
 
   static Settings fromMap(Map<String, dynamic> m) => Settings(
@@ -115,5 +126,6 @@ extension SettingsMap on Settings {
     outerBoundsRadiusCm: (m['outerBoundsRadiusCm'] ?? 850.0).toDouble(),
     referenceRadiusCm: (m['referenceRadiusCm'] ?? 260.0).toDouble(),
     showPreviousFrameLines: (m['showPreviousFrameLines'] ?? true) as bool,
+    showPathControlPoints: (m['showPathControlPoints'] ?? false) as bool,
   );
 }

@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'version_reload.dart';
+
 class VersionCheck {
   // ⚠️ IMPORTANT: Keep this in sync with pubspec.yaml version!
   // Run check-version.ps1 to verify consistency before deploying
@@ -41,9 +43,7 @@ class VersionCheck {
             onPressed: () {
               // Force page reload
               if (kIsWeb) {
-                // ignore: avoid_web_libraries_in_flutter
-                import 'dart:html' as html;
-                html.window.location.reload();
+                versionReloader.reload();
               }
             },
             child: const Text('Refresh Now'),
