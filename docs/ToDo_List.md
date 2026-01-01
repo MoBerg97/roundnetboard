@@ -13,10 +13,10 @@ intuitive usage
 - [ ] #n selected objects (players and balls) should be highlighted on court (e.g. circular sonar waves around object)
 - [ ] hit marker in animation playback should fade out smoothly instead of disappearing instantly
 - [ ] change the hit marker on the board screen to another icon (e.g. circle with bounce arrow inside)
-- [ ] #n default color of ball should be white with black outline
-- [ ] #n default color of players should be red and blue (as is) with black outline
+- [x] #n default color of ball should be white with black outline
+- [x] #n default color of players should be red and blue (as is) with black outline
 - [ ] make path control points invisible by default, only show them when a path is edited (more subtle design than current big circles)
-- [ ] #n the objects (players and balls) should have a slight shadow below them to indicate that they are above the court.
+- [x] #n the objects (players and balls) should have a slight shadow below them to indicate that they are above the court.
 - [ ] adjust the hit and set marker on the boardscreen during editing:
   - [ ] set: instead of a circle, the current path is displayed as a line getting thicker in size from start towards the middle and thinner again from middle to end. #n Alternative: show multiple circles along the path, getting bigger towards the middle and smaller again towards the end, make them very subtle (same color as ball but 30% opacity, always aligned with current ball color)
   - [ ] hit: the star icon should be more transparent and only grey color, no outline and a little bigger. it should slowly fade out during the animation playback instead of disappearing instantly.

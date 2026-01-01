@@ -126,7 +126,7 @@ class _BallPainter extends CustomPainter {
 
     // Draw white border
     final borderPaint = Paint()
-      ..color = Colors.white
+      ..color = Colors.black
       ..style = PaintingStyle.stroke
       ..strokeWidth = isDragging ? 2.5 : 2.0;
 

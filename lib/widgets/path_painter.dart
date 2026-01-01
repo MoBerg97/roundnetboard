@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import '../models/frame.dart';
 import '../models/settings.dart';
 import '../utils/path_engine.dart';
+import '../config/app_constants.dart';
 
 class PathPainter extends CustomPainter {
   final Frame? twoFramesAgo;
@@ -136,6 +137,8 @@ class PathPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (previousFrame == null || currentFrame == null) return;
 
+    final strokeWidthPx = settings.cmToLogical(AppConstants.pathStrokeWidthCm, screenSize).clamp(1.5, 12.0);
+
     // Paint objects are created per-segment in _drawFadedSegments so no
     // uniform paint is required here.
 
@@ -146,7 +149,7 @@ class PathPainter extends CustomPainter {
         final prevPlayer = twoFramesAgo!.getPlayerById(player.id);
         if (prevPlayer != null) {
           final playerSamples = _sampleSplinePoints([prevPlayer.position, ...player.pathPoints, player.position]);
-          _drawFadedSegments(canvas, playerSamples, Colors.black, 0.05, 0.30, 2.0);
+          _drawFadedSegments(canvas, playerSamples, Colors.black, 0.05, 0.30, strokeWidthPx);
         }
       }
 
@@ -155,7 +158,7 @@ class PathPainter extends CustomPainter {
         final prevBall = twoFramesAgo!.getBallById(ball.id);
         if (prevBall != null) {
           final ballSamples = _sampleSplinePoints([prevBall.position, ...ball.pathPoints, ball.position]);
-          _drawFadedSegments(canvas, ballSamples, Colors.black, 0.05, 0.30, 2.0);
+          _drawFadedSegments(canvas, ballSamples, Colors.black, 0.05, 0.30, strokeWidthPx);
         }
       }
     }
@@ -167,7 +170,7 @@ class PathPainter extends CustomPainter {
       final prevPlayer = previousFrame!.getPlayerById(player.id);
       if (prevPlayer != null) {
         final playerSamples = _sampleSplinePoints([prevPlayer.position, ...player.pathPoints, player.position]);
-        _drawFadedSegments(canvas, playerSamples, Colors.black, 0.30, 1.0, 2.0);
+        _drawFadedSegments(canvas, playerSamples, Colors.black, 0.30, 1.0, strokeWidthPx);
       }
     }
 
@@ -176,7 +179,7 @@ class PathPainter extends CustomPainter {
       final prevBall = previousFrame!.getBallById(ball.id);
       if (prevBall != null) {
         final ballSamples = _sampleSplinePoints([prevBall.position, ...ball.pathPoints, ball.position]);
-        _drawFadedSegments(canvas, ballSamples, Colors.black, 0.30, 1.0, 2.0);
+        _drawFadedSegments(canvas, ballSamples, Colors.black, 0.30, 1.0, strokeWidthPx);
       }
     }
   }

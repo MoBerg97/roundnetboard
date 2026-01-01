@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 /// Web-specific download implementation
 /// This file is only used on web platform
 void performWebDownload(String dataUrl, String filename) {

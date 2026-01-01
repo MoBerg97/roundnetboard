@@ -268,6 +268,36 @@ class ChangePlayerColorAllFramesAction extends ProjectAction {
   }
 }
 
+/// Change player label across all frames (undoable)
+class ChangePlayerLabelAllFramesAction extends ProjectAction {
+  final String id; // Player ID
+  final String? from;
+  final String? to;
+
+  ChangePlayerLabelAllFramesAction({required this.id, required this.from, required this.to})
+    : super(frameIndex: 0, description: 'Change player label');
+
+  @override
+  void apply(AnimationProject project) {
+    for (final frame in project.frames) {
+      final player = frame.getPlayerById(id);
+      if (player != null) {
+        player.label = to;
+      }
+    }
+  }
+
+  @override
+  void revert(AnimationProject project) {
+    for (final frame in project.frames) {
+      final player = frame.getPlayerById(id);
+      if (player != null) {
+        player.label = from;
+      }
+    }
+  }
+}
+
 /// Change ball color (undoable)
 class ChangeBallColorAction extends ProjectAction {
   final String id; // Ball ID

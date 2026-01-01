@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../models/annotation.dart';
 import '../models/settings.dart';
+import '../config/app_constants.dart';
 
 /// Widget to render frame annotations (lines, circles, etc.)
 class AnnotationPainter extends StatelessWidget {
@@ -74,6 +75,9 @@ class _AnnotationCustomPainter extends CustomPainter {
     return boardCenter + Offset(settings.cmToLogical(cmPos.dx, screenSize), settings.cmToLogical(cmPos.dy, screenSize));
   }
 
+  double _strokeWidthPx([double multiplier = 1.0]) =>
+      (settings.cmToLogical(AppConstants.annotationStrokeWidthCm, screenSize) * multiplier).clamp(1.0, 8.0);
+
   @override
   void paint(Canvas canvas, Size size) {
     for (final annotation in annotations) {
@@ -129,7 +133,7 @@ class _AnnotationCustomPainter extends CustomPainter {
     final rect = Rect.fromPoints(tl, br);
     final paint = Paint()
       ..color = annotation.color.withValues(alpha: 0.8)
-      ..strokeWidth = 2.5
+      ..strokeWidth = _strokeWidthPx(1.2)
       ..style = PaintingStyle.stroke;
     canvas.drawRect(rect, paint);
   }
@@ -145,7 +149,7 @@ class _AnnotationCustomPainter extends CustomPainter {
     final rect = Rect.fromPoints(tl, br);
     final paint = Paint()
       ..color = annotation.color.withValues(alpha: 0.35)
-      ..strokeWidth = 2.0
+      ..strokeWidth = _strokeWidthPx()
       ..style = PaintingStyle.stroke;
     canvas.drawRect(rect, paint);
   }
@@ -161,13 +165,13 @@ class _AnnotationCustomPainter extends CustomPainter {
     final rect = Rect.fromPoints(tl, br);
     final fade = Paint()
       ..color = annotation.color.withValues(alpha: 0.2)
-      ..strokeWidth = 2.0
+      ..strokeWidth = _strokeWidthPx()
       ..style = PaintingStyle.stroke;
     canvas.drawRect(rect, fade);
     // draw X across rectangle
     final strike = Paint()
       ..color = Colors.red.withValues(alpha: 0.6)
-      ..strokeWidth = 2.0
+      ..strokeWidth = _strokeWidthPx()
       ..style = PaintingStyle.stroke;
     canvas.drawLine(tl, br, strike);
     canvas.drawLine(Offset(br.dx, tl.dy), Offset(tl.dx, br.dy), strike);
@@ -181,7 +185,7 @@ class _AnnotationCustomPainter extends CustomPainter {
     final endScreen = _cmToScreen(end);
     final paint = Paint()
       ..color = annotation.color.withValues(alpha: 0.45)
-      ..strokeWidth = 2.0
+      ..strokeWidth = _strokeWidthPx()
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
     canvas.drawLine(startScreen, endScreen, paint);
@@ -193,7 +197,7 @@ class _AnnotationCustomPainter extends CustomPainter {
     final paint = Paint()
       ..color =
           const Color.fromARGB(200, 255, 200, 100) // Semi-transparent orange preview
-      ..strokeWidth = 3.0
+      ..strokeWidth = _strokeWidthPx(1.5)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
     canvas.drawLine(startScreen, endScreen, paint);
@@ -216,7 +220,7 @@ class _AnnotationCustomPainter extends CustomPainter {
     final radiusScreen = radius * scalePerCm;
     final paint = Paint()
       ..color = annotation.color.withValues(alpha: 0.35)
-      ..strokeWidth = 2.0
+      ..strokeWidth = _strokeWidthPx()
       ..style = PaintingStyle.stroke;
     canvas.drawCircle(centerScreen, radiusScreen, paint);
   }
@@ -233,7 +237,7 @@ class _AnnotationCustomPainter extends CustomPainter {
 
     final paint = Paint()
       ..color = annotation.color.withValues(alpha: 0.8)
-      ..strokeWidth = 3.0
+      ..strokeWidth = _strokeWidthPx(1.5)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
@@ -258,17 +262,10 @@ class _AnnotationCustomPainter extends CustomPainter {
 
     final paint = Paint()
       ..color = annotation.color.withValues(alpha: 0.6)
-      ..strokeWidth = 2.5
+      ..strokeWidth = _strokeWidthPx(1.2)
       ..style = PaintingStyle.stroke;
 
     canvas.drawCircle(centerScreen, radiusScreen, paint);
-
-    // Draw center point
-    final centerPaint = Paint()
-      ..color = annotation.color
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(centerScreen, 4, centerPaint);
   }
 
   // Rendering for annotations being erased (faded + strikethrough effect)
@@ -283,7 +280,7 @@ class _AnnotationCustomPainter extends CustomPainter {
     // Draw faded line
     final fadePaint = Paint()
       ..color = annotation.color.withValues(alpha: 0.2)
-      ..strokeWidth = 3.0
+      ..strokeWidth = _strokeWidthPx(1.5)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
     canvas.drawLine(startScreen, endScreen, fadePaint);
@@ -296,7 +293,7 @@ class _AnnotationCustomPainter extends CustomPainter {
 
     final strikePaint = Paint()
       ..color = Colors.red.withValues(alpha: 0.6)
-      ..strokeWidth = 2.0
+      ..strokeWidth = _strokeWidthPx()
       ..strokeCap = StrokeCap.round;
 
     canvas.drawLine(center - perpendicular * strokeLength, center + perpendicular * strokeLength, strikePaint);
@@ -316,7 +313,7 @@ class _AnnotationCustomPainter extends CustomPainter {
     // Draw faded circle
     final fadePaint = Paint()
       ..color = annotation.color.withValues(alpha: 0.2)
-      ..strokeWidth = 2.0
+      ..strokeWidth = _strokeWidthPx()
       ..style = PaintingStyle.stroke;
     canvas.drawCircle(centerScreen, radiusScreen, fadePaint);
 
@@ -324,17 +321,13 @@ class _AnnotationCustomPainter extends CustomPainter {
     final xRadius = radiusScreen * 0.3;
     final xPaint = Paint()
       ..color = Colors.red.withValues(alpha: 0.6)
-      ..strokeWidth = 2.0
+      ..strokeWidth = _strokeWidthPx()
       ..strokeCap = StrokeCap.round;
 
     canvas.drawLine(centerScreen - Offset(xRadius, xRadius), centerScreen + Offset(xRadius, xRadius), xPaint);
     canvas.drawLine(centerScreen - Offset(xRadius, -xRadius), centerScreen + Offset(xRadius, -xRadius), xPaint);
 
-    // Draw faded center point
-    final centerPaint = Paint()
-      ..color = annotation.color.withValues(alpha: 0.3)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(centerScreen, 4, centerPaint);
+    // Center marker removed for cleaner circles
   }
 
   @override

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:web/web.dart' as html;
 
 /// Web-specific download implementation

@@ -22,7 +22,10 @@ class Player extends HiveObject {
   @HiveField(4)
   String id; // Unique identifier (UUID for training, P1-P4 for play)
 
-  Player({required this.position, this.rotation = 0, List<Offset>? pathPoints, Color? color, String? id})
+  @HiveField(5)
+  String? label; // Optional single-character label
+
+  Player({required this.position, this.rotation = 0, List<Offset>? pathPoints, Color? color, String? id, this.label})
     : pathPoints = pathPoints ?? [],
       colorValue = (color ?? Colors.blue).toARGB32(),
       id = id ?? const Uuid().v4();
@@ -39,6 +42,7 @@ class Player extends HiveObject {
     pathPoints: [], // Don't copy path points - make them frame-specific
     color: color,
     id: id,
+    label: label,
   );
 }
 
@@ -49,6 +53,7 @@ extension PlayerMap on Player {
     'pathPoints': pathPoints.map((o) => [o.dx, o.dy]).toList(),
     'color': colorValue,
     'id': id,
+    'label': label,
   };
 
   static Player fromMap(Map<String, dynamic> m) => Player(
@@ -57,5 +62,6 @@ extension PlayerMap on Player {
     pathPoints: (m['pathPoints'] as List? ?? []).map((e) => Offset(e[0], e[1])).toList(),
     color: Color(m['color'] as int),
     id: m['id'] as String?,
+    label: m['label'] as String?,
   );
 }

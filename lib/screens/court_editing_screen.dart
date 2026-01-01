@@ -4,21 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../config/app_theme.dart';
+import '../config/app_constants.dart';
 import '../models/animation_project.dart';
 import '../models/court_element.dart';
 import '../models/settings.dart';
 import '../widgets/board_background_painter.dart';
 import '../widgets/court_editor_painter.dart';
 
-enum CourtEditorTool {
-  select,
-  net,
-  zone,
-  customCircle,
-  customLine,
-  customRectangle,
-  eraser,
-}
+enum CourtEditorTool { select, net, zone, customCircle, customLine, customRectangle, eraser }
 
 /// Represents a snapshot of the editor state for undo/redo functionality
 class _EditorSnapshot {
@@ -26,11 +19,7 @@ class _EditorSnapshot {
   final Color currentColor;
   final ZoneMode zoneMode;
 
-  _EditorSnapshot({
-    required this.elements,
-    required this.currentColor,
-    required this.zoneMode,
-  });
+  _EditorSnapshot({required this.elements, required this.currentColor, required this.zoneMode});
 
   /// Create a deep copy of this snapshot
   _EditorSnapshot copy() {
@@ -47,10 +36,7 @@ enum ZoneMode { inner, serve, outer }
 class CourtEditingScreen extends StatefulWidget {
   final AnimationProject project;
 
-  const CourtEditingScreen({
-    super.key,
-    required this.project,
-  });
+  const CourtEditingScreen({super.key, required this.project});
 
   @override
   State<CourtEditingScreen> createState() => _CourtEditingScreenState();
@@ -65,6 +51,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   CourtElement? _draggingElement;
   Offset? _dragOffset; // Offset from touch point to element position for dragging
   Offset? _dragEndOffset; // Offset for endPosition when dragging shapes
+  CourtElement? _selectedElement;
   final double _eraserRadius = 30.0;
   final GlobalKey _canvasKey = GlobalKey(debugLabel: 'court_editor_canvas');
   Color _currentColor = Colors.white;
@@ -72,7 +59,8 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   CourtElement? _previewElement;
   // Incremented whenever elements change to force background repaint
   int _elementsRevision = 0;
-  
+  Size _screenSize = Size.zero;
+
   // History stacks for undo/redo
   final List<_EditorSnapshot> _undoStack = [];
   final List<_EditorSnapshot> _redoStack = [];
@@ -88,6 +76,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
+    _screenSize = screenSize;
     // Mirror BoardScreen canvas proportions so custom elements align 1:1 with playback view.
     const timelineHeight = 140.0;
     final boardHeight = math.max(320.0, screenSize.height - kToolbarHeight - timelineHeight);
@@ -97,13 +86,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Court'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.check),
-            tooltip: 'Save',
-            onPressed: _saveAndClose,
-          ),
-        ],
+        actions: [IconButton(icon: const Icon(Icons.check), tooltip: 'Save', onPressed: _saveAndClose)],
       ),
       body: Column(
         children: [
@@ -153,10 +136,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                           ignoring: true,
                           child: CustomPaint(
                             size: boardSize,
-                            painter: _CenterCrossPainter(
-                              boardSize: boardSize,
-                              settings: _settings,
-                            ),
+                            painter: _CenterCrossPainter(boardSize: boardSize, settings: _settings),
                           ),
                         ),
                       ],
@@ -175,11 +155,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
               child: Row(
                 children: [
                   // Select / move
-                  _buildToolButton(
-                    CourtEditorTool.select,
-                    Icons.pan_tool_alt,
-                    'Select',
-                  ),
+                  _buildToolButton(CourtEditorTool.select, Icons.pan_tool_alt, 'Select'),
                   const SizedBox(width: 4),
                   _buildToolButton(
                     CourtEditorTool.net,
@@ -195,23 +171,11 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                     'Circle',
                   ),
                   const SizedBox(width: 4),
-                  _buildToolButton(
-                    CourtEditorTool.customLine,
-                    Symbols.diagonal_line,
-                    'Line',
-                  ),
+                  _buildToolButton(CourtEditorTool.customLine, Symbols.diagonal_line, 'Line'),
                   const SizedBox(width: 4),
-                  _buildToolButton(
-                    CourtEditorTool.customRectangle,
-                    Icons.crop_square,
-                    'Rect',
-                  ),
+                  _buildToolButton(CourtEditorTool.customRectangle, Icons.crop_square, 'Rect'),
                   const SizedBox(width: 4),
-                  _buildToolButton(
-                    CourtEditorTool.eraser,
-                    Symbols.ink_eraser,
-                    'Eraser',
-                  ),
+                  _buildToolButton(CourtEditorTool.eraser, Symbols.ink_eraser, 'Eraser'),
                   const SizedBox(width: 8),
                   _buildColorPickerButton(),
                   const SizedBox(width: 8),
@@ -229,6 +193,14 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                     color: _redoStack.isEmpty ? Colors.grey : Colors.white,
                     tooltip: 'Redo',
                     onPressed: _redoStack.isEmpty ? null : _redo,
+                  ),
+                  const SizedBox(width: 4),
+                  // Duplicate selected
+                  IconButton(
+                    icon: const Icon(Icons.content_copy),
+                    color: _selectedElement == null ? Colors.grey : Colors.white,
+                    tooltip: 'Duplicate selected element',
+                    onPressed: _selectedElement == null ? null : _duplicateSelected,
                   ),
                   const SizedBox(width: 8),
                   // Clear all button
@@ -253,6 +225,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     return Tooltip(
       message: label,
       child: FloatingActionButton.small(
+        heroTag: 'tool-${tool.name}',
         backgroundColor: isActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
         onPressed: () => setState(() => _currentTool = tool),
         child: iconWidget,
@@ -264,6 +237,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     return Tooltip(
       message: 'Tool Color',
       child: FloatingActionButton.small(
+        heroTag: 'tool-color-picker',
         backgroundColor: _currentColor,
         onPressed: _showColorPicker,
         child: const Icon(Icons.palette, color: Colors.black),
@@ -272,10 +246,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   }
 
   Widget _buildNetIcon(Color color) {
-    return CustomPaint(
-      painter: _NetIconPainter(color),
-      size: const Size(24, 24),
-    );
+    return CustomPaint(painter: _NetIconPainter(color), size: const Size(24, 24));
   }
 
   Widget _buildSmallCircleIcon(Color color) {
@@ -313,6 +284,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     return Tooltip(
       message: 'Zone ($label)',
       child: FloatingActionButton.small(
+        heroTag: 'tool-zone',
         backgroundColor: zoneActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
         onPressed: () => setState(() {
           _currentTool = CourtEditorTool.zone;
@@ -332,13 +304,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
               data: IconThemeData(color: zoneActive ? _currentColor : Colors.white),
               child: icon,
             ),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 9,
-                color: zoneActive ? _currentColor : Colors.white,
-              ),
-            ),
+            Text(label, style: TextStyle(fontSize: 9, color: zoneActive ? _currentColor : Colors.white)),
           ],
         ),
       ),
@@ -359,11 +325,13 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     _previewElement = null;
 
     if (_currentTool == CourtEditorTool.select) {
+      _selectedElement = null;
       for (final element in _elements.reversed) {
         if (_isPointNearElement(localPos, element)) {
+          _selectedElement = element;
           _draggingElement = element;
           _currentColor = element.color;
-          // Store offset from touch to element position for smooth dragging
+          // Store offset from touch point to element position for smooth dragging
           _dragOffset = element.position - localPos;
           if (element.endPosition != null) {
             _dragEndOffset = element.endPosition! - localPos;
@@ -393,10 +361,15 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
 
       if (_currentTool == CourtEditorTool.select && _draggingElement != null) {
         // Apply drag offset to maintain shape
-        _draggingElement!.position = localPos + (_dragOffset ?? Offset.zero);
-        if (_draggingElement!.endPosition != null && _dragEndOffset != null) {
-          _draggingElement!.endPosition = localPos + _dragEndOffset!;
-        }
+        var newPos = localPos + (_dragOffset ?? Offset.zero);
+        var newEnd = _draggingElement!.endPosition != null && _dragEndOffset != null
+            ? localPos + _dragEndOffset!
+            : _draggingElement!.endPosition;
+
+        final snapped = _applySnap(newPos, newEnd, _draggingElement!);
+        _draggingElement!
+          ..position = snapped.key
+          ..endPosition = snapped.value;
         // Bump revision so background repaints while dragging
         _elementsRevision++;
       } else if (_currentTool == CourtEditorTool.eraser) {
@@ -416,7 +389,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     final tool = _currentTool;
     final start = _startPos!;
     final end = _currentPos!;
-    
+
     if (tool == CourtEditorTool.select) {
       // History was saved at drag start; do not save again to avoid duplicates
       _draggingElement = null;
@@ -428,6 +401,8 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     if (tool == CourtEditorTool.eraser) {
       // History was saved at erase start; do not save again here
       _draggingElement = null;
+      _dragOffset = null;
+      _dragEndOffset = null;
       return;
     }
 
@@ -494,12 +469,78 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     return (p - closest).distance;
   }
 
-  CourtElement? _createElementFromTool(
-    CourtEditorTool tool,
-    Offset start,
-    Offset end, {
-    bool preview = false,
-  }) {
+  MapEntry<Offset, Offset?> _applySnap(Offset pos, Offset? end, CourtElement dragged) {
+    const double thresholdPx = 15.0;
+    final anchors = _anchorPointsForDragged(dragged, pos, end);
+    final candidates = _snapPointsFromOtherElements(dragged);
+
+    double bestDist = thresholdPx;
+    Offset bestDelta = Offset.zero;
+
+    for (final anchor in anchors) {
+      for (final target in candidates) {
+        final d = (target - anchor).distance;
+        if (d < bestDist) {
+          bestDist = d;
+          bestDelta = target - anchor;
+        }
+      }
+    }
+
+    if (bestDist < thresholdPx) {
+      pos += bestDelta;
+      end = end != null ? end + bestDelta : end;
+    }
+
+    return MapEntry(pos, end);
+  }
+
+  List<Offset> _anchorPointsForDragged(CourtElement element, Offset pos, Offset? end) {
+    final anchors = <Offset>[pos];
+
+    if (end != null) {
+      anchors.add(end);
+      anchors.add((pos + end) / 2);
+
+      if (element.type == CourtElementType.customRectangle) {
+        final tl = Offset(math.min(pos.dx, end.dx), math.min(pos.dy, end.dy));
+        final tr = Offset(math.max(pos.dx, end.dx), math.min(pos.dy, end.dy));
+        final bl = Offset(math.min(pos.dx, end.dx), math.max(pos.dy, end.dy));
+        final br = Offset(math.max(pos.dx, end.dx), math.max(pos.dy, end.dy));
+        anchors.addAll([tl, tr, bl, br]);
+      }
+    }
+
+    return anchors;
+  }
+
+  List<Offset> _snapPointsFromOtherElements(CourtElement dragged) {
+    final points = <Offset>[];
+
+    for (final e in _elements) {
+      if (identical(e, dragged)) continue;
+
+      points.add(e.position);
+      if (e.endPosition != null) {
+        final end = e.endPosition!;
+        points
+          ..add(end)
+          ..add((e.position + end) / 2);
+
+        if (e.type == CourtElementType.customRectangle) {
+          final tl = Offset(math.min(e.position.dx, end.dx), math.min(e.position.dy, end.dy));
+          final tr = Offset(math.max(e.position.dx, end.dx), math.min(e.position.dy, end.dy));
+          final bl = Offset(math.min(e.position.dx, end.dx), math.max(e.position.dy, end.dy));
+          final br = Offset(math.max(e.position.dx, end.dx), math.max(e.position.dy, end.dy));
+          points.addAll([tl, tr, bl, br]);
+        }
+      }
+    }
+
+    return points;
+  }
+
+  CourtElement? _createElementFromTool(CourtEditorTool tool, Offset start, Offset end, {bool preview = false}) {
     final position = end; // Use finger-up position so tap or drag works the same.
     switch (tool) {
       case CourtEditorTool.net:
@@ -514,26 +555,22 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
         final radius = _zoneMode == ZoneMode.inner
             ? _settings.innerCircleRadiusPx
             : _zoneMode == ZoneMode.serve
-                ? _settings.outerCircleRadiusPx
-                : _settings.outerBoundsRadiusPx;
+            ? _settings.outerCircleRadiusPx
+            : _settings.outerBoundsRadiusPx;
         final type = _zoneMode == ZoneMode.inner
             ? CourtElementType.innerCircle
             : _zoneMode == ZoneMode.serve
-                ? CourtElementType.outerCircle
-                : CourtElementType.outerCircle;
-        return CourtElement(
-          type: type,
-          position: position,
-          radius: radius,
-          color: _currentColor,
-          strokeWidth: 2.0,
-        );
+            ? CourtElementType.outerCircle
+            : CourtElementType.outerCircle;
+        return CourtElement(type: type, position: position, radius: radius, color: _currentColor, strokeWidth: 2.0);
       case CourtEditorTool.customCircle:
         final radius = (end - start).distance;
+        final defaultRadius = _settings.cmToLogical(AppConstants.defaultCircleRadiusCm, _screenSize);
+        final targetRadius = radius > defaultRadius * 0.2 ? radius : defaultRadius;
         return CourtElement(
           type: CourtElementType.customCircle,
           position: start,
-          radius: radius > 4 ? radius : _settings.innerCircleRadiusPx,
+          radius: targetRadius,
           color: _currentColor,
           strokeWidth: 2.0,
         );
@@ -560,7 +597,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
 
   bool _isPointNearElement(Offset point, CourtElement element) {
     const threshold = 15.0;
-    
+
     // NET elements: draggable from anywhere within the widest circle
     if (element.type == CourtElementType.net) {
       final radius = element.radius ?? 0;
@@ -570,7 +607,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       final outerBoundsRadius = radius + 10; // approximate outer bound
       return distFromCenter <= outerBoundsRadius;
     }
-    
+
     // Check center point
     final dist = (element.position - point).distance;
     if (dist < threshold) return true;
@@ -579,7 +616,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     if (element.endPosition != null) {
       final endDist = (element.endPosition! - point).distance;
       if (endDist < threshold) return true;
-      
+
       // For rectangles, check all four edges
       if (element.type == CourtElementType.customRectangle) {
         final a = element.position;
@@ -588,7 +625,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
         final tr = Offset(math.max(a.dx, b.dx), math.min(a.dy, b.dy));
         final bl = Offset(math.min(a.dx, b.dx), math.max(a.dy, b.dy));
         final br = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
-        
+
         final edges = [
           _distanceToLineSegment(point, tl, tr),
           _distanceToLineSegment(point, tr, br),
@@ -597,13 +634,13 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
         ];
         return edges.any((d) => d < threshold);
       }
-      
+
       // For lines, check distance to line segment
       if (element.type == CourtElementType.customLine) {
         return _distanceToLineSegment(point, element.position, element.endPosition!) < threshold;
       }
     }
-    
+
     // For circles/zones, check if point is on outline (NOT anywhere within)
     final radius = element.radius ?? 0;
     if (radius > 0) {
@@ -661,45 +698,43 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
           height: 200,
           child: GridView.count(
             crossAxisCount: 4,
-            children: [
-              Colors.white,
-              Colors.red,
-              Colors.blue,
-              Colors.green,
-              Colors.yellow,
-              Colors.orange,
-              Colors.purple,
-              Colors.pink,
-              Colors.cyan,
-              Colors.teal,
-              Colors.lime,
-              Colors.indigo,
-              Colors.brown,
-            ].map((color) {
-              final isActive = _currentColor.toARGB32() == color.toARGB32();
-              return GestureDetector(
-                onTap: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _currentColor = color;
-                    if (_draggingElement != null) {
-                      _draggingElement!.color = color;
-                    }
-                  });
-                },
-                child: Container(
-                  margin: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isActive ? AppTheme.darkGrey : Colors.white,
-                      width: isActive ? 3 : 1,
+            children:
+                [
+                  Colors.white,
+                  Colors.red,
+                  Colors.blue,
+                  Colors.green,
+                  Colors.yellow,
+                  Colors.orange,
+                  Colors.purple,
+                  Colors.pink,
+                  Colors.cyan,
+                  Colors.teal,
+                  Colors.lime,
+                  Colors.indigo,
+                  Colors.brown,
+                ].map((color) {
+                  final isActive = _currentColor.toARGB32() == color.toARGB32();
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        _currentColor = color;
+                        if (_draggingElement != null) {
+                          _draggingElement!.color = color;
+                        }
+                      });
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: isActive ? AppTheme.darkGrey : Colors.white, width: isActive ? 3 : 1),
+                      ),
                     ),
-                  ),
-                ),
-              );
-            }).toList(),
+                  );
+                }).toList(),
           ),
         ),
       ),
@@ -712,13 +747,15 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     if (_undoStack.isNotEmpty && _isSameAsSnapshot(_undoStack.last)) {
       return;
     }
-    _undoStack.add(_EditorSnapshot(
-      elements: _elements.map((e) => e.copy()).toList(),
-      currentColor: _currentColor,
-      zoneMode: _zoneMode,
-    ));
+    _undoStack.add(
+      _EditorSnapshot(
+        elements: _elements.map((e) => e.copy()).toList(),
+        currentColor: _currentColor,
+        zoneMode: _zoneMode,
+      ),
+    );
     _redoStack.clear();
-    
+
     // Limit undo history to 50 snapshots to prevent memory issues
     if (_undoStack.length > 50) {
       _undoStack.removeAt(0);
@@ -745,14 +782,16 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   /// Restore the editor to the previous state
   void _undo() {
     if (_undoStack.isEmpty) return;
-    
+
     // Save current state to redo stack before undoing
-    _redoStack.add(_EditorSnapshot(
-      elements: _elements.map((e) => e.copy()).toList(),
-      currentColor: _currentColor,
-      zoneMode: _zoneMode,
-    ));
-    
+    _redoStack.add(
+      _EditorSnapshot(
+        elements: _elements.map((e) => e.copy()).toList(),
+        currentColor: _currentColor,
+        zoneMode: _zoneMode,
+      ),
+    );
+
     // Pop the previous state and restore it
     final snapshot = _undoStack.removeLast();
     setState(() {
@@ -761,6 +800,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       _zoneMode = snapshot.zoneMode;
       _previewElement = null;
       _draggingElement = null;
+      _selectedElement = null;
       _elementsRevision++;
     });
   }
@@ -768,14 +808,16 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   /// Restore the editor to the next state (redo)
   void _redo() {
     if (_redoStack.isEmpty) return;
-    
+
     // Save current state to undo stack before redoing
-    _undoStack.add(_EditorSnapshot(
-      elements: _elements.map((e) => e.copy()).toList(),
-      currentColor: _currentColor,
-      zoneMode: _zoneMode,
-    ));
-    
+    _undoStack.add(
+      _EditorSnapshot(
+        elements: _elements.map((e) => e.copy()).toList(),
+        currentColor: _currentColor,
+        zoneMode: _zoneMode,
+      ),
+    );
+
     // Pop the next state and restore it
     final snapshot = _redoStack.removeLast();
     setState(() {
@@ -784,10 +826,29 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       _zoneMode = snapshot.zoneMode;
       _previewElement = null;
       _draggingElement = null;
+      _selectedElement = null;
+      _elementsRevision++;
+    });
+  }
+
+  void _duplicateSelected() {
+    if (_selectedElement == null) return;
+    final original = _selectedElement!;
+    final copy = original.copy();
+    const Offset delta = Offset(20, 20);
+    copy
+      ..position = original.position + delta
+      ..endPosition = original.endPosition != null ? original.endPosition! + delta : null;
+
+    _saveToHistory();
+    setState(() {
+      _elements.add(copy);
+      _selectedElement = copy;
       _elementsRevision++;
     });
   }
 }
+
 class _NetIconPainter extends CustomPainter {
   final Color color;
   _NetIconPainter(this.color);
@@ -810,11 +871,7 @@ class _NetIconPainter extends CustomPainter {
       final radians = angle * math.pi / 180;
       final x = radius * 0.7 * math.cos(radians);
       final y = radius * 0.7 * math.sin(radians);
-      canvas.drawLine(
-        Offset(center.dx - x, center.dy - y),
-        Offset(center.dx + x, center.dy + y),
-        paint,
-      );
+      canvas.drawLine(Offset(center.dx - x, center.dy - y), Offset(center.dx + x, center.dy + y), paint);
     }
   }
 
@@ -840,8 +897,7 @@ class _CircleIconPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_CircleIconPainter oldDelegate) =>
-      oldDelegate.radius != radius || oldDelegate.color != color;
+  bool shouldRepaint(_CircleIconPainter oldDelegate) => oldDelegate.radius != radius || oldDelegate.color != color;
 }
 
 /// Painter for center screen transparent cross (20cm x 20cm)
@@ -849,10 +905,7 @@ class _CenterCrossPainter extends CustomPainter {
   final Size boardSize;
   final Settings settings;
 
-  _CenterCrossPainter({
-    required this.boardSize,
-    required this.settings,
-  });
+  _CenterCrossPainter({required this.boardSize, required this.settings});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -864,7 +917,8 @@ class _CenterCrossPainter extends CustomPainter {
 
     // Create paint for the cross (very transparent white)
     final crossPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.15) // Very transparent
+      ..color = Colors.white
+          .withValues(alpha: 0.15) // Very transparent
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 
@@ -887,4 +941,3 @@ class _CenterCrossPainter extends CustomPainter {
   bool shouldRepaint(covariant _CenterCrossPainter oldDelegate) =>
       oldDelegate.boardSize != boardSize || oldDelegate.settings != settings;
 }
-

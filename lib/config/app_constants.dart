@@ -73,17 +73,20 @@ class AppConstants {
 
   // Player & ball settings
 
-  /// Default player marker size
-  static const double playerMarkerSize = 30.0;
+  /// Default player marker radius in cm (scaled via Settings.cmToLogical)
+  static const double playerRadiusCm = 18.0;
 
-  /// Default ball marker size
-  static const double ballMarkerSize = 20.0;
+  /// Default ball marker radius in cm (scaled via Settings.cmToLogical)
+  static const double ballRadiusCm = 9.0;
 
-  /// Path stroke width
-  static const double pathStrokeWidth = 3.0;
+  /// Path stroke width in cm (scaled)
+  static const double pathStrokeWidthCm = 1.2;
 
-  /// Annotation stroke width
-  static const double annotationStrokeWidth = 2.0;
+  /// Annotation stroke width in cm (scaled)
+  static const double annotationStrokeWidthCm = 1.0;
+
+  /// Default radius for tap-added circles (cm)
+  static const double defaultCircleRadiusCm = 30.0;
 
   // Animation settings
 
