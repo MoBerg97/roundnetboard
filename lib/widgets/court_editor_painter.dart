@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../models/court_element.dart';
+import '../models/settings.dart';
 import '../config/app_theme.dart';
 
 class CourtEditorPainter extends CustomPainter {
@@ -9,6 +10,7 @@ class CourtEditorPainter extends CustomPainter {
   final double eraserRadius;
   final Size screenSize;
   final CourtElement? previewElement;
+  final Settings settings;
 
   CourtEditorPainter({
     required this.elements,
@@ -16,12 +18,12 @@ class CourtEditorPainter extends CustomPainter {
     required this.eraserRadius,
     required this.screenSize,
     this.previewElement,
+    required this.settings,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = _boardCenter(screenSize);
-    const scale = 1.0;
 
     // Sort elements so NET elements are drawn last (on top)
     final sortedElements = [...elements];
@@ -34,21 +36,31 @@ class CourtEditorPainter extends CustomPainter {
 
     // Draw all elements
     for (final element in sortedElements) {
-      _drawElement(canvas, element, center, scale);
+      _drawElement(canvas, element, center);
     }
 
     // Draw live preview (e.g., circle while dragging)
     if (previewElement != null) {
-      _drawElement(canvas, previewElement!, center, scale, isPreview: true);
+      _drawElement(canvas, previewElement!, center, isPreview: true);
       if (previewElement!.type == CourtElementType.innerCircle ||
           previewElement!.type == CourtElementType.outerCircle ||
           previewElement!.type == CourtElementType.customCircle) {
-        final r = (previewElement!.radius ?? 0) * scale;
-        final pos = center + (previewElement!.position - center) * scale;
+        final r = settings.cmToLogical(previewElement!.radius ?? 0, screenSize);
+        final pos = _toScreenPosition(previewElement!.position, center);
         final diameterPaint = Paint()
           ..color = previewElement!.color.withValues(alpha: 0.6)
           ..strokeWidth = 1.5;
         canvas.drawLine(pos + Offset(-r, 0), pos + Offset(r, 0), diameterPaint);
+      } else if (previewElement!.type == CourtElementType.customLine && previewElement!.endPosition != null) {
+        // Show start and end points as circles for line preview
+        final startPos = _toScreenPosition(previewElement!.position, center);
+        final endPos = _toScreenPosition(previewElement!.endPosition!, center);
+        final pointRadius = 4.0;
+        final pointPaint = Paint()
+          ..color = previewElement!.color.withValues(alpha: 0.8)
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(startPos, pointRadius, pointPaint);
+        canvas.drawCircle(endPos, pointRadius, pointPaint);
       }
     }
 
@@ -67,8 +79,13 @@ class CourtEditorPainter extends CustomPainter {
     }
   }
 
-  void _drawElement(Canvas canvas, CourtElement element, Offset center, double scale, {bool isPreview = false}) {
-    final scaledPos = center + (element.position - center) * scale;
+  /// Convert cm logical position to screen pixel position
+  Offset _toScreenPosition(Offset cmPos, Offset center) {
+    return center + Offset(settings.cmToLogical(cmPos.dx, screenSize), settings.cmToLogical(cmPos.dy, screenSize));
+  }
+
+  void _drawElement(Canvas canvas, CourtElement element, Offset center, {bool isPreview = false}) {
+    final scaledPos = _toScreenPosition(element.position, center);
     final paint = Paint()
       ..color = element.color.withValues(alpha: isPreview ? 0.6 : 1.0)
       ..strokeWidth = element.strokeWidth
@@ -76,22 +93,22 @@ class CourtEditorPainter extends CustomPainter {
 
     switch (element.type) {
       case CourtElementType.net:
-        _drawNet(canvas, scaledPos, element.radius! * scale, paint, isPreview);
+        _drawNet(canvas, scaledPos, settings.cmToLogical(element.radius!, screenSize), paint, isPreview);
         break;
       case CourtElementType.innerCircle:
       case CourtElementType.outerCircle:
       case CourtElementType.customCircle:
-        canvas.drawCircle(scaledPos, element.radius! * scale, paint);
+        canvas.drawCircle(scaledPos, settings.cmToLogical(element.radius!, screenSize), paint);
         break;
       case CourtElementType.customLine:
         if (element.endPosition != null) {
-          final scaledEnd = center + (element.endPosition! - center) * scale;
+          final scaledEnd = _toScreenPosition(element.endPosition!, center);
           canvas.drawLine(scaledPos, scaledEnd, paint);
         }
         break;
       case CourtElementType.customRectangle:
         if (element.endPosition != null) {
-          final scaledEnd = center + (element.endPosition! - center) * scale;
+          final scaledEnd = _toScreenPosition(element.endPosition!, center);
           final rect = Rect.fromPoints(scaledPos, scaledEnd);
           canvas.drawRect(rect, paint);
         }
@@ -121,21 +138,13 @@ class CourtEditorPainter extends CustomPainter {
       final term = radius * radius - dx * dx;
       if (term < 0) continue;
       final dy = math.sqrt(term);
-      canvas.drawLine(
-        center + Offset(dx, -dy),
-        center + Offset(dx, dy),
-        gridPaint,
-      );
+      canvas.drawLine(center + Offset(dx, -dy), center + Offset(dx, dy), gridPaint);
     }
     for (double dy = -radius; dy <= radius; dy += step) {
       final term = radius * radius - dy * dy;
       if (term < 0) continue;
       final dx = math.sqrt(term);
-      canvas.drawLine(
-        center + Offset(-dx, dy),
-        center + Offset(dx, dy),
-        gridPaint,
-      );
+      canvas.drawLine(center + Offset(-dx, dy), center + Offset(dx, dy), gridPaint);
     }
 
     // Outer stroke highlight
@@ -145,6 +154,7 @@ class CourtEditorPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
+
 Offset _boardCenter(Size screenSize) {
   const double appBarHeight = kToolbarHeight;
   const double timelineHeight = 140;

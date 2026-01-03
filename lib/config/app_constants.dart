@@ -83,7 +83,7 @@ class AppConstants {
   static const double pathStrokeWidthCm = 1.2;
 
   /// Annotation stroke width in cm (scaled)
-  static const double annotationStrokeWidthCm = 1.0;
+  static const double annotationStrokeWidthCm = 2.0;
 
   /// Default radius for tap-added circles (cm)
   static const double defaultCircleRadiusCm = 30.0;

@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:provider/provider.dart';
 import 'package:feature_discovery/feature_discovery.dart';
+import 'dart:convert';
 
 import 'config/app_theme.dart';
 import 'models/offset_adapter.dart';
@@ -71,10 +73,43 @@ void main() async {
       await p.save();
     }
   }
+
+  // Load preset projects on first start
+  await _loadPresetProjectsIfNeeded(projectsBox);
+
   // Check onboarding state
   final prefs = await SharedPreferences.getInstance();
   final seenOnboarding = prefs.getBool('seenOnboarding') ?? false;
   runApp(MyApp(seenOnboarding: seenOnboarding));
+}
+
+/// Loads preset projects from assets if this is the first app start
+Future<void> _loadPresetProjectsIfNeeded(Box<AnimationProject> projectsBox) async {
+  final prefs = await SharedPreferences.getInstance();
+  final presetsLoaded = prefs.getBool('presetsLoaded') ?? false;
+
+  // Only load presets if box is empty and they haven't been loaded before
+  if (!presetsLoaded && projectsBox.isEmpty) {
+    try {
+      // Load Hit Queue
+      final hitQueueJson = await rootBundle.loadString('assets/presetprojects/Hit_Queue.json');
+      final hitQueueMap = json.decode(hitQueueJson) as Map<String, dynamic>;
+      final hitQueueProject = AnimationProjectMap.fromMap(hitQueueMap);
+      await projectsBox.add(hitQueueProject);
+
+      // Load Open Defence
+      final openDefenceJson = await rootBundle.loadString('assets/presetprojects/Open_Defence.json');
+      final openDefenceMap = json.decode(openDefenceJson) as Map<String, dynamic>;
+      final openDefenceProject = AnimationProjectMap.fromMap(openDefenceMap);
+      await projectsBox.add(openDefenceProject);
+
+      // Mark as loaded
+      await prefs.setBool('presetsLoaded', true);
+    } catch (e) {
+      // If loading fails, continue without presets
+      debugPrint('Failed to load preset projects: $e');
+    }
+  }
 }
 
 class MyApp extends StatefulWidget {

@@ -65,7 +65,7 @@ class BoardBackgroundPainter extends CustomPainter {
 
     // Define netPaint for grid lines (if you still want them)
     final netPaint = Paint()
-      ..color = AppTheme.netBlack.withAlpha((0.4*255).round())
+      ..color = AppTheme.netBlack.withAlpha((0.4 * 255).round())
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
@@ -120,32 +120,38 @@ class BoardBackgroundPainter extends CustomPainter {
         ..strokeWidth = element.strokeWidth
         ..style = PaintingStyle.stroke;
 
-      final scaledPos = center + (element.position - center);
+      // Convert cm-based position to screen pixels
+      final scaledPos = _toScreenPosition(element.position, center);
 
       switch (element.type) {
         case CourtElementType.net:
-          _drawNet(canvas, scaledPos, element.radius!, paint);
+          _drawNet(canvas, scaledPos, settings.cmToLogical(element.radius!, screenSize), paint);
           break;
         case CourtElementType.innerCircle:
         case CourtElementType.outerCircle:
         case CourtElementType.customCircle:
-          canvas.drawCircle(scaledPos, element.radius!, paint);
+          canvas.drawCircle(scaledPos, settings.cmToLogical(element.radius!, screenSize), paint);
           break;
         case CourtElementType.customLine:
           if (element.endPosition != null) {
-            final scaledEnd = center + (element.endPosition! - center);
+            final scaledEnd = _toScreenPosition(element.endPosition!, center);
             canvas.drawLine(scaledPos, scaledEnd, paint);
           }
           break;
         case CourtElementType.customRectangle:
           if (element.endPosition != null) {
-            final scaledEnd = center + (element.endPosition! - center);
+            final scaledEnd = _toScreenPosition(element.endPosition!, center);
             final rect = Rect.fromPoints(scaledPos, scaledEnd);
             canvas.drawRect(rect, paint);
           }
           break;
       }
     }
+  }
+
+  /// Convert cm logical position to screen pixel position
+  Offset _toScreenPosition(Offset cmPos, Offset center) {
+    return center + Offset(settings.cmToLogical(cmPos.dx, screenSize), settings.cmToLogical(cmPos.dy, screenSize));
   }
 
   void _drawNet(Canvas canvas, Offset center, double radius, Paint strokePaint) {
@@ -170,21 +176,13 @@ class BoardBackgroundPainter extends CustomPainter {
       final term = radius * radius - dx * dx;
       if (term < 0) continue;
       final dy = math.sqrt(term);
-      canvas.drawLine(
-        center + Offset(dx, -dy),
-        center + Offset(dx, dy),
-        gridPaint,
-      );
+      canvas.drawLine(center + Offset(dx, -dy), center + Offset(dx, dy), gridPaint);
     }
     for (double dy = -radius; dy <= radius; dy += step) {
       final term = radius * radius - dy * dy;
       if (term < 0) continue;
       final dx = math.sqrt(term);
-      canvas.drawLine(
-        center + Offset(-dx, dy),
-        center + Offset(dx, dy),
-        gridPaint,
-      );
+      canvas.drawLine(center + Offset(-dx, dy), center + Offset(dx, dy), gridPaint);
     }
 
     // Outer stroke highlight

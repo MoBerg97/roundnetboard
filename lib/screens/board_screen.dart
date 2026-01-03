@@ -20,6 +20,7 @@ import 'court_editing_screen.dart';
 import '../utils/history.dart';
 import '../config/app_theme.dart';
 import '../config/app_constants.dart';
+import '../widgets/hover_selection_menu.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // BOARD SCREEN - Main Animation Editor
@@ -55,7 +56,7 @@ class BoardScreen extends StatefulWidget {
 // ANNOTATION TOOLS ENUM
 // ────────────────────────────────────────────────────────────────────────────
 // Available drawing tools for annotations on the board
-enum AnnotationTool { none, line, circle, rectangle }
+enum AnnotationTool { none, move, line, circle, rectangle }
 
 class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin {
   // ──────────────────────────────────────────────────────────────────────────
@@ -103,13 +104,40 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   AnnotationTool _activeAnnotationTool = AnnotationTool.none; // Current drawing tool
   bool _eraserMode = false; // Is eraser active?
   Offset? _eraserPosCm; // Current eraser position in cm coordinates
-  final double _eraserRadiusCm = 20; // Eraser radius in cm (40cm diameter)
+  double _annotationEraserRadiusCm = 20; // Eraser radius in cm (40cm diameter)
+  final List<double> _annotationEraserSizes = const [10.0, 20.0, 30.0];
+  OverlayEntry? _annotationEraserMenuEntry;
+  int _annotationHoverEraserIndex = -1;
+  final GlobalKey _annotationEraserButtonKey = GlobalKey(debugLabel: 'annotation_eraser_button');
+  final GlobalKey _annotationEraserMenuKey = GlobalKey(debugLabel: 'annotation_eraser_menu');
+  final ValueNotifier<int> _annotationEraserHoverNotifier = ValueNotifier<int>(-1);
   bool _annotationsAboveObjects = false; // Layer order for annotations
   final List<Offset> _pendingAnnotationPoints = []; // Points being drawn (not committed)
   Color _annotationColor = Colors.red; // Current annotation color
+  final List<double> _annotationStrokeOptionsCm = const [1.0, 2.0, 3.0];
+  double _annotationStrokeCm = AppConstants.annotationStrokeWidthCm;
+  OverlayEntry? _annotationStrokeMenuEntry;
+  int _annotationStrokeHoverIndex = -1;
+  final GlobalKey _annotationStrokeButtonKey = GlobalKey(debugLabel: 'annotation_stroke_button');
+  final GlobalKey _annotationStrokeMenuKey = GlobalKey(debugLabel: 'annotation_stroke_menu');
+  final ValueNotifier<int> _annotationStrokeHoverNotifier = ValueNotifier<int>(-1);
+  bool _circleFilled = false;
+  bool _rectangleFilled = false;
+  OverlayEntry? _circleFillMenuEntry;
+  OverlayEntry? _rectangleFillMenuEntry;
+  int _circleFillHoverIndex = -1;
+  int _rectangleFillHoverIndex = -1;
+  final GlobalKey _circleFillButtonKey = GlobalKey(debugLabel: 'annotation_circle_fill_button');
+  final GlobalKey _rectangleFillButtonKey = GlobalKey(debugLabel: 'annotation_rectangle_fill_button');
+  final GlobalKey _circleFillMenuKey = GlobalKey(debugLabel: 'annotation_circle_fill_menu');
+  final GlobalKey _rectangleFillMenuKey = GlobalKey(debugLabel: 'annotation_rectangle_fill_menu');
+  final ValueNotifier<int> _circleFillHoverNotifier = ValueNotifier<int>(-1);
+  final ValueNotifier<int> _rectangleFillHoverNotifier = ValueNotifier<int>(-1);
   final List<Annotation> _stagedAnnotations = []; // Annotations staged for preview
   final List<Annotation> _erasingAnnotations = []; // Annotations being erased (preview)
   Offset? _currentDragPos; // Current drag position for live preview
+  Annotation? _draggingAnnotation; // Annotation being moved/dragged
+  Offset? _annotationDragOffset; // Offset from touch point to annotation's start position for smooth dragging
 
   // ──────────────────────────────────────────────────────────────────────────
   // DRAG STATE (for moving objects and control points)
@@ -205,6 +233,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _ticker.dispose();
     _selectionPulseController.dispose();
     _timelineController.dispose();
+    _removeAnnotationEraserMenu();
+    _removeAnnotationStrokeMenu();
     super.dispose();
   }
 
@@ -274,10 +304,438 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   bool _shouldShowEraserOverlay(BuildContext context) {
     if (!_eraserMode || _eraserPosCm == null) return false;
-    if (kIsWeb) {
-      return !_isPhone(context);
+    // Show eraser overlay on all platforms
+    return true;
+  }
+
+  void _toggleAnnotationEraserMenu({Offset? globalPos, bool forceOpen = false}) {
+    if (_annotationEraserMenuEntry != null) {
+      _removeAnnotationEraserMenu();
+      if (!forceOpen) return;
     }
-    return !(defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+
+    final overlay = Overlay.of(context);
+    final box = _annotationEraserButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final buttonOrigin = box.localToGlobal(Offset.zero);
+    final buttonSize = box.size;
+    final origin = globalPos ?? buttonOrigin + Offset(buttonSize.width / 2, 0);
+
+    final menuHeight = HoverSelectionMenu.totalHeightForCount(_annotationEraserSizes.length);
+    final menuWidth = HoverSelectionMenu.menuWidth;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final placeAbove = buttonOrigin.dy > (screenHeight / 2);
+    final left = origin.dx - (menuWidth / 2);
+    final top = placeAbove ? buttonOrigin.dy - menuHeight - 12 : buttonOrigin.dy + buttonSize.height + 12;
+
+    _annotationHoverEraserIndex = _annotationEraserSizes.indexOf(_annotationEraserRadiusCm);
+    _annotationEraserHoverNotifier.value = _annotationHoverEraserIndex;
+
+    _annotationEraserMenuEntry = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          Positioned.fill(child: GestureDetector(onTap: _removeAnnotationEraserMenu)),
+          Positioned(
+            left: left,
+            top: top,
+            child: HoverSelectionMenu(
+              options: List.generate(
+                _annotationEraserSizes.length,
+                (index) => HoverMenuOption(
+                  builder: (isHover) {
+                    final iconRadius = 6.0 + (index * 4.0);
+                    return Center(
+                      child: Container(
+                        width: iconRadius * 2,
+                        height: iconRadius * 2,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isHover ? AppTheme.primaryBlue : Colors.white,
+                            width: isHover ? 2 : 1.5,
+                          ),
+                          color: isHover ? Colors.white10 : Colors.transparent,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              initialHover: _annotationHoverEraserIndex,
+              hoverNotifier: _annotationEraserHoverNotifier,
+              onHover: (i) => setState(() => _annotationHoverEraserIndex = i),
+              onSelect: (i) {
+                setState(() => _annotationEraserRadiusCm = _annotationEraserSizes[i]);
+                _removeAnnotationEraserMenu();
+              },
+              onDismiss: _removeAnnotationEraserMenu,
+              menuKey: _annotationEraserMenuKey,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(_annotationEraserMenuEntry!);
+    _updateAnnotationEraserMenuHover(globalPos ?? origin);
+  }
+
+  void _updateAnnotationEraserMenuHover(Offset globalPos) {
+    final box = _annotationEraserMenuKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(globalPos);
+    final width = HoverSelectionMenu.menuWidth;
+    final height = HoverSelectionMenu.totalHeightForCount(_annotationEraserSizes.length);
+    if (local.dx < 0 || local.dx > width || local.dy < 0 || local.dy > height) {
+      _annotationEraserHoverNotifier.value = -1;
+      setState(() => _annotationHoverEraserIndex = -1);
+      return;
+    }
+    final idx = (local.dy / HoverSelectionMenu.itemExtent).floor().clamp(0, _annotationEraserSizes.length - 1);
+    if (idx != _annotationHoverEraserIndex) {
+      _annotationEraserHoverNotifier.value = idx;
+      setState(() => _annotationHoverEraserIndex = idx);
+    }
+  }
+
+  void _finalizeAnnotationEraserSelection() {
+    if (_annotationEraserMenuEntry == null) return;
+    if (_annotationHoverEraserIndex >= 0 && _annotationHoverEraserIndex < _annotationEraserSizes.length) {
+      setState(() => _annotationEraserRadiusCm = _annotationEraserSizes[_annotationHoverEraserIndex]);
+    }
+    _removeAnnotationEraserMenu();
+  }
+
+  void _removeAnnotationEraserMenu() {
+    _annotationEraserMenuEntry?.remove();
+    _annotationEraserMenuEntry = null;
+    _annotationHoverEraserIndex = -1;
+    _annotationEraserHoverNotifier.value = -1;
+  }
+
+  void _toggleAnnotationStrokeMenu({Offset? globalPos, bool forceOpen = false}) {
+    if (_annotationStrokeMenuEntry != null) {
+      _removeAnnotationStrokeMenu();
+      if (!forceOpen) return;
+    }
+
+    final overlay = Overlay.of(context);
+    final box = _annotationStrokeButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final buttonOrigin = box.localToGlobal(Offset.zero);
+    final buttonSize = box.size;
+    final anchor = buttonOrigin + Offset(buttonSize.width / 2, buttonSize.height / 2);
+    final menuHeight = HoverSelectionMenu.totalHeightForCount(_annotationStrokeOptionsCm.length);
+    final menuWidth = HoverSelectionMenu.menuWidth;
+    final screenSize = MediaQuery.of(context).size;
+    final placeAbove = anchor.dy > (screenSize.height / 2);
+    final unclampedLeft = anchor.dx - (menuWidth / 2);
+    final unclampedTop = placeAbove ? buttonOrigin.dy - menuHeight - 12 : buttonOrigin.dy + buttonSize.height + 12;
+    final left = unclampedLeft.clamp(8.0, screenSize.width - menuWidth - 8.0);
+    final top = unclampedTop.clamp(8.0, screenSize.height - menuHeight - 8.0);
+
+    _annotationStrokeHoverIndex = _annotationStrokeOptionsCm.indexOf(_annotationStrokeCm);
+    _annotationStrokeHoverNotifier.value = _annotationStrokeHoverIndex;
+
+    _annotationStrokeMenuEntry = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          Positioned.fill(child: GestureDetector(onTap: _removeAnnotationStrokeMenu)),
+          Positioned(
+            left: left,
+            top: top,
+            child: HoverSelectionMenu(
+              options: _annotationStrokeOptionsCm
+                  .map(
+                    (w) => HoverMenuOption(
+                      builder: (isHover) => Center(
+                        child: Container(
+                          width: 34,
+                          height: w * 6 + 6,
+                          decoration: BoxDecoration(
+                            color: isHover ? Colors.white10 : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: Container(
+                              height: w * 3,
+                              width: 28,
+                              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              initialHover: _annotationStrokeHoverIndex,
+              hoverNotifier: _annotationStrokeHoverNotifier,
+              onHover: (i) => setState(() => _annotationStrokeHoverIndex = i),
+              onSelect: (i) {
+                setState(() => _annotationStrokeCm = _annotationStrokeOptionsCm[i]);
+                _removeAnnotationStrokeMenu();
+              },
+              onDismiss: _removeAnnotationStrokeMenu,
+              menuKey: _annotationStrokeMenuKey,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(_annotationStrokeMenuEntry!);
+    _updateAnnotationStrokeMenuHover(anchor);
+  }
+
+  void _updateAnnotationStrokeMenuHover(Offset globalPos) {
+    final box = _annotationStrokeMenuKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(globalPos);
+    final width = HoverSelectionMenu.menuWidth;
+    final height = HoverSelectionMenu.totalHeightForCount(_annotationStrokeOptionsCm.length);
+    if (local.dx < 0 || local.dx > width || local.dy < 0 || local.dy > height) {
+      _annotationStrokeHoverNotifier.value = -1;
+      setState(() => _annotationStrokeHoverIndex = -1);
+      return;
+    }
+    final idx = (local.dy / HoverSelectionMenu.itemExtent).floor().clamp(0, _annotationStrokeOptionsCm.length - 1);
+    if (idx != _annotationStrokeHoverIndex) {
+      _annotationStrokeHoverNotifier.value = idx;
+      setState(() => _annotationStrokeHoverIndex = idx);
+    }
+  }
+
+  void _removeAnnotationStrokeMenu() {
+    _annotationStrokeMenuEntry?.remove();
+    _annotationStrokeMenuEntry = null;
+    _annotationStrokeHoverIndex = -1;
+    _annotationStrokeHoverNotifier.value = -1;
+  }
+
+  void _finalizeAnnotationStrokeSelection() {
+    if (_annotationStrokeMenuEntry == null) return;
+    if (_annotationStrokeHoverIndex >= 0 && _annotationStrokeHoverIndex < _annotationStrokeOptionsCm.length) {
+      setState(() => _annotationStrokeCm = _annotationStrokeOptionsCm[_annotationStrokeHoverIndex]);
+    }
+    _removeAnnotationStrokeMenu();
+  }
+
+  void _toggleCircleFillMenu({Offset? globalPos, bool forceOpen = false}) {
+    if (_circleFillMenuEntry != null) {
+      _removeCircleFillMenu();
+      if (!forceOpen) return;
+    }
+
+    final overlay = Overlay.of(context);
+    final box = _circleFillButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final buttonOrigin = box.localToGlobal(Offset.zero);
+    final buttonSize = box.size;
+    final anchor = buttonOrigin + Offset(buttonSize.width / 2, buttonSize.height / 2);
+
+    const options = [true, false];
+    final menuHeight = HoverSelectionMenu.totalHeightForCount(options.length);
+    final menuWidth = HoverSelectionMenu.menuWidth;
+    final screenSize = MediaQuery.of(context).size;
+    final placeAbove = anchor.dy > (screenSize.height / 2);
+    final unclampedLeft = anchor.dx - (menuWidth / 2);
+    final unclampedTop = placeAbove ? buttonOrigin.dy - menuHeight - 12 : buttonOrigin.dy + buttonSize.height + 12;
+    final left = unclampedLeft.clamp(8.0, screenSize.width - menuWidth - 8.0);
+    final top = unclampedTop.clamp(8.0, screenSize.height - menuHeight - 8.0);
+
+    _circleFillHoverIndex = options.indexOf(_circleFilled);
+    _circleFillHoverNotifier.value = _circleFillHoverIndex;
+
+    _circleFillMenuEntry = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          Positioned.fill(child: GestureDetector(onTap: _removeCircleFillMenu)),
+          Positioned(
+            left: left,
+            top: top,
+            child: HoverSelectionMenu(
+              options: options
+                  .map(
+                    (filled) => HoverMenuOption(
+                      builder: (isHover) => Center(
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: filled ? _annotationColor.withValues(alpha: 0.5) : Colors.transparent,
+                            border: Border.all(
+                              color: isHover ? AppTheme.primaryBlue : Colors.white,
+                              width: isHover ? 2 : 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              initialHover: _circleFillHoverIndex,
+              hoverNotifier: _circleFillHoverNotifier,
+              onHover: (i) => setState(() => _circleFillHoverIndex = i),
+              onSelect: (i) {
+                setState(() => _circleFilled = options[i]);
+                _removeCircleFillMenu();
+              },
+              onDismiss: _removeCircleFillMenu,
+              menuKey: _circleFillMenuKey,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(_circleFillMenuEntry!);
+    _updateCircleFillMenuHover(anchor);
+  }
+
+  void _updateCircleFillMenuHover(Offset globalPos) {
+    final box = _circleFillMenuKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(globalPos);
+    final width = HoverSelectionMenu.menuWidth;
+    const optionsCount = 2;
+    final height = HoverSelectionMenu.totalHeightForCount(optionsCount);
+    if (local.dx < 0 || local.dx > width || local.dy < 0 || local.dy > height) {
+      _circleFillHoverNotifier.value = -1;
+      setState(() => _circleFillHoverIndex = -1);
+      return;
+    }
+    final idx = (local.dy / HoverSelectionMenu.itemExtent).floor().clamp(0, optionsCount - 1);
+    if (idx != _circleFillHoverIndex) {
+      _circleFillHoverNotifier.value = idx;
+      setState(() => _circleFillHoverIndex = idx);
+    }
+  }
+
+  void _removeCircleFillMenu() {
+    _circleFillMenuEntry?.remove();
+    _circleFillMenuEntry = null;
+    _circleFillHoverIndex = -1;
+    _circleFillHoverNotifier.value = -1;
+  }
+
+  void _finalizeCircleFillSelection() {
+    if (_circleFillMenuEntry == null) return;
+    if (_circleFillHoverIndex >= 0 && _circleFillHoverIndex < 2) {
+      setState(() => _circleFilled = [true, false][_circleFillHoverIndex]);
+    }
+    _removeCircleFillMenu();
+  }
+
+  void _toggleRectangleFillMenu({Offset? globalPos, bool forceOpen = false}) {
+    if (_rectangleFillMenuEntry != null) {
+      _removeRectangleFillMenu();
+      if (!forceOpen) return;
+    }
+
+    final overlay = Overlay.of(context);
+    final box = _rectangleFillButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final buttonOrigin = box.localToGlobal(Offset.zero);
+    final buttonSize = box.size;
+    final anchor = buttonOrigin + Offset(buttonSize.width / 2, buttonSize.height / 2);
+
+    const options = [true, false];
+    final menuHeight = HoverSelectionMenu.totalHeightForCount(options.length);
+    final menuWidth = HoverSelectionMenu.menuWidth;
+    final screenSize = MediaQuery.of(context).size;
+    final placeAbove = anchor.dy > (screenSize.height / 2);
+    final unclampedLeft = anchor.dx - (menuWidth / 2);
+    final unclampedTop = placeAbove ? buttonOrigin.dy - menuHeight - 12 : buttonOrigin.dy + buttonSize.height + 12;
+    final left = unclampedLeft.clamp(8.0, screenSize.width - menuWidth - 8.0);
+    final top = unclampedTop.clamp(8.0, screenSize.height - menuHeight - 8.0);
+
+    _rectangleFillHoverIndex = options.indexOf(_rectangleFilled);
+    _rectangleFillHoverNotifier.value = _rectangleFillHoverIndex;
+
+    _rectangleFillMenuEntry = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          Positioned.fill(child: GestureDetector(onTap: _removeRectangleFillMenu)),
+          Positioned(
+            left: left,
+            top: top,
+            child: HoverSelectionMenu(
+              options: options
+                  .map(
+                    (filled) => HoverMenuOption(
+                      builder: (isHover) => Center(
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: filled ? _annotationColor.withValues(alpha: 0.5) : Colors.transparent,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: isHover ? AppTheme.primaryBlue : Colors.white,
+                              width: isHover ? 2 : 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              initialHover: _rectangleFillHoverIndex,
+              hoverNotifier: _rectangleFillHoverNotifier,
+              onHover: (i) => setState(() => _rectangleFillHoverIndex = i),
+              onSelect: (i) {
+                setState(() => _rectangleFilled = options[i]);
+                _removeRectangleFillMenu();
+              },
+              onDismiss: _removeRectangleFillMenu,
+              menuKey: _rectangleFillMenuKey,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(_rectangleFillMenuEntry!);
+    _updateRectangleFillMenuHover(anchor);
+  }
+
+  void _updateRectangleFillMenuHover(Offset globalPos) {
+    final box = _rectangleFillMenuKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(globalPos);
+    final width = HoverSelectionMenu.menuWidth;
+    const optionsCount = 2;
+    final height = HoverSelectionMenu.totalHeightForCount(optionsCount);
+    if (local.dx < 0 || local.dx > width || local.dy < 0 || local.dy > height) {
+      _rectangleFillHoverNotifier.value = -1;
+      setState(() => _rectangleFillHoverIndex = -1);
+      return;
+    }
+    final idx = (local.dy / HoverSelectionMenu.itemExtent).floor().clamp(0, optionsCount - 1);
+    if (idx != _rectangleFillHoverIndex) {
+      _rectangleFillHoverNotifier.value = idx;
+      setState(() => _rectangleFillHoverIndex = idx);
+    }
+  }
+
+  void _removeRectangleFillMenu() {
+    _rectangleFillMenuEntry?.remove();
+    _rectangleFillMenuEntry = null;
+    _rectangleFillHoverIndex = -1;
+    _rectangleFillHoverNotifier.value = -1;
+  }
+
+  void _finalizeRectangleFillSelection() {
+    if (_rectangleFillMenuEntry == null) return;
+    if (_rectangleFillHoverIndex >= 0 && _rectangleFillHoverIndex < 2) {
+      setState(() => _rectangleFilled = [true, false][_rectangleFillHoverIndex]);
+    }
+    _removeRectangleFillMenu();
   }
 
   /// Derive available logical screen size from the active window (web/windows) or MediaQuery elsewhere.
@@ -710,6 +1168,39 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     }
   }
 
+  /// Build a creation tool button with visual distinction (active shows with blue background)
+  Widget _buildAnnotationCreationButton({
+    required Widget icon,
+    required String tooltip,
+    required bool isActive,
+    required VoidCallback onPressed,
+    Key? buttonKey,
+    Widget? cornerBadge,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isActive ? AppTheme.primaryBlue.withValues(alpha: 0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            IconButton(
+              key: buttonKey,
+              icon: icon,
+              tooltip: tooltip,
+              color: isActive ? AppTheme.primaryBlue : _annotationColor,
+              onPressed: onPressed,
+            ),
+            if (cornerBadge != null) Positioned(right: 6, top: 6, child: cornerBadge),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ══════════════════════════════════════════════════════════════════════════
   // COLOR PICKER DIALOG
   // ══════════════════════════════════════════════════════════════════════════
@@ -847,14 +1338,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           TextButton(
             onPressed: () {
-              final raw = controller.text.trim();
-              final newLabel = raw.isEmpty ? null : raw.substring(0, 1);
-              final oldLabel = player?.label;
+              final label = controller.text.trim();
+              if (player != null) {
+                setState(() {
+                  player.label = label.isEmpty ? null : label;
+                });
+                _saveProject();
+              }
               Navigator.pop(context);
-              if (_activePlayerId == null) return;
-              if (newLabel == oldLabel) return;
-              _history.push(ChangePlayerLabelAllFramesAction(id: _activePlayerId!, from: oldLabel, to: newLabel));
-              setState(() {});
             },
             child: const Text('Save'),
           ),
@@ -1014,6 +1505,39 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (tryAdd("BALL", prev.ball, currentFrame.ball, currentFrame.ballPathPoints)) return;
   }
 
+  /// Check if a point is near an annotation (for selecting it with move tool)
+  bool _isPointNearAnnotation(Offset point, Annotation ann, double toleranceCm) {
+    if (ann.type == AnnotationType.line && ann.points.length >= 2) {
+      final start = ann.points[0];
+      final end = ann.points[1];
+      final dist = _distanceToLineSegment(point, start, end);
+      return dist <= toleranceCm;
+    } else if (ann.type == AnnotationType.circle && ann.points.length >= 2) {
+      final center = ann.points[0];
+      final radiusPoint = ann.points[1];
+      final radius = (radiusPoint - center).distance;
+      final distToCenter = (point - center).distance;
+      final circleWidthCm = ann.strokeWidthCm;
+      return (distToCenter - radius).abs() <= (toleranceCm + circleWidthCm / 2);
+    } else if (ann.type == AnnotationType.rectangle && ann.points.length >= 2) {
+      final a = ann.points[0];
+      final b = ann.points[1];
+      final topLeft = Offset(math.min(a.dx, b.dx), math.min(a.dy, b.dy));
+      final bottomRight = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
+      final tl = topLeft;
+      final tr = Offset(bottomRight.dx, topLeft.dy);
+      final bl = Offset(topLeft.dx, bottomRight.dy);
+      final br = bottomRight;
+      final dTop = _distanceToLineSegment(point, tl, tr);
+      final dBottom = _distanceToLineSegment(point, bl, br);
+      final dLeft = _distanceToLineSegment(point, tl, bl);
+      final dRight = _distanceToLineSegment(point, tr, br);
+      final minD = math.min(math.min(dTop, dBottom), math.min(dLeft, dRight));
+      return minD <= toleranceCm;
+    }
+    return false;
+  }
+
   /// Handle drag start for line drawing
   void _handleAnnotationDragStart(DragStartDetails details, Size size) {
     if (_isPlaying || _endedAtLastFrame) return;
@@ -1030,6 +1554,29 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       });
       return;
     }
+
+    // Handle move tool - find annotation under cursor
+    if (_activeAnnotationTool == AnnotationTool.move) {
+      if (_showModifierMenu) {
+        setState(() => _showModifierMenu = false);
+      }
+      final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
+      final localPos = box.globalToLocal(details.globalPosition);
+      final cmPos = _screenToCm(localPos, size);
+
+      // Find annotation under cursor (check in reverse order so top annotations are selected first)
+      for (final ann in currentFrame.annotations.reversed) {
+        if (_isPointNearAnnotation(cmPos, ann, 30.0)) {
+          setState(() {
+            _draggingAnnotation = ann;
+            _annotationDragOffset = ann.points.isNotEmpty ? ann.points.first - cmPos : Offset.zero;
+          });
+          break;
+        }
+      }
+      return;
+    }
+
     if (_activeAnnotationTool == AnnotationTool.none) return;
 
     // Close ball modifier menu if open and annotations are being touched
@@ -1052,6 +1599,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// Handle drag update for live line preview and erasing
   void _handleAnnotationDragUpdate(DragUpdateDetails details, Size size) {
     if (_isPlaying || _endedAtLastFrame) return;
+
     final currentPos = details.globalPosition;
     // Get board position relative to the board widget
     final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
@@ -1067,9 +1615,30 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       // Update eraser position and instantly delete annotations touched by circle
       setState(() {
         _eraserPosCm = cmPos;
-        currentFrame.annotations.removeWhere((ann) => _isAnnotationTouchedByCircle(ann, cmPos, _eraserRadiusCm));
+        currentFrame.annotations.removeWhere(
+          (ann) => _isAnnotationTouchedByCircle(ann, cmPos, _annotationEraserRadiusCm),
+        );
       });
       _saveProject();
+    } else if (_activeAnnotationTool == AnnotationTool.move && _draggingAnnotation != null) {
+      // Update annotation position while dragging
+      setState(() {
+        final offset = _annotationDragOffset ?? Offset.zero;
+        final newPos = cmPos + offset;
+
+        if (_draggingAnnotation!.points.isNotEmpty) {
+          final idx = currentFrame.annotations.indexOf(_draggingAnnotation!);
+          if (idx != -1) {
+            final delta = newPos - _draggingAnnotation!.points.first;
+            final updated = _draggingAnnotation!.copy();
+            updated.points = updated.points.map((p) => p + delta).toList();
+            _draggingAnnotation = updated;
+            final nextAnnotations = List<Annotation>.from(currentFrame.annotations);
+            nextAnnotations[idx] = updated;
+            currentFrame.annotations = nextAnnotations;
+          }
+        }
+      });
     } else if (_pendingAnnotationPoints.isNotEmpty && _activeAnnotationTool != AnnotationTool.none) {
       // Update preview position for active tool
       setState(() {
@@ -1081,6 +1650,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               type: AnnotationType.rectangle,
               color: _annotationColor,
               points: [_pendingAnnotationPoints.first, cmPos],
+              filled: _rectangleFilled,
+              strokeWidthCm: _annotationStrokeCm,
             ),
           );
         } else if (_activeAnnotationTool == AnnotationTool.circle) {
@@ -1089,6 +1660,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               type: AnnotationType.circle,
               color: _annotationColor,
               points: [_pendingAnnotationPoints.first, cmPos],
+              filled: _circleFilled,
+              strokeWidthCm: _annotationStrokeCm,
             ),
           );
         }
@@ -1124,8 +1697,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final radius = (radiusPoint - center).distance;
       final distToCenter = (eraserCenterCm - center).distance;
       // Check if annotation circle overlaps with eraser circle
-      final circleWidth = 10.0; // cm width of the circle line
-      return distToCenter <= (eraserRadiusCm + radius + circleWidth / 2);
+      final circleWidthCm = ann.strokeWidthCm;
+      return distToCenter <= (eraserRadiusCm + radius + circleWidthCm / 2);
     } else if (ann.type == AnnotationType.rectangle && ann.points.length >= 2) {
       final a = ann.points[0];
       final b = ann.points[1];
@@ -1160,6 +1733,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// Handle drag end for committing line or finishing erase
   void _handleAnnotationDragEnd(DragEndDetails details, Size size) {
     if (_isPlaying || _endedAtLastFrame) return;
+
+    if (_activeAnnotationTool == AnnotationTool.move) {
+      // Finish moving annotation
+      setState(() {
+        _draggingAnnotation = null;
+        _annotationDragOffset = null;
+      });
+      _saveProject();
+      return;
+    }
+
     if (_eraserMode) {
       // Erasing already happened during drag, clear eraser position
       setState(() {
@@ -1177,11 +1761,28 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       Annotation? ann;
       if (dist > 10) {
         if (_activeAnnotationTool == AnnotationTool.line) {
-          ann = Annotation(type: AnnotationType.line, color: _annotationColor, points: [start, end]);
+          ann = Annotation(
+            type: AnnotationType.line,
+            color: _annotationColor,
+            points: [start, end],
+            strokeWidthCm: _annotationStrokeCm,
+          );
         } else if (_activeAnnotationTool == AnnotationTool.circle) {
-          ann = Annotation(type: AnnotationType.circle, color: _annotationColor, points: [start, end]);
+          ann = Annotation(
+            type: AnnotationType.circle,
+            color: _annotationColor,
+            points: [start, end],
+            filled: _circleFilled,
+            strokeWidthCm: _annotationStrokeCm,
+          );
         } else if (_activeAnnotationTool == AnnotationTool.rectangle) {
-          ann = Annotation(type: AnnotationType.rectangle, color: _annotationColor, points: [start, end]);
+          ann = Annotation(
+            type: AnnotationType.rectangle,
+            color: _annotationColor,
+            points: [start, end],
+            filled: _rectangleFilled,
+            strokeWidthCm: _annotationStrokeCm,
+          );
         }
       } else if (_activeAnnotationTool == AnnotationTool.circle) {
         // Tap-only circle: default to 30cm radius
@@ -1190,6 +1791,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           type: AnnotationType.circle,
           color: _annotationColor,
           points: [start, start + Offset(defaultRadius, 0)],
+          filled: _circleFilled,
+          strokeWidthCm: _annotationStrokeCm,
         );
       }
 
@@ -1430,7 +2033,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final prev = _getPreviousFrame();
     if (prev == null) return false;
 
-    const double bufferCm = 50.0;
+    const double bufferCm = 37.5; // Decreased from 50cm (20px → 15px snapping threshold)
     final bufferPx = _settings.cmToLogical(bufferCm, size).abs();
 
     String? bestLabel;
@@ -1793,11 +2396,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   /// Calculate perceived brightness of a color (0.0 = dark, 1.0 = light)
   double _getColorBrightness(Color color) {
-    // Using standard luminance formula: 0.299*R + 0.587*G + 0.114*B
-    final r = color.red / 255.0;
-    final g = color.green / 255.0;
-    final b = color.blue / 255.0;
-    return 0.299 * r + 0.587 * g + 0.114 * b;
+    return color.computeLuminance();
   }
 
   /// Build player widgets with drag handling
@@ -1865,27 +2464,26 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // Pulsing sonar highlight
+                // Pulsing sonar highlight - circular and extends beyond object
                 if (isSelected)
-                  AnimatedBuilder(
-                    animation: _selectionPulseController,
-                    builder: (context, _) {
-                      final t = _selectionPulseController.value;
-                      final scale = 1.0 + 0.6 * t;
-                      final opacity = (1.0 - t) * 0.35;
-                      final maxRingDiameter = playerDiameterPx * 1.6;
-                      return SizedBox(
-                        width: maxRingDiameter,
-                        height: maxRingDiameter,
-                        child: CustomPaint(
-                          painter: _PulseRingPainter(
-                            radius: playerRadiusPx * scale,
-                            color: Colors.cyanAccent.withValues(alpha: opacity.clamp(0.0, 1.0)),
-                            strokeWidth: math.max(2.0, playerRadiusPx * 0.08),
+                  Positioned.fill(
+                    child: AnimatedBuilder(
+                      animation: _selectionPulseController,
+                      builder: (context, _) {
+                        final t = _selectionPulseController.value;
+                        final scale = 1.0 + 0.6 * t;
+                        final opacity = (1.0 - t) * 0.35;
+                        return IgnorePointer(
+                          child: CustomPaint(
+                            painter: _PulseRingPainter(
+                              radius: playerRadiusPx * scale,
+                              color: Colors.cyanAccent.withValues(alpha: opacity.clamp(0.0, 1.0)),
+                              strokeWidth: math.max(2.0, playerRadiusPx * 0.08),
+                            ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
                 // Main player circle - centered, no size change from glow
                 Container(
@@ -1918,7 +2516,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       style: TextStyle(
                         fontSize: playerRadiusPx * 0.9,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: labelTextColor,
                         shadows: const [Shadow(color: Colors.black54, blurRadius: 3, offset: Offset(0, 0))],
                       ),
                     ),
@@ -2017,27 +2615,26 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Pulsing sonar highlight
+              // Pulsing sonar highlight - circular and extends beyond object
               if (isSelected)
-                AnimatedBuilder(
-                  animation: _selectionPulseController,
-                  builder: (context, _) {
-                    final t = _selectionPulseController.value;
-                    final scale = 1.0 + 0.6 * t;
-                    final opacity = (1.0 - t) * 0.35;
-                    final maxRingDiameter = ballDiameterPx * 1.6;
-                    return SizedBox(
-                      width: maxRingDiameter,
-                      height: maxRingDiameter,
-                      child: CustomPaint(
-                        painter: _PulseRingPainter(
-                          radius: ballRadiusPx * scale,
-                          color: Colors.cyanAccent.withValues(alpha: opacity.clamp(0.0, 1.0)),
-                          strokeWidth: math.max(2.0, ballRadiusPx * 0.1),
+                Positioned.fill(
+                  child: AnimatedBuilder(
+                    animation: _selectionPulseController,
+                    builder: (context, _) {
+                      final t = _selectionPulseController.value;
+                      final scale = 1.0 + 0.6 * t;
+                      final opacity = (1.0 - t) * 0.35;
+                      return IgnorePointer(
+                        child: CustomPaint(
+                          painter: _PulseRingPainter(
+                            radius: ballRadiusPx * scale,
+                            color: Colors.cyanAccent.withValues(alpha: opacity.clamp(0.0, 1.0)),
+                            strokeWidth: math.max(2.0, ballRadiusPx * 0.1),
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               // Main ball circle - centered, no size change from glow
               Container(
@@ -2285,6 +2882,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     if (!_annotationMode) {
                       _activeAnnotationTool = AnnotationTool.none;
                       _pendingAnnotationPoints.clear();
+                      _removeAnnotationEraserMenu();
+                      _removeAnnotationStrokeMenu();
                     }
                   });
                 },
@@ -2365,6 +2964,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   : null,
                               settings: _settings,
                               screenSize: screenSize,
+                              strokeWidthCm: _annotationStrokeCm,
                             ),
                           ),
                         // Draw eraser circle when eraser is active (desktop/non-phone web only)
@@ -2375,7 +2975,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               size: screenSize,
                               painter: _EraserCirclePainter(
                                 centerCm: _eraserPosCm!,
-                                radiusCm: _eraserRadiusCm,
+                                radiusCm: _annotationEraserRadiusCm,
                                 screenSize: screenSize,
                                 settings: _settings,
                               ),
@@ -2494,6 +3094,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   : null,
                               settings: _settings,
                               screenSize: screenSize,
+                              strokeWidthCm: _annotationStrokeCm,
                             ),
                           ),
                         if (isPlayback) ...[
@@ -3408,90 +4009,209 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                   child: Container(
                     color: AppTheme.lightGrey,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Symbols.diagonal_line),
-                          tooltip: 'Line Tool',
-                          color: _activeAnnotationTool == AnnotationTool.line ? _annotationColor : AppTheme.mediumGrey,
-                          onPressed: () => setState(() {
-                            _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.line
-                                ? AnnotationTool.none
-                                : AnnotationTool.line;
-                            _eraserMode = false;
-                          }),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.circle_outlined),
-                          tooltip: 'Circle Tool',
-                          color: _activeAnnotationTool == AnnotationTool.circle
-                              ? _annotationColor
-                              : AppTheme.mediumGrey,
-                          onPressed: () => setState(() {
-                            _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.circle
-                                ? AnnotationTool.none
-                                : AnnotationTool.circle;
-                            _eraserMode = false;
-                          }),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.crop_square),
-                          tooltip: 'Rectangle Tool',
-                          color: _activeAnnotationTool == AnnotationTool.rectangle
-                              ? _annotationColor
-                              : AppTheme.mediumGrey,
-                          onPressed: () => setState(() {
-                            _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.rectangle
-                                ? AnnotationTool.none
-                                : AnnotationTool.rectangle;
-                            _eraserMode = false;
-                          }),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.content_copy),
-                          tooltip: 'Duplicate last annotation',
-                          color: currentFrame.annotations.isNotEmpty ? AppTheme.mediumGrey : AppTheme.lightGrey,
-                          onPressed: currentFrame.annotations.isNotEmpty ? _duplicateLastAnnotation : null,
-                        ),
-                        IconButton(
-                          icon: const Icon(Symbols.ink_eraser),
-                          tooltip: 'Eraser',
-                          color: _eraserMode ? AppTheme.errorRed : AppTheme.mediumGrey,
-                          onPressed: () => setState(() {
-                            _eraserMode = !_eraserMode;
-                            if (_eraserMode) _activeAnnotationTool = AnnotationTool.none;
-                          }),
-                        ),
-                        IconButton(
-                          icon: const Icon(Symbols.delete),
-                          tooltip: 'Delete All Annotations',
-                          color: AppTheme.mediumGrey,
-                          onPressed: _clearCurrentFrameAnnotations,
-                        ),
-                        IconButton(
-                          icon: Icon(_annotationsAboveObjects ? Symbols.flip_to_front : Symbols.flip_to_back),
-                          tooltip: _annotationsAboveObjects ? 'Annotations Above Objects' : 'Annotations Below Objects',
-                          color: _annotationsAboveObjects ? AppTheme.mediumGrey : AppTheme.mediumGrey,
-                          onPressed: () => setState(() {
-                            _annotationsAboveObjects = !_annotationsAboveObjects;
-                          }),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: _showColorPicker,
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: _annotationColor,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: AppTheme.darkGrey, width: 2),
-                            ),
-                            child: const Icon(Icons.palette, size: 16, color: Colors.white),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildAnnotationCreationButton(
+                            icon: const Icon(Symbols.diagonal_line),
+                            tooltip: 'Line Tool',
+                            isActive: _activeAnnotationTool == AnnotationTool.line,
+                            onPressed: () => setState(() {
+                              _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.line
+                                  ? AnnotationTool.none
+                                  : AnnotationTool.line;
+                              _eraserMode = false;
+                            }),
                           ),
-                        ),
-                      ],
+                          GestureDetector(
+                            key: _circleFillButtonKey,
+                            onSecondaryTapDown: (details) =>
+                                _toggleCircleFillMenu(globalPos: details.globalPosition, forceOpen: true),
+                            onLongPressStart: (details) =>
+                                _toggleCircleFillMenu(globalPos: details.globalPosition, forceOpen: true),
+                            onLongPressMoveUpdate: (details) => _updateCircleFillMenuHover(details.globalPosition),
+                            onLongPressEnd: (details) {
+                              _updateCircleFillMenuHover(details.globalPosition);
+                              _finalizeCircleFillSelection();
+                            },
+                            child: _buildAnnotationCreationButton(
+                              icon: Icon(_circleFilled ? Icons.circle : Icons.circle_outlined),
+                              tooltip: 'Circle Tool (long-press to set fill)',
+                              isActive: _activeAnnotationTool == AnnotationTool.circle,
+                              buttonKey: null,
+                              cornerBadge: _circleFilled
+                                  ? Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: _annotationColor,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 1),
+                                      ),
+                                    )
+                                  : null,
+                              onPressed: () {
+                                if (_circleFillMenuEntry != null) {
+                                  _removeCircleFillMenu();
+                                } else {
+                                  _toggleCircleFillMenu(forceOpen: true);
+                                }
+                                setState(() {
+                                  if (_activeAnnotationTool != AnnotationTool.circle) {
+                                    _activeAnnotationTool = AnnotationTool.circle;
+                                  }
+                                  _eraserMode = false;
+                                });
+                              },
+                            ),
+                          ),
+                          GestureDetector(
+                            key: _rectangleFillButtonKey,
+                            onSecondaryTapDown: (details) =>
+                                _toggleRectangleFillMenu(globalPos: details.globalPosition, forceOpen: true),
+                            onLongPressStart: (details) =>
+                                _toggleRectangleFillMenu(globalPos: details.globalPosition, forceOpen: true),
+                            onLongPressMoveUpdate: (details) => _updateRectangleFillMenuHover(details.globalPosition),
+                            onLongPressEnd: (details) {
+                              _updateRectangleFillMenuHover(details.globalPosition);
+                              _finalizeRectangleFillSelection();
+                            },
+                            child: _buildAnnotationCreationButton(
+                              icon: Icon(_rectangleFilled ? Icons.stop : Icons.crop_square),
+                              tooltip: 'Rectangle Tool (long-press to set fill)',
+                              isActive: _activeAnnotationTool == AnnotationTool.rectangle,
+                              buttonKey: null,
+                              cornerBadge: _rectangleFilled
+                                  ? Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: _annotationColor,
+                                        borderRadius: BorderRadius.circular(3),
+                                        border: Border.all(color: Colors.white, width: 1),
+                                      ),
+                                    )
+                                  : null,
+                              onPressed: () {
+                                if (_rectangleFillMenuEntry != null) {
+                                  _removeRectangleFillMenu();
+                                } else {
+                                  _toggleRectangleFillMenu(forceOpen: true);
+                                }
+                                setState(() {
+                                  if (_activeAnnotationTool != AnnotationTool.rectangle) {
+                                    _activeAnnotationTool = AnnotationTool.rectangle;
+                                  }
+                                  _eraserMode = false;
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          IconButton(
+                            icon: const Icon(Icons.pan_tool_alt),
+                            tooltip: 'Move Tool',
+                            color: _activeAnnotationTool == AnnotationTool.move
+                                ? AppTheme.primaryBlue
+                                : AppTheme.mediumGrey,
+                            onPressed: () => setState(() {
+                              _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.move
+                                  ? AnnotationTool.none
+                                  : AnnotationTool.move;
+                              _eraserMode = false;
+                            }),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.content_copy),
+                            tooltip: 'Duplicate last annotation',
+                            color: currentFrame.annotations.isNotEmpty ? AppTheme.mediumGrey : AppTheme.lightGrey,
+                            onPressed: currentFrame.annotations.isNotEmpty ? _duplicateLastAnnotation : null,
+                          ),
+                          GestureDetector(
+                            key: _annotationEraserButtonKey,
+                            onSecondaryTapDown: (details) =>
+                                _toggleAnnotationEraserMenu(globalPos: details.globalPosition, forceOpen: true),
+                            onLongPressStart: (details) =>
+                                _toggleAnnotationEraserMenu(globalPos: details.globalPosition, forceOpen: true),
+                            onLongPressMoveUpdate: (details) =>
+                                _updateAnnotationEraserMenuHover(details.globalPosition),
+                            onLongPressEnd: (details) {
+                              _updateAnnotationEraserMenuHover(details.globalPosition);
+                              _finalizeAnnotationEraserSelection();
+                            },
+                            child: IconButton(
+                              icon: const Icon(Symbols.ink_eraser),
+                              tooltip: 'Eraser (long-press for size)',
+                              color: _eraserMode ? AppTheme.errorRed : AppTheme.mediumGrey,
+                              onPressed: () {
+                                if (_annotationEraserMenuEntry != null) {
+                                  _removeAnnotationEraserMenu();
+                                } else {
+                                  _toggleAnnotationEraserMenu(forceOpen: true);
+                                }
+                                setState(() {
+                                  if (!_eraserMode) {
+                                    _eraserMode = true;
+                                    _activeAnnotationTool = AnnotationTool.none;
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Symbols.delete),
+                            tooltip: 'Delete All Annotations',
+                            color: AppTheme.mediumGrey,
+                            onPressed: _clearCurrentFrameAnnotations,
+                          ),
+                          IconButton(
+                            icon: Icon(_annotationsAboveObjects ? Symbols.flip_to_front : Symbols.flip_to_back),
+                            tooltip: _annotationsAboveObjects
+                                ? 'Annotations Above Objects'
+                                : 'Annotations Below Objects',
+                            color: _annotationsAboveObjects ? AppTheme.mediumGrey : AppTheme.mediumGrey,
+                            onPressed: () => setState(() {
+                              _annotationsAboveObjects = !_annotationsAboveObjects;
+                            }),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onSecondaryTapDown: (details) =>
+                                _toggleAnnotationStrokeMenu(globalPos: details.globalPosition, forceOpen: true),
+                            onLongPressStart: (details) =>
+                                _toggleAnnotationStrokeMenu(globalPos: details.globalPosition, forceOpen: true),
+                            onLongPressMoveUpdate: (details) =>
+                                _updateAnnotationStrokeMenuHover(details.globalPosition),
+                            onLongPressEnd: (details) {
+                              _updateAnnotationStrokeMenuHover(details.globalPosition);
+                              _finalizeAnnotationStrokeSelection();
+                            },
+                            child: IconButton(
+                              key: _annotationStrokeButtonKey,
+                              icon: const Icon(Symbols.line_weight),
+                              tooltip: 'Annotation stroke width',
+                              color: AppTheme.mediumGrey,
+                              onPressed: () => _toggleAnnotationStrokeMenu(forceOpen: true),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: _showColorPicker,
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: _annotationColor,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: AppTheme.darkGrey, width: 2),
+                              ),
+                              child: const Icon(Icons.palette, size: 16, color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

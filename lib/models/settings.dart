@@ -40,7 +40,8 @@ class Settings extends HiveObject {
   });
 
   // Converts cm to logical units (pixels)
-  // Adaptive fit: use 1.3× serve zone on narrow (mobile-like) widths for larger default zoom, 1.5× otherwise (Windows-friendly)
+  // Adaptive fit: use 1.2× serve zone on narrow (mobile-like) widths for larger default zoom, 1.4× otherwise (Windows-friendly)
+  // This makes the court larger on mobile phones by default, with zoom level adjustable in future updates
   double cmToLogical(double cm, Size screenSize) {
     const double padding = 50;
     const double appBarHeight = kToolbarHeight;
@@ -52,7 +53,7 @@ class Settings extends HiveObject {
     // Heuristic: widths up to 800px behave like mobile/tablet; above that treat as desktop.
     final bool isMobileLikeWidth = screenSize.width <= 800;
     final double serveZoneRadius = outerCircleRadiusCm;
-    final double serveZoneFactor = isMobileLikeWidth ? 1.3 : 1.5;
+    final double serveZoneFactor = isMobileLikeWidth ? 1.2 : 1.4;
     final double targetReference = serveZoneRadius * serveZoneFactor;
     final double safeReference = targetReference == 0 ? 1.0 : targetReference;
     return cm * (halfMinScreen / safeReference);

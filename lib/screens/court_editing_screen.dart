@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../config/app_theme.dart';
-import '../config/app_constants.dart';
 import '../models/animation_project.dart';
 import '../models/court_element.dart';
 import '../models/settings.dart';
 import '../widgets/board_background_painter.dart';
 import '../widgets/court_editor_painter.dart';
+import '../widgets/hover_selection_menu.dart';
 
 enum CourtEditorTool { select, net, zone, customCircle, customLine, customRectangle, eraser }
 
@@ -33,6 +33,12 @@ class _EditorSnapshot {
 
 enum ZoneMode { inner, serve, outer }
 
+class _ZoneOption {
+  final String label;
+  final ZoneMode mode;
+  const _ZoneOption(this.label, this.mode);
+}
+
 class CourtEditingScreen extends StatefulWidget {
   final AnimationProject project;
 
@@ -52,7 +58,30 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   Offset? _dragOffset; // Offset from touch point to element position for dragging
   Offset? _dragEndOffset; // Offset for endPosition when dragging shapes
   CourtElement? _selectedElement;
-  final double _eraserRadius = 30.0;
+  double _eraserRadius = 20.0; // cm-based eraser radius, changeable via long-tap
+  final List<double> _eraserSizes = const [10.0, 20.0, 30.0];
+  OverlayEntry? _eraserMenuEntry;
+  int _hoverEraserIndex = -1;
+  final GlobalKey _eraserButtonKey = GlobalKey(debugLabel: 'court_editor_eraser_button');
+  final GlobalKey _eraserMenuKey = GlobalKey(debugLabel: 'court_editor_eraser_menu');
+  final ValueNotifier<int> _eraserHoverNotifier = ValueNotifier<int>(-1);
+  final List<double> _elementStrokeOptions = const [2.0, 3.5, 5.0];
+  double _elementStrokeWidth = 2.0;
+  OverlayEntry? _strokeWidthMenuEntry;
+  int _hoverStrokeIndex = -1;
+  final GlobalKey _strokeWidthButtonKey = GlobalKey(debugLabel: 'court_editor_stroke_button');
+  final GlobalKey _strokeWidthMenuKey = GlobalKey(debugLabel: 'court_editor_stroke_menu');
+  final ValueNotifier<int> _strokeHoverNotifier = ValueNotifier<int>(-1);
+  OverlayEntry? _zoneMenuEntry;
+  int _hoverZoneIndex = -1;
+  final GlobalKey _zoneButtonKey = GlobalKey(debugLabel: 'court_editor_zone_button');
+  final GlobalKey _zoneMenuKey = GlobalKey(debugLabel: 'court_editor_zone_menu');
+  final ValueNotifier<int> _zoneHoverNotifier = ValueNotifier<int>(-1);
+  final List<_ZoneOption> _zoneOptions = const [
+    _ZoneOption('NHZ', ZoneMode.inner),
+    _ZoneOption('SZ', ZoneMode.serve),
+    _ZoneOption('OB', ZoneMode.outer),
+  ];
   final GlobalKey _canvasKey = GlobalKey(debugLabel: 'court_editor_canvas');
   Color _currentColor = Colors.white;
   ZoneMode _zoneMode = ZoneMode.inner;
@@ -65,12 +94,49 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   final List<_EditorSnapshot> _undoStack = [];
   final List<_EditorSnapshot> _redoStack = [];
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // COORDINATE CONVERSION HELPERS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Calculate the center point of the board (accounting for AppBar and Timeline)
+  Offset _boardCenter(Size size) {
+    const double appBarHeight = kToolbarHeight;
+    const double timelineHeight = 140; // Match the timeline height in build()
+    final usableHeight = size.height - appBarHeight - timelineHeight;
+    final cx = size.width / 2;
+    final cy = appBarHeight + usableHeight / 2;
+    return Offset(cx, cy);
+  }
+
+  /// Convert cm logical position to screen pixel position
+  Offset _toScreenPosition(Offset cmPos, Size size) {
+    final center = _boardCenter(size);
+    return center + Offset(_settings.cmToLogical(cmPos.dx, size), _settings.cmToLogical(cmPos.dy, size));
+  }
+
+  /// Convert screen pixel position to cm logical coordinates
+  Offset _screenToCm(Offset screenPos, Size size) {
+    final center = _boardCenter(size);
+    final logical = screenPos - center;
+    final scalePerCm = _settings.cmToLogical(1.0, size);
+    if (scalePerCm == 0) return Offset.zero;
+    return Offset(logical.dx / scalePerCm, logical.dy / scalePerCm);
+  }
+
   @override
   void initState() {
     super.initState();
     _currentTool = CourtEditorTool.select;
     _elements = List.from(widget.project.customCourtElements ?? []);
     _settings = widget.project.settings ?? Settings();
+  }
+
+  @override
+  void dispose() {
+    _removeEraserMenu();
+    _removeStrokeWidthMenu();
+    _removeZoneMenu();
+    super.dispose();
   }
 
   @override
@@ -113,7 +179,8 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                             painter: BoardBackgroundPainter(
                               screenSize: screenSize, // Use full screenSize for proper center calculation
                               settings: _settings,
-                              customElements: _elements, // Show live-updating elements, not saved ones
+                              customElements:
+                                  null, // CourtEditorPainter handles all element rendering to avoid duplicates
                               projectType: widget.project.projectType,
                               elementsRevision: _elementsRevision,
                             ),
@@ -124,10 +191,13 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                             size: boardSize,
                             painter: CourtEditorPainter(
                               elements: _elements,
-                              eraserPos: _currentTool == CourtEditorTool.eraser ? _currentPos : null,
+                              eraserPos: _currentTool == CourtEditorTool.eraser && _currentPos != null
+                                  ? _toScreenPosition(_currentPos!, screenSize)
+                                  : null,
                               eraserRadius: _eraserRadius,
                               screenSize: screenSize, // Use full screenSize for proper center calculation
                               previewElement: _previewElement,
+                              settings: _settings,
                             ),
                           ),
                         ),
@@ -175,7 +245,9 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                   const SizedBox(width: 4),
                   _buildToolButton(CourtEditorTool.customRectangle, Icons.crop_square, 'Rect'),
                   const SizedBox(width: 4),
-                  _buildToolButton(CourtEditorTool.eraser, Symbols.ink_eraser, 'Eraser'),
+                  _buildEraserButton(),
+                  const SizedBox(width: 8),
+                  _buildStrokeWidthButton(),
                   const SizedBox(width: 8),
                   _buildColorPickerButton(),
                   const SizedBox(width: 8),
@@ -233,6 +305,370 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     );
   }
 
+  Widget _buildEraserButton() {
+    final isActive = _currentTool == CourtEditorTool.eraser;
+    return Tooltip(
+      message: 'Eraser (long-press or right-click to choose size: ${_eraserRadius.toStringAsFixed(0)} cm)',
+      child: GestureDetector(
+        onLongPressStart: (details) => _toggleEraserMenu(globalPos: details.globalPosition, forceOpen: true),
+        onLongPressMoveUpdate: (details) => _updateEraserMenuHover(details.globalPosition),
+        onLongPressEnd: (details) {
+          _updateEraserMenuHover(details.globalPosition);
+          _finalizeEraserMenuSelection();
+        },
+        onSecondaryTapDown: (details) => _toggleEraserMenu(globalPos: details.globalPosition),
+        child: FloatingActionButton.small(
+          key: _eraserButtonKey,
+          heroTag: 'tool-eraser',
+          backgroundColor: isActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+          onPressed: () => setState(() => _currentTool = CourtEditorTool.eraser),
+          child: const Icon(Symbols.ink_eraser, color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStrokeWidthButton() {
+    return Tooltip(
+      message: 'Line width (${_elementStrokeWidth.toStringAsFixed(1)} px)',
+      child: GestureDetector(
+        onLongPressStart: (details) => _toggleStrokeWidthMenu(globalPos: details.globalPosition, forceOpen: true),
+        onLongPressMoveUpdate: (details) => _updateStrokeWidthMenuHover(details.globalPosition),
+        onLongPressEnd: (details) {
+          _updateStrokeWidthMenuHover(details.globalPosition);
+          _finalizeStrokeWidthMenuSelection();
+        },
+        onSecondaryTapDown: (details) => _toggleStrokeWidthMenu(globalPos: details.globalPosition, forceOpen: true),
+        child: FloatingActionButton.small(
+          key: _strokeWidthButtonKey,
+          heroTag: 'tool-stroke-width',
+          backgroundColor: AppTheme.mediumGrey,
+          onPressed: () => _toggleStrokeWidthMenu(forceOpen: true),
+          child: const Icon(Symbols.line_weight, color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  void _toggleEraserMenu({Offset? globalPos, bool forceOpen = false}) {
+    if (_eraserMenuEntry != null) {
+      _removeEraserMenu();
+      if (!forceOpen) return;
+    }
+
+    final overlay = Overlay.of(context);
+    final box = _eraserButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final buttonOrigin = box.localToGlobal(Offset.zero);
+    final buttonSize = box.size;
+    final origin = globalPos ?? buttonOrigin + Offset(buttonSize.width / 2, 0);
+
+    final menuHeight = HoverSelectionMenu.totalHeightForCount(_eraserSizes.length);
+    final menuWidth = HoverSelectionMenu.menuWidth;
+    final left = origin.dx - (menuWidth / 2);
+    final top = buttonOrigin.dy - menuHeight - 12; // place above button with spacing
+
+    _hoverEraserIndex = _eraserSizes.indexOf(_eraserRadius);
+    _eraserHoverNotifier.value = _hoverEraserIndex;
+
+    _eraserMenuEntry = OverlayEntry(
+      builder: (context) {
+        return Stack(
+          children: [
+            // Dismiss area
+            Positioned.fill(child: GestureDetector(onTap: _removeEraserMenu)),
+            Positioned(
+              left: left,
+              top: top,
+              child: HoverSelectionMenu(
+                options: List.generate(
+                  _eraserSizes.length,
+                  (index) => HoverMenuOption(
+                    builder: (isHover) {
+                      final iconRadius = 6.0 + (index * 4.0);
+                      return Center(
+                        child: Container(
+                          width: iconRadius * 2,
+                          height: iconRadius * 2,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isHover ? AppTheme.primaryBlue : Colors.white,
+                              width: isHover ? 2 : 1.5,
+                            ),
+                            color: isHover ? Colors.white10 : Colors.transparent,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                initialHover: _hoverEraserIndex,
+                hoverNotifier: _eraserHoverNotifier,
+                onHover: (i) => setState(() => _hoverEraserIndex = i),
+                onSelect: (i) {
+                  setState(() => _eraserRadius = _eraserSizes[i]);
+                  _removeEraserMenu();
+                },
+                onDismiss: _removeEraserMenu,
+                menuKey: _eraserMenuKey,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    overlay.insert(_eraserMenuEntry!);
+
+    // Seed hover based on current pointer location, if provided
+    _updateEraserMenuHover(globalPos ?? origin);
+  }
+
+  void _removeEraserMenu() {
+    _eraserMenuEntry?.remove();
+    _eraserMenuEntry = null;
+    _hoverEraserIndex = -1;
+    _eraserHoverNotifier.value = -1;
+  }
+
+  void _updateEraserMenuHover(Offset globalPos) {
+    final box = _eraserMenuKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(globalPos);
+    final width = HoverSelectionMenu.menuWidth;
+    final height = HoverSelectionMenu.totalHeightForCount(_eraserSizes.length);
+    if (local.dx < 0 || local.dx > width || local.dy < 0 || local.dy > height) {
+      _eraserHoverNotifier.value = -1;
+      setState(() => _hoverEraserIndex = -1);
+      return;
+    }
+    final idx = (local.dy / HoverSelectionMenu.itemExtent).floor().clamp(0, _eraserSizes.length - 1);
+    if (idx != _hoverEraserIndex) {
+      _eraserHoverNotifier.value = idx;
+      setState(() => _hoverEraserIndex = idx);
+    }
+  }
+
+  void _finalizeEraserMenuSelection() {
+    if (_eraserMenuEntry == null) return;
+    if (_hoverEraserIndex >= 0 && _hoverEraserIndex < _eraserSizes.length) {
+      setState(() => _eraserRadius = _eraserSizes[_hoverEraserIndex]);
+    }
+    _removeEraserMenu();
+  }
+
+  void _toggleStrokeWidthMenu({Offset? globalPos, bool forceOpen = false}) {
+    if (_strokeWidthMenuEntry != null) {
+      _removeStrokeWidthMenu();
+      if (!forceOpen) return;
+    }
+
+    final overlay = Overlay.of(context);
+    final box = _strokeWidthButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final buttonOrigin = box.localToGlobal(Offset.zero);
+    final buttonSize = box.size;
+    final origin = globalPos ?? buttonOrigin + Offset(buttonSize.width / 2, 0);
+
+    final menuHeight = HoverSelectionMenu.totalHeightForCount(_elementStrokeOptions.length);
+    final menuWidth = HoverSelectionMenu.menuWidth;
+    final left = origin.dx - (menuWidth / 2);
+    final top = buttonOrigin.dy - menuHeight - 12;
+
+    _hoverStrokeIndex = _elementStrokeOptions.indexOf(_elementStrokeWidth);
+    _strokeHoverNotifier.value = _hoverStrokeIndex;
+
+    _strokeWidthMenuEntry = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          Positioned.fill(child: GestureDetector(onTap: _removeStrokeWidthMenu)),
+          Positioned(
+            left: left,
+            top: top,
+            child: HoverSelectionMenu(
+              options: _elementStrokeOptions
+                  .map(
+                    (w) => HoverMenuOption(
+                      builder: (isHover) => Container(
+                        alignment: Alignment.center,
+                        child: Container(
+                          width: 34,
+                          height: w + 6,
+                          decoration: BoxDecoration(
+                            color: isHover ? Colors.white10 : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: Container(
+                              height: w,
+                              width: 28,
+                              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              initialHover: _hoverStrokeIndex,
+              hoverNotifier: _strokeHoverNotifier,
+              onHover: (i) => setState(() => _hoverStrokeIndex = i),
+              onSelect: (i) {
+                setState(() => _elementStrokeWidth = _elementStrokeOptions[i]);
+                _removeStrokeWidthMenu();
+              },
+              onDismiss: _removeStrokeWidthMenu,
+              menuKey: _strokeWidthMenuKey,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(_strokeWidthMenuEntry!);
+    _updateStrokeWidthMenuHover(globalPos ?? origin);
+  }
+
+  void _removeStrokeWidthMenu() {
+    _strokeWidthMenuEntry?.remove();
+    _strokeWidthMenuEntry = null;
+    _hoverStrokeIndex = -1;
+    _strokeHoverNotifier.value = -1;
+  }
+
+  void _updateStrokeWidthMenuHover(Offset globalPos) {
+    final box = _strokeWidthMenuKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(globalPos);
+    final width = HoverSelectionMenu.menuWidth;
+    final height = HoverSelectionMenu.totalHeightForCount(_elementStrokeOptions.length);
+    if (local.dx < 0 || local.dx > width || local.dy < 0 || local.dy > height) {
+      _strokeHoverNotifier.value = -1;
+      setState(() => _hoverStrokeIndex = -1);
+      return;
+    }
+    final idx = (local.dy / HoverSelectionMenu.itemExtent).floor().clamp(0, _elementStrokeOptions.length - 1);
+    if (idx != _hoverStrokeIndex) {
+      _strokeHoverNotifier.value = idx;
+      setState(() => _hoverStrokeIndex = idx);
+    }
+  }
+
+  void _finalizeStrokeWidthMenuSelection() {
+    if (_strokeWidthMenuEntry == null) return;
+    if (_hoverStrokeIndex >= 0 && _hoverStrokeIndex < _elementStrokeOptions.length) {
+      setState(() => _elementStrokeWidth = _elementStrokeOptions[_hoverStrokeIndex]);
+    }
+    _removeStrokeWidthMenu();
+  }
+
+  void _toggleZoneMenu({Offset? globalPos, bool forceOpen = false}) {
+    if (_zoneMenuEntry != null) {
+      _removeZoneMenu();
+      if (!forceOpen) return;
+    }
+
+    final overlay = Overlay.of(context);
+    final box = _zoneButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final buttonOrigin = box.localToGlobal(Offset.zero);
+    final buttonSize = box.size;
+    final origin = globalPos ?? buttonOrigin + Offset(buttonSize.width / 2, 0);
+
+    final menuHeight = HoverSelectionMenu.totalHeightForCount(_zoneOptions.length);
+    final menuWidth = HoverSelectionMenu.menuWidth;
+    final left = origin.dx - (menuWidth / 2);
+    final top = buttonOrigin.dy - menuHeight - 12;
+
+    _hoverZoneIndex = _zoneOptions.indexWhere((z) => z.mode == _zoneMode);
+    _zoneHoverNotifier.value = _hoverZoneIndex;
+
+    _zoneMenuEntry = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          Positioned.fill(child: GestureDetector(onTap: _removeZoneMenu)),
+          Positioned(
+            left: left,
+            top: top,
+            child: HoverSelectionMenu(
+              options: _zoneOptions
+                  .map(
+                    (option) => HoverMenuOption(
+                      builder: (isHover) => Center(
+                        child: Text(
+                          option.label,
+                          style: TextStyle(
+                            color: isHover ? AppTheme.primaryBlue : Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              initialHover: _hoverZoneIndex,
+              hoverNotifier: _zoneHoverNotifier,
+              onHover: (i) => setState(() => _hoverZoneIndex = i),
+              onSelect: (i) {
+                setState(() {
+                  _zoneMode = _zoneOptions[i].mode;
+                  _currentTool = CourtEditorTool.zone;
+                });
+                _removeZoneMenu();
+              },
+              onDismiss: _removeZoneMenu,
+              menuKey: _zoneMenuKey,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(_zoneMenuEntry!);
+    _updateZoneMenuHover(globalPos ?? origin);
+  }
+
+  void _updateZoneMenuHover(Offset globalPos) {
+    final box = _zoneMenuKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(globalPos);
+    final width = HoverSelectionMenu.menuWidth;
+    final height = HoverSelectionMenu.totalHeightForCount(_zoneOptions.length);
+    if (local.dx < 0 || local.dx > width || local.dy < 0 || local.dy > height) {
+      _zoneHoverNotifier.value = -1;
+      setState(() => _hoverZoneIndex = -1);
+      return;
+    }
+    final idx = (local.dy / HoverSelectionMenu.itemExtent).floor().clamp(0, _zoneOptions.length - 1);
+    if (idx != _hoverZoneIndex) {
+      _zoneHoverNotifier.value = idx;
+      setState(() => _hoverZoneIndex = idx);
+    }
+  }
+
+  void _removeZoneMenu() {
+    _zoneMenuEntry?.remove();
+    _zoneMenuEntry = null;
+    _hoverZoneIndex = -1;
+    _zoneHoverNotifier.value = -1;
+  }
+
+  void _finalizeZoneSelection() {
+    if (_zoneMenuEntry == null) return;
+    if (_hoverZoneIndex >= 0 && _hoverZoneIndex < _zoneOptions.length) {
+      setState(() {
+        _zoneMode = _zoneOptions[_hoverZoneIndex].mode;
+        _currentTool = CourtEditorTool.zone;
+      });
+    }
+    _removeZoneMenu();
+  }
+
   Widget _buildColorPickerButton() {
     return Tooltip(
       message: 'Tool Color',
@@ -283,29 +719,32 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     }
     return Tooltip(
       message: 'Zone ($label)',
-      child: FloatingActionButton.small(
-        heroTag: 'tool-zone',
-        backgroundColor: zoneActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
-        onPressed: () => setState(() {
-          _currentTool = CourtEditorTool.zone;
-          // Cycle mode on repeated taps
-          if (_zoneMode == ZoneMode.inner) {
-            _zoneMode = ZoneMode.serve;
-          } else if (_zoneMode == ZoneMode.serve) {
-            _zoneMode = ZoneMode.outer;
-          } else {
-            _zoneMode = ZoneMode.inner;
-          }
-        }),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            IconTheme(
-              data: IconThemeData(color: zoneActive ? _currentColor : Colors.white),
-              child: icon,
-            ),
-            Text(label, style: TextStyle(fontSize: 9, color: zoneActive ? _currentColor : Colors.white)),
-          ],
+      child: GestureDetector(
+        onSecondaryTapDown: (details) => _toggleZoneMenu(globalPos: details.globalPosition, forceOpen: true),
+        onLongPressStart: (details) => _toggleZoneMenu(globalPos: details.globalPosition, forceOpen: true),
+        onLongPressMoveUpdate: (details) => _updateZoneMenuHover(details.globalPosition),
+        onLongPressEnd: (details) {
+          _updateZoneMenuHover(details.globalPosition);
+          _finalizeZoneSelection();
+        },
+        child: FloatingActionButton.small(
+          key: _zoneButtonKey,
+          heroTag: 'tool-zone',
+          backgroundColor: zoneActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+          onPressed: () {
+            _currentTool = CourtEditorTool.zone;
+            _toggleZoneMenu(forceOpen: true);
+          },
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconTheme(
+                data: IconThemeData(color: zoneActive ? _currentColor : Colors.white),
+                child: icon,
+              ),
+              Text(label, style: TextStyle(fontSize: 9, color: zoneActive ? _currentColor : Colors.white)),
+            ],
+          ),
         ),
       ),
     );
@@ -320,21 +759,22 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
 
   void _onPanDown(DragDownDetails details) {
     final localPos = details.localPosition;
-    _startPos = localPos;
-    _currentPos = localPos;
+    final localPosCm = _screenToCm(localPos, _screenSize);
+    _startPos = localPosCm;
+    _currentPos = localPosCm;
     _previewElement = null;
 
     if (_currentTool == CourtEditorTool.select) {
       _selectedElement = null;
       for (final element in _elements.reversed) {
-        if (_isPointNearElement(localPos, element)) {
+        if (_isPointNearElement(localPosCm, element)) {
           _selectedElement = element;
           _draggingElement = element;
           _currentColor = element.color;
           // Store offset from touch point to element position for smooth dragging
-          _dragOffset = element.position - localPos;
+          _dragOffset = element.position - localPosCm;
           if (element.endPosition != null) {
-            _dragEndOffset = element.endPosition! - localPos;
+            _dragEndOffset = element.endPosition! - localPosCm;
           }
           // Save pre-change snapshot once at drag start
           _saveToHistory();
@@ -344,10 +784,10 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     } else if (_currentTool == CourtEditorTool.eraser) {
       // Save pre-change snapshot once at erase start
       _saveToHistory();
-      _eraseAtPosition(localPos);
+      _eraseAtPosition(localPosCm);
     } else {
       // Show live preview for all creation tools (circle, zone, line, rectangle, net)
-      _previewElement = _createElementFromTool(_currentTool, localPos, localPos, preview: true);
+      _previewElement = _createElementFromTool(_currentTool, localPosCm, localPosCm, preview: true);
     }
   }
 
@@ -355,15 +795,16 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     final box = _canvasKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
     final localPos = box.globalToLocal(details.globalPosition);
+    final localPosCm = _screenToCm(localPos, _screenSize);
 
     setState(() {
-      _currentPos = localPos;
+      _currentPos = localPosCm;
 
       if (_currentTool == CourtEditorTool.select && _draggingElement != null) {
         // Apply drag offset to maintain shape
-        var newPos = localPos + (_dragOffset ?? Offset.zero);
+        var newPos = localPosCm + (_dragOffset ?? Offset.zero);
         var newEnd = _draggingElement!.endPosition != null && _dragEndOffset != null
-            ? localPos + _dragEndOffset!
+            ? localPosCm + _dragEndOffset!
             : _draggingElement!.endPosition;
 
         final snapped = _applySnap(newPos, newEnd, _draggingElement!);
@@ -373,12 +814,12 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
         // Bump revision so background repaints while dragging
         _elementsRevision++;
       } else if (_currentTool == CourtEditorTool.eraser) {
-        _eraseAtPosition(localPos);
+        _eraseAtPosition(localPosCm);
         // Bump revision so background repaints while erasing
         _elementsRevision++;
       } else {
         // Show live preview for all creation tools while dragging
-        _previewElement = _createElementFromTool(_currentTool, _startPos ?? localPos, localPos, preview: true);
+        _previewElement = _createElementFromTool(_currentTool, _startPos ?? localPosCm, localPosCm, preview: true);
       }
     });
   }
@@ -421,10 +862,11 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   }
 
   void _eraseAtPosition(Offset pos) {
+    final eraserRadiusCm = _eraserRadius;
     bool intersects(CourtElement e) {
       if (e.type == CourtElementType.customLine && e.endPosition != null) {
         final d = _distanceToLineSegment(pos, e.position, e.endPosition!);
-        return d <= _eraserRadius;
+        return d <= eraserRadiusCm;
       }
       if (e.type == CourtElementType.customRectangle && e.endPosition != null) {
         final a = e.position;
@@ -443,17 +885,16 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
         ];
         final minD = ds.reduce(math.min);
         // Only delete if hitting outline, not interior
-        return minD <= _eraserRadius;
+        return minD <= eraserRadiusCm;
       }
-      // For circles/zones: only hit outline (not filled interior)
+      // For circles/zones: remove when the eraser circle overlaps the element area
       final radius = e.radius ?? 0;
       if (radius > 0) {
         final dist = (e.position - pos).distance;
-        final distFromOutline = (dist - radius).abs();
-        return distFromOutline <= _eraserRadius;
+        return dist <= radius + eraserRadiusCm;
       }
       // Fallback to point distance (e.g., net end with no radius)
-      return (e.position - pos).distance <= _eraserRadius;
+      return (e.position - pos).distance <= eraserRadiusCm;
     }
 
     _elements.removeWhere(intersects);
@@ -470,11 +911,11 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   }
 
   MapEntry<Offset, Offset?> _applySnap(Offset pos, Offset? end, CourtElement dragged) {
-    const double thresholdPx = 15.0;
+    const double thresholdCm = 20.0; // 20cm snap threshold for cm-based coordinates
     final anchors = _anchorPointsForDragged(dragged, pos, end);
     final candidates = _snapPointsFromOtherElements(dragged);
 
-    double bestDist = thresholdPx;
+    double bestDist = thresholdCm;
     Offset bestDelta = Offset.zero;
 
     for (final anchor in anchors) {
@@ -487,7 +928,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       }
     }
 
-    if (bestDist < thresholdPx) {
+    if (bestDist < thresholdCm) {
       pos += bestDelta;
       end = end != null ? end + bestDelta : end;
     }
@@ -547,16 +988,16 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
         return CourtElement(
           type: CourtElementType.net,
           position: position,
-          radius: _settings.netCircleRadiusPx,
+          radius: _settings.netCircleRadiusCm,
           color: _currentColor,
           strokeWidth: 2.0,
         );
       case CourtEditorTool.zone:
         final radius = _zoneMode == ZoneMode.inner
-            ? _settings.innerCircleRadiusPx
+            ? _settings.innerCircleRadiusCm
             : _zoneMode == ZoneMode.serve
-            ? _settings.outerCircleRadiusPx
-            : _settings.outerBoundsRadiusPx;
+            ? _settings.outerCircleRadiusCm
+            : _settings.outerBoundsRadiusCm;
         final type = _zoneMode == ZoneMode.inner
             ? CourtElementType.innerCircle
             : _zoneMode == ZoneMode.serve
@@ -565,14 +1006,14 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
         return CourtElement(type: type, position: position, radius: radius, color: _currentColor, strokeWidth: 2.0);
       case CourtEditorTool.customCircle:
         final radius = (end - start).distance;
-        final defaultRadius = _settings.cmToLogical(AppConstants.defaultCircleRadiusCm, _screenSize);
+        const defaultRadius = 30.0; // 30cm default radius as per ToDo list
         final targetRadius = radius > defaultRadius * 0.2 ? radius : defaultRadius;
         return CourtElement(
           type: CourtElementType.customCircle,
           position: start,
           radius: targetRadius,
           color: _currentColor,
-          strokeWidth: 2.0,
+          strokeWidth: _elementStrokeWidth,
         );
       case CourtEditorTool.customLine:
         return CourtElement(
@@ -580,7 +1021,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
           position: start,
           endPosition: end,
           color: _currentColor,
-          strokeWidth: 2.0,
+          strokeWidth: _elementStrokeWidth,
         );
       case CourtEditorTool.customRectangle:
         return CourtElement(
@@ -588,7 +1029,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
           position: start,
           endPosition: end,
           color: _currentColor,
-          strokeWidth: 2.0,
+          strokeWidth: _elementStrokeWidth,
         );
       default:
         return null;
@@ -596,7 +1037,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   }
 
   bool _isPointNearElement(Offset point, CourtElement element) {
-    const threshold = 15.0;
+    const threshold = 20.0; // 20cm threshold for cm-based coordinates
 
     // NET elements: draggable from anywhere within the widest circle
     if (element.type == CourtElementType.net) {

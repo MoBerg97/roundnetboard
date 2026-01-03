@@ -1,0 +1,1476 @@
+{
+  "name": "Hit Queue",
+  "frames": [
+    {
+      "players": [
+        {
+          "position": [
+            69.26972477064214,
+            -194.37186544342495
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "17d4dad4-0821-494f-8aaf-88cca0333a87",
+          "label": null
+        },
+        {
+          "position": [
+            -97.2574923547401,
+            115.30642201834863
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4280391411,
+          "id": "1e1d2edf-72ae-49bc-bff5-3f73256761af",
+          "label": "S"
+        },
+        {
+          "position": [
+            37.08379204892964,
+            -302.7926605504588
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "6b7fb9bc-d651-4cde-aba6-157c77350950",
+          "label": null
+        },
+        {
+          "position": [
+            27.28807339449542,
+            -386.0562691131499
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "4cc3b619-9dae-4065-afec-323c767f9133",
+          "label": null
+        },
+        {
+          "position": [
+            18.89174311926604,
+            -470.0195718654434
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "0c4f3994-7c00-4527-a71f-a48693c48e04",
+          "label": null
+        }
+      ],
+      "balls": [
+        {
+          "position": [
+            35.68440366972475,
+            -151.83363914373092
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "dfd18759-c472-45a9-ac20-799451a31be1"
+        },
+        {
+          "position": [
+            0.0,
+            -260.11131498470957
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "10a7376f-075e-42b6-b9b4-3395d3ed28eb"
+        },
+        {
+          "position": [
+            -14.69357798165138,
+            -360.1675840978594
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "9efb7031-cbc1-410b-a0c8-48ea8936dde2"
+        }
+      ],
+      "duration": 0.5,
+      "annotations": []
+    },
+    {
+      "players": [
+        {
+          "position": [
+            93.7590214067278,
+            -125.80183486238523
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "17d4dad4-0821-494f-8aaf-88cca0333a87",
+          "label": null
+        },
+        {
+          "position": [
+            -116.84892966360857,
+            158.68746177370025
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4280391411,
+          "id": "1e1d2edf-72ae-49bc-bff5-3f73256761af",
+          "label": "S"
+        },
+        {
+          "position": [
+            37.08379204892964,
+            -302.7926605504588
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "6b7fb9bc-d651-4cde-aba6-157c77350950",
+          "label": null
+        },
+        {
+          "position": [
+            27.28807339449542,
+            -386.0562691131499
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "4cc3b619-9dae-4065-afec-323c767f9133",
+          "label": null
+        },
+        {
+          "position": [
+            18.89174311926604,
+            -470.0195718654434
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "0c4f3994-7c00-4527-a71f-a48693c48e04",
+          "label": null
+        }
+      ],
+      "balls": [
+        {
+          "position": [
+            -87.4617737003058,
+            120.34740061162069
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": true,
+          "color": 4294940672,
+          "id": "dfd18759-c472-45a9-ac20-799451a31be1"
+        },
+        {
+          "position": [
+            0.0,
+            -260.11131498470957
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "10a7376f-075e-42b6-b9b4-3395d3ed28eb"
+        },
+        {
+          "position": [
+            -14.69357798165138,
+            -360.1675840978594
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "9efb7031-cbc1-410b-a0c8-48ea8936dde2"
+        }
+      ],
+      "duration": 0.5,
+      "annotations": []
+    },
+    {
+      "players": [
+        {
+          "position": [
+            102.15535168195717,
+            94.6018348623855
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "17d4dad4-0821-494f-8aaf-88cca0333a87",
+          "label": null
+        },
+        {
+          "position": [
+            -116.84892966360857,
+            158.68746177370025
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4280391411,
+          "id": "1e1d2edf-72ae-49bc-bff5-3f73256761af",
+          "label": "S"
+        },
+        {
+          "position": [
+            31.486238532110086,
+            -204.83547400611621
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "6b7fb9bc-d651-4cde-aba6-157c77350950",
+          "label": null
+        },
+        {
+          "position": [
+            29.387155963302803,
+            -293.69663608562695
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "4cc3b619-9dae-4065-afec-323c767f9133",
+          "label": null
+        },
+        {
+          "position": [
+            33.58532110091741,
+            -396.55168195718653
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "0c4f3994-7c00-4527-a71f-a48693c48e04",
+          "label": null
+        }
+      ],
+      "balls": [
+        {
+          "position": [
+            13.993883792048944,
+            97.95718654434248
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": true,
+          "color": 4294940672,
+          "id": "dfd18759-c472-45a9-ac20-799451a31be1"
+        },
+        {
+          "position": [
+            -18.891743119266092,
+            -181.04587155963304
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "10a7376f-075e-42b6-b9b4-3395d3ed28eb"
+        },
+        {
+          "position": [
+            -19.591437308868542,
+            -279.00305810397566
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "9efb7031-cbc1-410b-a0c8-48ea8936dde2"
+        }
+      ],
+      "duration": 1.0,
+      "annotations": [
+        {
+          "type": "rectangle",
+          "colorValue": 4280391411,
+          "points": [
+            [
+              -4.198165137614716,
+              46.35474006116208
+            ],
+            [
+              62.97247706422017,
+              128.2189602446483
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "players": [
+        {
+          "position": [
+            102.15535168195717,
+            94.6018348623855
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "17d4dad4-0821-494f-8aaf-88cca0333a87",
+          "label": null
+        },
+        {
+          "position": [
+            -116.84892966360857,
+            158.68746177370025
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4280391411,
+          "id": "1e1d2edf-72ae-49bc-bff5-3f73256761af",
+          "label": "S"
+        },
+        {
+          "position": [
+            31.486238532110086,
+            -204.83547400611621
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "6b7fb9bc-d651-4cde-aba6-157c77350950",
+          "label": null
+        },
+        {
+          "position": [
+            29.387155963302803,
+            -293.69663608562695
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "4cc3b619-9dae-4065-afec-323c767f9133",
+          "label": null
+        },
+        {
+          "position": [
+            33.58532110091741,
+            -396.55168195718653
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "0c4f3994-7c00-4527-a71f-a48693c48e04",
+          "label": null
+        }
+      ],
+      "balls": [
+        {
+          "position": [
+            18.19204892966361,
+            382.0330275229359
+          ],
+          "pathPoints": [],
+          "hitT": 0.095,
+          "isSet": false,
+          "color": 4294940672,
+          "id": "dfd18759-c472-45a9-ac20-799451a31be1"
+        },
+        {
+          "position": [
+            -18.891743119266092,
+            -181.04587155963304
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "10a7376f-075e-42b6-b9b4-3395d3ed28eb"
+        },
+        {
+          "position": [
+            -19.591437308868542,
+            -279.00305810397566
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "9efb7031-cbc1-410b-a0c8-48ea8936dde2"
+        }
+      ],
+      "duration": 0.5,
+      "annotations": [
+        {
+          "type": "rectangle",
+          "colorValue": 4294198070,
+          "points": [
+            [
+              -155.33211009174315,
+              286.34984709480113
+            ],
+            [
+              214.8061162079511,
+              401.0996941896024
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "players": [
+        {
+          "position": [
+            105.65382262996938,
+            226.1443425076456
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "17d4dad4-0821-494f-8aaf-88cca0333a87",
+          "label": null
+        },
+        {
+          "position": [
+            -116.84892966360857,
+            158.68746177370025
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4280391411,
+          "id": "1e1d2edf-72ae-49bc-bff5-3f73256761af",
+          "label": "S"
+        },
+        {
+          "position": [
+            42.68134556574924,
+            -163.55351681957197
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "6b7fb9bc-d651-4cde-aba6-157c77350950",
+          "label": null
+        },
+        {
+          "position": [
+            29.387155963302803,
+            -293.69663608562695
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "4cc3b619-9dae-4065-afec-323c767f9133",
+          "label": null
+        },
+        {
+          "position": [
+            33.58532110091741,
+            -396.55168195718653
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "0c4f3994-7c00-4527-a71f-a48693c48e04",
+          "label": null
+        }
+      ],
+      "balls": [
+        {
+          "position": [
+            18.19204892966361,
+            382.0330275229359
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "dfd18759-c472-45a9-ac20-799451a31be1"
+        },
+        {
+          "position": [
+            -16.092966360856316,
+            -141.86299694189597
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "10a7376f-075e-42b6-b9b4-3395d3ed28eb"
+        },
+        {
+          "position": [
+            -19.591437308868542,
+            -279.00305810397566
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "9efb7031-cbc1-410b-a0c8-48ea8936dde2"
+        }
+      ],
+      "duration": 0.5,
+      "annotations": []
+    },
+    {
+      "players": [
+        {
+          "position": [
+            69.2697247706422,
+            353.48868501529097
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "17d4dad4-0821-494f-8aaf-88cca0333a87",
+          "label": null
+        },
+        {
+          "position": [
+            -116.84892966360857,
+            158.68746177370025
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4280391411,
+          "id": "1e1d2edf-72ae-49bc-bff5-3f73256761af",
+          "label": "S"
+        },
+        {
+          "position": [
+            75.56697247706421,
+            -74.69235474006132
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "6b7fb9bc-d651-4cde-aba6-157c77350950",
+          "label": null
+        },
+        {
+          "position": [
+            29.387155963302803,
+            -293.69663608562695
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "4cc3b619-9dae-4065-afec-323c767f9133",
+          "label": null
+        },
+        {
+          "position": [
+            33.58532110091741,
+            -396.55168195718653
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "0c4f3994-7c00-4527-a71f-a48693c48e04",
+          "label": null
+        }
+      ],
+      "balls": [
+        {
+          "position": [
+            43.38103975535163,
+            396.02691131498466
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "dfd18759-c472-45a9-ac20-799451a31be1"
+        },
+        {
+          "position": [
+            -90.2605504587157,
+            120.52232415902142
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": true,
+          "color": 4294940672,
+          "id": "10a7376f-075e-42b6-b9b4-3395d3ed28eb"
+        },
+        {
+          "position": [
+            -19.591437308868542,
+            -279.00305810397566
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "9efb7031-cbc1-410b-a0c8-48ea8936dde2"
+        }
+      ],
+      "duration": 0.5,
+      "annotations": []
+    },
+    {
+      "players": [
+        {
+          "position": [
+            281.97675840978593,
+            -76.82324159021363
+          ],
+          "rotation": 0.0,
+          "pathPoints": [
+            [
+              242.8498593272169,
+              295.46654434250723
+            ]
+          ],
+          "color": 4294198070,
+          "id": "17d4dad4-0821-494f-8aaf-88cca0333a87",
+          "label": null
+        },
+        {
+          "position": [
+            -116.84892966360857,
+            158.68746177370025
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4280391411,
+          "id": "1e1d2edf-72ae-49bc-bff5-3f73256761af",
+          "label": "S"
+        },
+        {
+          "position": [
+            98.65688073394497,
+            107.92782874617725
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "6b7fb9bc-d651-4cde-aba6-157c77350950",
+          "label": null
+        },
+        {
+          "position": [
+            33.58532110091747,
+            -214.6311926605505
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "4cc3b619-9dae-4065-afec-323c767f9133",
+          "label": null
+        },
+        {
+          "position": [
+            33.58532110091741,
+            -396.55168195718653
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "0c4f3994-7c00-4527-a71f-a48693c48e04",
+          "label": null
+        }
+      ],
+      "balls": [
+        {
+          "position": [
+            300.1688073394495,
+            -83.26360856269122
+          ],
+          "pathPoints": [
+            [
+              278.67770030581005,
+              300.7460550458708
+            ]
+          ],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "dfd18759-c472-45a9-ac20-799451a31be1"
+        },
+        {
+          "position": [
+            25.888685015290477,
+            108.62752293577952
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": true,
+          "color": 4294940672,
+          "id": "10a7376f-075e-42b6-b9b4-3395d3ed28eb"
+        },
+        {
+          "position": [
+            -6.297247706422105,
+            -190.141896024465
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "9efb7031-cbc1-410b-a0c8-48ea8936dde2"
+        }
+      ],
+      "duration": 1.0,
+      "annotations": []
+    },
+    {
+      "players": [
+        {
+          "position": [
+            47.57920489296623,
+            -474.9492354740058
+          ],
+          "rotation": 0.0,
+          "pathPoints": [
+            [
+              225.49352615449178,
+              -477.0537408954477
+            ]
+          ],
+          "color": 4294198070,
+          "id": "17d4dad4-0821-494f-8aaf-88cca0333a87",
+          "label": null
+        },
+        {
+          "position": [
+            -116.84892966360857,
+            158.68746177370025
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4280391411,
+          "id": "1e1d2edf-72ae-49bc-bff5-3f73256761af",
+          "label": "S"
+        },
+        {
+          "position": [
+            98.65688073394497,
+            107.92782874617725
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "6b7fb9bc-d651-4cde-aba6-157c77350950",
+          "label": null
+        },
+        {
+          "position": [
+            33.58532110091747,
+            -214.6311926605505
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "4cc3b619-9dae-4065-afec-323c767f9133",
+          "label": null
+        },
+        {
+          "position": [
+            34.9847094801223,
+            -302.7926605504586
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "0c4f3994-7c00-4527-a71f-a48693c48e04",
+          "label": null
+        }
+      ],
+      "balls": [
+        {
+          "position": [
+            75.56697247706411,
+            -286.1749235474007
+          ],
+          "pathPoints": [
+            [
+              182.93531317754167,
+              -202.18167140777308
+            ]
+          ],
+          "hitT": null,
+          "isSet": false,
+          "color": 4294940672,
+          "id": "dfd18759-c472-45a9-ac20-799451a31be1"
+        },
+        {
+          "position": [
+            -5.597553516819609,
+            415.79327217125365
+          ],
+          "pathPoints": [
+            [
+              8.591511603311183,
+              272.74653322258115
+            ]
+          ],
+          "hitT": 0.0875,
+          "isSet": false,
+          "color": 4294940672,
+          "id": "10a7376f-075e-42b6-b9b4-3395d3ed28eb"
+        },
+        {
+          "position": [
+            -6.297247706422105,
+            -190.141896024465
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "9efb7031-cbc1-410b-a0c8-48ea8936dde2"
+        }
+      ],
+      "duration": 0.5,
+      "annotations": []
+    },
+    {
+      "players": [
+        {
+          "position": [
+            41.28195718654423,
+            -388.1871559633024
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "17d4dad4-0821-494f-8aaf-88cca0333a87",
+          "label": null
+        },
+        {
+          "position": [
+            -116.84892966360857,
+            158.68746177370025
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4280391411,
+          "id": "1e1d2edf-72ae-49bc-bff5-3f73256761af",
+          "label": "S"
+        },
+        {
+          "position": [
+            91.65993883792054,
+            275.8544342507646
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "6b7fb9bc-d651-4cde-aba6-157c77350950",
+          "label": null
+        },
+        {
+          "position": [
+            31.486238532110082,
+            -188.74250764525993
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "4cc3b619-9dae-4065-afec-323c767f9133",
+          "label": null
+        },
+        {
+          "position": [
+            34.9847094801223,
+            -302.7926605504586
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "0c4f3994-7c00-4527-a71f-a48693c48e04",
+          "label": null
+        }
+      ],
+      "balls": [
+        {
+          "position": [
+            2.79877675840973,
+            -274.2801223241591
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "dfd18759-c472-45a9-ac20-799451a31be1"
+        },
+        {
+          "position": [
+            -5.597553516819609,
+            415.79327217125365
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "10a7376f-075e-42b6-b9b4-3395d3ed28eb"
+        },
+        {
+          "position": [
+            -13.99388379204899,
+            -177.54740061162101
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "9efb7031-cbc1-410b-a0c8-48ea8936dde2"
+        }
+      ],
+      "duration": 0.25,
+      "annotations": []
+    },
+    {
+      "players": [
+        {
+          "position": [
+            41.28195718654423,
+            -388.1871559633024
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "17d4dad4-0821-494f-8aaf-88cca0333a87",
+          "label": null
+        },
+        {
+          "position": [
+            -116.84892966360857,
+            158.68746177370025
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4280391411,
+          "id": "1e1d2edf-72ae-49bc-bff5-3f73256761af",
+          "label": "S"
+        },
+        {
+          "position": [
+            46.87951070336396,
+            379.40917431192673
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "6b7fb9bc-d651-4cde-aba6-157c77350950",
+          "label": null
+        },
+        {
+          "position": [
+            30.786544342507693,
+            -173.34923547400615
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "4cc3b619-9dae-4065-afec-323c767f9133",
+          "label": null
+        },
+        {
+          "position": [
+            34.9847094801223,
+            -302.7926605504586
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "0c4f3994-7c00-4527-a71f-a48693c48e04",
+          "label": null
+        }
+      ],
+      "balls": [
+        {
+          "position": [
+            2.79877675840973,
+            -274.2801223241591
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "dfd18759-c472-45a9-ac20-799451a31be1"
+        },
+        {
+          "position": [
+            -5.597553516819609,
+            415.79327217125365
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "10a7376f-075e-42b6-b9b4-3395d3ed28eb"
+        },
+        {
+          "position": [
+            -81.16452599388387,
+            113.52538226299671
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": true,
+          "color": 4294940672,
+          "id": "9efb7031-cbc1-410b-a0c8-48ea8936dde2"
+        }
+      ],
+      "duration": 0.5,
+      "annotations": []
+    },
+    {
+      "players": [
+        {
+          "position": [
+            37.08379204892957,
+            -328.01345565749193
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "17d4dad4-0821-494f-8aaf-88cca0333a87",
+          "label": null
+        },
+        {
+          "position": [
+            -116.84892966360857,
+            158.68746177370025
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4280391411,
+          "id": "1e1d2edf-72ae-49bc-bff5-3f73256761af",
+          "label": "S"
+        },
+        {
+          "position": [
+            258.88685015290525,
+            -16.61773700305781
+          ],
+          "rotation": 0.0,
+          "pathPoints": [
+            [
+              226.33007951070303,
+              282.6134801223238
+            ]
+          ],
+          "color": 4294198070,
+          "id": "6b7fb9bc-d651-4cde-aba6-157c77350950",
+          "label": null
+        },
+        {
+          "position": [
+            70.6691131498471,
+            98.83180428134546
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "4cc3b619-9dae-4065-afec-323c767f9133",
+          "label": null
+        },
+        {
+          "position": [
+            36.384097859327184,
+            -230.0244648318042
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "0c4f3994-7c00-4527-a71f-a48693c48e04",
+          "label": null
+        }
+      ],
+      "balls": [
+        {
+          "position": [
+            -1.3993883792049342,
+            -212.70703363914382
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "dfd18759-c472-45a9-ac20-799451a31be1"
+        },
+        {
+          "position": [
+            286.1749235474005,
+            -27.11314984709503
+          ],
+          "pathPoints": [
+            [
+              240.27148623853174,
+              315.48861162079453
+            ]
+          ],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "10a7376f-075e-42b6-b9b4-3395d3ed28eb"
+        },
+        {
+          "position": [
+            9.795718654434157,
+            91.834862385321
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": true,
+          "color": 4294940672,
+          "id": "9efb7031-cbc1-410b-a0c8-48ea8936dde2"
+        }
+      ],
+      "duration": 0.5,
+      "annotations": []
+    },
+    {
+      "players": [
+        {
+          "position": [
+            37.08379204892957,
+            -328.01345565749193
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "17d4dad4-0821-494f-8aaf-88cca0333a87",
+          "label": null
+        },
+        {
+          "position": [
+            -116.84892966360857,
+            158.68746177370025
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4280391411,
+          "id": "1e1d2edf-72ae-49bc-bff5-3f73256761af",
+          "label": "S"
+        },
+        {
+          "position": [
+            49.67828746177378,
+            -430.1370030581036
+          ],
+          "rotation": 0.0,
+          "pathPoints": [
+            [
+              257.86970424402097,
+              -396.0091813317133
+            ]
+          ],
+          "color": 4294198070,
+          "id": "6b7fb9bc-d651-4cde-aba6-157c77350950",
+          "label": null
+        },
+        {
+          "position": [
+            70.6691131498471,
+            98.83180428134546
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "4cc3b619-9dae-4065-afec-323c767f9133",
+          "label": null
+        },
+        {
+          "position": [
+            36.384097859327184,
+            -230.0244648318042
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "0c4f3994-7c00-4527-a71f-a48693c48e04",
+          "label": null
+        }
+      ],
+      "balls": [
+        {
+          "position": [
+            -1.3993883792049342,
+            -212.70703363914382
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "dfd18759-c472-45a9-ac20-799451a31be1"
+        },
+        {
+          "position": [
+            58.774311926605414,
+            -296.49541284403693
+          ],
+          "pathPoints": [
+            [
+              174.68560664371486,
+              -169.67718133473124
+            ]
+          ],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "10a7376f-075e-42b6-b9b4-3395d3ed28eb"
+        },
+        {
+          "position": [
+            -2.0990825688073915,
+            415.09357798165126
+          ],
+          "pathPoints": [],
+          "hitT": 0.0,
+          "isSet": false,
+          "color": 4294940672,
+          "id": "9efb7031-cbc1-410b-a0c8-48ea8936dde2"
+        }
+      ],
+      "duration": 0.5,
+      "annotations": []
+    },
+    {
+      "players": [
+        {
+          "position": [
+            37.08379204892957,
+            -328.01345565749193
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "17d4dad4-0821-494f-8aaf-88cca0333a87",
+          "label": null
+        },
+        {
+          "position": [
+            -116.84892966360857,
+            158.68746177370025
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4280391411,
+          "id": "1e1d2edf-72ae-49bc-bff5-3f73256761af",
+          "label": "S"
+        },
+        {
+          "position": [
+            49.67828746177378,
+            -430.1370030581036
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "6b7fb9bc-d651-4cde-aba6-157c77350950",
+          "label": null
+        },
+        {
+          "position": [
+            76.96636085626915,
+            210.08318042813443
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "4cc3b619-9dae-4065-afec-323c767f9133",
+          "label": null
+        },
+        {
+          "position": [
+            36.384097859327184,
+            -230.0244648318042
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "0c4f3994-7c00-4527-a71f-a48693c48e04",
+          "label": null
+        }
+      ],
+      "balls": [
+        {
+          "position": [
+            -1.3993883792049342,
+            -212.70703363914382
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "dfd18759-c472-45a9-ac20-799451a31be1"
+        },
+        {
+          "position": [
+            18.192048929663557,
+            -296.49541284403705
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "10a7376f-075e-42b6-b9b4-3395d3ed28eb"
+        },
+        {
+          "position": [
+            -2.0990825688073915,
+            415.09357798165126
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "9efb7031-cbc1-410b-a0c8-48ea8936dde2"
+        }
+      ],
+      "duration": 0.25,
+      "annotations": []
+    },
+    {
+      "players": [
+        {
+          "position": [
+            48.27889908256872,
+            -306.32293577981613
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "17d4dad4-0821-494f-8aaf-88cca0333a87",
+          "label": null
+        },
+        {
+          "position": [
+            -116.84892966360857,
+            158.68746177370025
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4280391411,
+          "id": "1e1d2edf-72ae-49bc-bff5-3f73256761af",
+          "label": "S"
+        },
+        {
+          "position": [
+            49.67828746177373,
+            -419.6415902140669
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "6b7fb9bc-d651-4cde-aba6-157c77350950",
+          "label": null
+        },
+        {
+          "position": [
+            32.185932721712625,
+            414.3938837920487
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "4cc3b619-9dae-4065-afec-323c767f9133",
+          "label": null
+        },
+        {
+          "position": [
+            40.58226299694185,
+            -183.14495412844042
+          ],
+          "rotation": 0.0,
+          "pathPoints": [],
+          "color": 4294198070,
+          "id": "0c4f3994-7c00-4527-a71f-a48693c48e04",
+          "label": null
+        }
+      ],
+      "balls": [
+        {
+          "position": [
+            -8.396330275229428,
+            -174.22385321100924
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "dfd18759-c472-45a9-ac20-799451a31be1"
+        },
+        {
+          "position": [
+            5.5975535168195645,
+            -281.80183486238565
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "10a7376f-075e-42b6-b9b4-3395d3ed28eb"
+        },
+        {
+          "position": [
+            -2.0990825688073915,
+            415.09357798165126
+          ],
+          "pathPoints": [],
+          "hitT": null,
+          "isSet": null,
+          "color": 4294940672,
+          "id": "9efb7031-cbc1-410b-a0c8-48ea8936dde2"
+        }
+      ],
+      "duration": 0.5,
+      "annotations": []
+    }
+  ],
+  "settings": {
+    "playbackSpeed": 1.0,
+    "outerCircleRadiusCm": 260.0,
+    "innerCircleRadiusCm": 100.0,
+    "netCircleRadiusCm": 46.0,
+    "outerBoundsRadiusCm": 850.0,
+    "referenceRadiusCm": 260.0,
+    "showPreviousFrameLines": true,
+    "showPathControlPoints": false
+  },
+  "projectType": 1,
+  "customCourtElements": [
+    {
+      "type": 0,
+      "position": [
+        207.42857142857142,
+        426.76190476190476
+      ],
+      "radius": 25.044955044955046,
+      "endPosition": null,
+      "color": 4294967295,
+      "strokeWidth": 2.0,
+      "isVisible": true
+    },
+    {
+      "type": 1,
+      "position": [
+        207.42857142857142,
+        426.76190476190476
+      ],
+      "radius": 54.44555444555444,
+      "endPosition": null,
+      "color": 4294967295,
+      "strokeWidth": 2.0,
+      "isVisible": true
+    },
+    {
+      "type": 4,
+      "position": [
+        195.61904761904762,
+        265.23809523809524
+      ],
+      "radius": null,
+      "endPosition": [
+        239.80952380952382,
+        264.0952380952381
+      ],
+      "color": 4294967295,
+      "strokeWidth": 2.0,
+      "isVisible": true
+    }
+  ]
+}

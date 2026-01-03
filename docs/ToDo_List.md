@@ -1,5 +1,17 @@
 # ToDo List for Features and Fixes
 
+## Testing Debugging Guidelines
+
+always test compilation using ```flutter analyze```
+
+clearing cache on a device/emulator:
+``` adb -s emulator-5554 shell pm clear com.moritzberg.roundnetboard ``` where "emulator-5554" is the device id (get it via ``` adb devices ```)
+
+fully clear app data on an android device/emulator:
+``` adb -s emulator-5554 shell pm clear com.moritzberg.roundnetboard; adb -s emulator-5554 shell run-as com.moritzberg.roundnetboard rm -rf /data/data/com.moritzberg.roundnetboard/files; adb -s emulator-5554 shell run-as com.moritzberg.roundnetboard rm -rf /data/data/com.moritzberg.roundnetboard/shared_prefs ```
+
+## Current Implementation
+
 ## Design
 
 ### main aspects
@@ -8,9 +20,15 @@ less clutter
 alignment of all icons, buttons and menus
 intuitive usage
 
+UI guidelines to follow:
+UI elements with multiple options:
+tap and hold on a tool extends a small rectangular chamfered edge window above the tool with one column of the three sizes. The user selects one of the sizes by dragging towards one of the size icons (small to mediumg to large circle) and releasing the hold (ACITON_UP). Upon releasing the hold, the selection menu disappers. If the user releases the hold outside of the selection menu, no size change is applied. If the user drags towards one of the size icons and releases the hold on top of it, the size of the tool is changed to the selected size.
+ When using a mouse (e.g. web app or windows app) the selection menu opens up by right clicking the tool and closes by selecting one of the sizes or by right clicking again on the tool or by clicking anywhere else on board.
+
 ### design ideas
 
-- [ ] #n selected objects (players and balls) should be highlighted on court (e.g. circular sonar waves around object)
+- [ ] rename "add label" --> "label" in player menu, does not change when label is already added
+- [x] #n selected objects (players and balls) should be highlighted on court (e.g. circular sonar waves around object)
 - [ ] hit marker in animation playback should fade out smoothly instead of disappearing instantly
 - [ ] change the hit marker on the board screen to another icon (e.g. circle with bounce arrow inside)
 - [x] #n default color of ball should be white with black outline
@@ -21,17 +39,16 @@ intuitive usage
   - [ ] set: instead of a circle, the current path is displayed as a line getting thicker in size from start towards the middle and thinner again from middle to end. #n Alternative: show multiple circles along the path, getting bigger towards the middle and smaller again towards the end, make them very subtle (same color as ball but 30% opacity, always aligned with current ball color)
   - [ ] hit: the star icon should be more transparent and only grey color, no outline and a little bigger. it should slowly fade out during the animation playback instead of disappearing instantly.
 - [x] the eraser tool icon should be an actual eraser icon (not trash can icon)
-- [ ] #n get rid of circular endpoints of annotation lines
+- [x] #n get rid of circular endpoints of annotation lines
 - [ ] the annotations should fade in and fade out dynamically in animation playback.
 - [ ] landscape mode orientation changes visual structure (left side is court, right side is controls including annotations and ball modifier menu)
 - [ ] the insert frame thumbnail button should appear right next to the current frame in the timeline instead of below it, indicating that the next frame is created after the currently selected frame as a direct copy.
 - [ ] produce the same preview radius indication for circle elements on court editor as it is implemented for circles in the annotation tools.
-- [ ] get rid of permanent center points for circle annotations.
+- [x] get rid of permanent center points for circle annotations.
 
 ### help / tutorial
 
 - [ ] POSTPONED: create a interactive tutorial that comes up upon the first opening of the app on a device.
-
   - [ ] create a tutorial button inside the helper screen, that opens the home screen and starts the tutorial all over again.
 
 - add a helper screen that can be accessed from the home screen and the board screen via a question mark icon in the top right corner.
@@ -65,19 +82,20 @@ Quick tips to add to helper screen:
 - [ ] #n hide all current complex project settings (anything size on board related) in the board screen under "advanced settings"
 - [ ] when a user drags an object and stays holding that object for more than 1sec on about the same location (within 50px), a magnifying window (1.5x) showing the object and its surrounding 10% of displaymin = min(screenwidth,screenheight) is shown hovering 20% of displaymin above the location that user is holding.
 - [ ] the magnifying window is deactivated as soon as the user changed the position of the object over 50px in the last .5 seconds
-- [ ] #n court elements snap to corners and center points of other court elements when being dragged within 20px of such a point.
+- [x] #n court elements snap to corners and center points of other court elements when being dragged within 20px of such a point.
 
 ### court
 
 - [ ] the court should be zoomable with two states, first state is as it currently is, showing at least 1.2 times servezone_radius around the center of the court. second zoom stage should be the whole court towards the outer boundary at 850cm radius around the center of court.
-- [ ] #n make objects on court relate in size to court (player and ball circle radius, paths in width adjusted for size not in pixels but in relation to court size (cm))
+- [x] #n make objects on court relate in size to court (player and ball circle radius, paths in width adjusted for size not in pixels but in relation to court size (cm))
 - [ ] default starting position of player and ball should be editable in the global (home screen accesible) settings menu and then new projects start with objects in this position.
 - [x] when a new project is created, the user can decide if he wants the play scenario (with all zones on default radii and 4 players in their default start position and one ball) or training scenario (with all zones deactivated and 1 player red and one player blue and one ball)
-- [ ] #n default width of circle elements when added to court in court editor should be 30cm radius.
+- [x] #n default width of circle elements when added to court in court editor should be 30cm radius.
 
 ### annotations
 
-- [ ] #n add a drag and drop tool, that allows to move annotations around on the court, as it is currently implemented in the court editor screen.
+- [ ] annotation menu should be horizontally scrollable when screen width is too small to show all annotation tools at once.
+- [x] #n add a drag and drop tool, that allows to move annotations around on the court, as it is currently implemented in the court editor screen.
 - [x] there should be a foldable menu for annotations that provides frame specific annotations.
 - [x] add a line annotation tool, that also is editable in color, user can manually edit the end points of the line.
 - [x] annotations should be frame specific and also should be copyed along all other objects when a new frame is inserted.
@@ -104,8 +122,8 @@ Quick tips to add to helper screen:
 
 ### players
 
-- [ ] the color of player objects should be editable.
-- [ ] the user should be able to additionally add a single character (letter or number) shown on the player object always (project specific).
+- [x] the color of player objects should be editable.
+- [x] the user should be able to additionally add a single character (letter or number) shown on the player object always (project specific).
 - [x] the user should be able to delete players and add players. The color of the added player object should match the color of the last tapped player object.
 - [ ] player objects can have frame specific body postures (resembled by changing greaphical representation) and introducing a rotational component of player objects
   - [ ] set (L/R): arm reaching out in front of player on of the side
@@ -135,8 +153,9 @@ timeline:
 - [x] when playback is through, meaning the playback reached the end while playing, the timeline should only go back to the editing controls after the stop button is tapped, not automatically after playback reached the end
 - [x] enlarge the hit box for catching the path control points on mobile devices
 - [ ] the buttons should not overflow on small screen devices, either scale them down or make them scrollable horizontally
-- [ ] the court should fit either 1.5 times the serve zone radius around the center of the court in width or height (which is smaller and based on orientation) instead of always fitting the whole court only in width.
-- [ ] there is a small light grey section above the timeline section. this should be removed and the timeline should directly connect to the court area. when creating court elements, they overlap with this grey area which looks bad.
+- [ ] the court should fit either 1.2 times the serve zone radius around the center of the court in width or height (which is smaller and based on orientation) instead of always fitting the whole court only in width (depending on screen width)
+- [x] there is a small light grey section above the timeline section. this should be removed and the timeline should directly connect to the court area. when creating court elements, they overlap with this grey area which looks bad.
+- [ ] when undoing a path edit, the path control points of the edit remain. these should be removed when undoing the edit. when redoing the edit, the path control points should reappear.
 
 ### Other fixes
 
