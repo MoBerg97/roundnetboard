@@ -308,15 +308,9 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   Widget _buildEraserButton() {
     final isActive = _currentTool == CourtEditorTool.eraser;
     return Tooltip(
-      message: 'Eraser (long-press or right-click to choose size: ${_eraserRadius.toStringAsFixed(0)} cm)',
+      message: 'Eraser (double-tap to choose size: ${_eraserRadius.toStringAsFixed(0)} cm)',
       child: GestureDetector(
-        onLongPressStart: (details) => _toggleEraserMenu(globalPos: details.globalPosition, forceOpen: true),
-        onLongPressMoveUpdate: (details) => _updateEraserMenuHover(details.globalPosition),
-        onLongPressEnd: (details) {
-          _updateEraserMenuHover(details.globalPosition);
-          _finalizeEraserMenuSelection();
-        },
-        onSecondaryTapDown: (details) => _toggleEraserMenu(globalPos: details.globalPosition),
+        onDoubleTap: () => _toggleEraserMenu(forceOpen: true),
         child: FloatingActionButton.small(
           key: _eraserButtonKey,
           heroTag: 'tool-eraser',
@@ -332,18 +326,14 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     return Tooltip(
       message: 'Line width (${_elementStrokeWidth.toStringAsFixed(1)} px)',
       child: GestureDetector(
-        onLongPressStart: (details) => _toggleStrokeWidthMenu(globalPos: details.globalPosition, forceOpen: true),
-        onLongPressMoveUpdate: (details) => _updateStrokeWidthMenuHover(details.globalPosition),
-        onLongPressEnd: (details) {
-          _updateStrokeWidthMenuHover(details.globalPosition);
-          _finalizeStrokeWidthMenuSelection();
-        },
-        onSecondaryTapDown: (details) => _toggleStrokeWidthMenu(globalPos: details.globalPosition, forceOpen: true),
+        onDoubleTap: () => _toggleStrokeWidthMenu(forceOpen: true),
         child: FloatingActionButton.small(
           key: _strokeWidthButtonKey,
           heroTag: 'tool-stroke-width',
           backgroundColor: AppTheme.mediumGrey,
-          onPressed: () => _toggleStrokeWidthMenu(forceOpen: true),
+          onPressed: () {
+            // Stroke width button - only triggers double-tap menu
+          },
           child: const Icon(Symbols.line_weight, color: Colors.white),
         ),
       ),
@@ -377,7 +367,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
         return Stack(
           children: [
             // Dismiss area
-            Positioned.fill(child: GestureDetector(onTap: _removeEraserMenu)),
+            IgnorePointer(),
             Positioned(
               left: left,
               top: top,
@@ -451,14 +441,6 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     }
   }
 
-  void _finalizeEraserMenuSelection() {
-    if (_eraserMenuEntry == null) return;
-    if (_hoverEraserIndex >= 0 && _hoverEraserIndex < _eraserSizes.length) {
-      setState(() => _eraserRadius = _eraserSizes[_hoverEraserIndex]);
-    }
-    _removeEraserMenu();
-  }
-
   void _toggleStrokeWidthMenu({Offset? globalPos, bool forceOpen = false}) {
     if (_strokeWidthMenuEntry != null) {
       _removeStrokeWidthMenu();
@@ -484,7 +466,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     _strokeWidthMenuEntry = OverlayEntry(
       builder: (_) => Stack(
         children: [
-          Positioned.fill(child: GestureDetector(onTap: _removeStrokeWidthMenu)),
+          IgnorePointer(),
           Positioned(
             left: left,
             top: top,
@@ -557,14 +539,6 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     }
   }
 
-  void _finalizeStrokeWidthMenuSelection() {
-    if (_strokeWidthMenuEntry == null) return;
-    if (_hoverStrokeIndex >= 0 && _hoverStrokeIndex < _elementStrokeOptions.length) {
-      setState(() => _elementStrokeWidth = _elementStrokeOptions[_hoverStrokeIndex]);
-    }
-    _removeStrokeWidthMenu();
-  }
-
   void _toggleZoneMenu({Offset? globalPos, bool forceOpen = false}) {
     if (_zoneMenuEntry != null) {
       _removeZoneMenu();
@@ -590,7 +564,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     _zoneMenuEntry = OverlayEntry(
       builder: (_) => Stack(
         children: [
-          Positioned.fill(child: GestureDetector(onTap: _removeZoneMenu)),
+          IgnorePointer(),
           Positioned(
             left: left,
             top: top,
@@ -658,17 +632,6 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     _zoneHoverNotifier.value = -1;
   }
 
-  void _finalizeZoneSelection() {
-    if (_zoneMenuEntry == null) return;
-    if (_hoverZoneIndex >= 0 && _hoverZoneIndex < _zoneOptions.length) {
-      setState(() {
-        _zoneMode = _zoneOptions[_hoverZoneIndex].mode;
-        _currentTool = CourtEditorTool.zone;
-      });
-    }
-    _removeZoneMenu();
-  }
-
   Widget _buildColorPickerButton() {
     return Tooltip(
       message: 'Tool Color',
@@ -720,20 +683,13 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     return Tooltip(
       message: 'Zone ($label)',
       child: GestureDetector(
-        onSecondaryTapDown: (details) => _toggleZoneMenu(globalPos: details.globalPosition, forceOpen: true),
-        onLongPressStart: (details) => _toggleZoneMenu(globalPos: details.globalPosition, forceOpen: true),
-        onLongPressMoveUpdate: (details) => _updateZoneMenuHover(details.globalPosition),
-        onLongPressEnd: (details) {
-          _updateZoneMenuHover(details.globalPosition);
-          _finalizeZoneSelection();
-        },
+        onDoubleTap: () => _toggleZoneMenu(forceOpen: true),
         child: FloatingActionButton.small(
           key: _zoneButtonKey,
           heroTag: 'tool-zone',
           backgroundColor: zoneActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
           onPressed: () {
             _currentTool = CourtEditorTool.zone;
-            _toggleZoneMenu(forceOpen: true);
           },
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

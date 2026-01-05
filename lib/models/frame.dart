@@ -6,36 +6,46 @@ import 'ball.dart';
 
 part 'frame.g.dart';
 
-/// --------------------------
-/// Frame model
-/// --------------------------
+// ════════════════════════════════════════════════════════════════════════════
+// FRAME MODEL - Single Animation Keyframe with Players, Balls & Annotations
+// ════════════════════════════════════════════════════════════════════════════
+// Represents a snapshot of the game state at one point in time
+// Stores dynamic lists of players/balls with arbitrary counts
+// Includes per-frame duration for playback timing and annotations
+// ════════════════════════════════════════════════════════════════════════════
+
 @HiveType(typeId: 1)
 class Frame extends HiveObject {
-  // --------------------------
-  // Dynamic player and ball lists
-  // --------------------------
+  // ════════════════════════════════════════════════════════════════════════════
+  // DYNAMIC ENTITY COLLECTIONS
+  // ════════════════════════════════════════════════════════════════════════════
+  // Lists support arbitrary player/ball counts (not limited to 4 players)
+  // Each frame is independent; entities carry unique IDs across frames
   @HiveField(0)
   List<Player> players;
 
   @HiveField(1)
   List<Ball> balls;
 
-  // --------------------------
-  // Frame duration (seconds)
-  // --------------------------
-  // Duration from this frame to the next frame during playback
+  // ════════════════════════════════════════════════════════════════════════════
+  // PLAYBACK TIMING
+  // ════════════════════════════════════════════════════════════════════════════
+  // Duration between this frame and next during playback
+  // Supports variable frame durations for realistic timing
   @HiveField(2)
   double duration;
 
-  // --------------------------
-  // Frame-specific annotations (lines, circles, etc.)
-  // --------------------------
+  // ════════════════════════════════════════════════════════════════════════════
+  // FRAME ANNOTATIONS
+  // ════════════════════════════════════════════════════════════════════════════
+  // Visual markup per-frame: lines, circles, rectangles, erasures
+  // Annotations are frame-specific; not interpolated across keyframes
   @HiveField(3)
   List<Annotation> annotations;
 
-  // --------------------------
-  // Constructor
-  // --------------------------
+  // ════════════════════════════════════════════════════════════════════════════
+  // CONSTRUCTOR & INITIALIZATION
+  // ════════════════════════════════════════════════════════════════════════════
   Frame({
     List<Player>? players,
     List<Ball>? balls,
@@ -55,8 +65,10 @@ class Frame extends HiveObject {
         annotations: annotations.map((a) => a.copy()).toList(),
       );
 
-  /// Copy frame but clear hit/set properties on balls
-  /// Used when inserting new frames so hit/set doesn't carry over
+  // ════════════════════════════════════════════════════════════════════════════
+  // SPECIALIZED COPY OPERATIONS
+  // ════════════════════════════════════════════════════════════════════════════
+  // Support conditional copying for specific animation workflows
   Frame copyWithoutHitSetMarkers() => Frame(
         players: players.map((p) => p.copy()).toList(),
         balls: balls.map((b) => Ball(
@@ -64,16 +76,24 @@ class Frame extends HiveObject {
           pathPoints: List.from(b.pathPoints),
           color: b.color,
           id: b.id,
-          // hitT and isSet are NOT copied
+          // hitT and isSet are NOT copied (reset to null/false)
         )).toList(),
         duration: duration,
         annotations: annotations.map((a) => a.copy()).toList(),
       );
 
-  // --------------------------
-  // Copy frame and initialize control points at midpoints to previous frame
-  // if movement > 50 units
-  // --------------------------
+  // ════════════════════════════════════════════════════════════════════════════
+  // CONDITIONAL CONTROL POINT INITIALIZATION
+  // ════════════════════════════════════════════════════════════════════════════
+  // Smooths movement transitions when distance exceeds threshold
+
+  /// Copy and conditionally initialize midpoint control points
+  /// Sets control point to midpoint between previous/current if distance > 50 units
+  /// Creates smooth easing for large jumps; skips small movements
+  ///
+  /// Key parameters:
+  ///   - distance threshold: 50 units (independent coords system)
+  ///   - control point placement: (prev + curr) / 2 for mid-frame arc
   Frame copyWithConditionalControlPoints(Frame previousFrame) {
     final newFrame = copy();
 
@@ -110,11 +130,11 @@ class Frame extends HiveObject {
     return newFrame;
   }
 
-  // --------------------------
-  // ID-based lookup and removal helpers
-  // --------------------------
-
-  /// Get player by ID, returns null if not found
+  // ════════════════════════════════════════════════════════════════════════════
+  // ID-BASED ENTITY LOOKUP & REMOVAL
+  // ════════════════════════════════════════════════════════════════════════════
+  // O(n) lookup by entity ID; returns null if not found
+  // Supports dynamic removal with return status confirmation
   Player? getPlayerById(String id) {
     try {
       return players.firstWhere((p) => p.id == id);
@@ -152,10 +172,11 @@ class Frame extends HiveObject {
     return false;
   }
 
-  // --------------------------
-  // Backward compatibility accessors for existing code
-  // --------------------------
-  
+  // ════════════════════════════════════════════════════════════════════════════
+  // BACKWARD COMPATIBILITY: LEGACY PLAYER/BALL ACCESSORS
+  // ════════════════════════════════════════════════════════════════════════════
+  // Support old code using p1..p4 and ball properties
+  // Gracefully handle missing entities; return defaults for out-of-range indices
   /// Get p1 (first player) position - for backward compatibility
   Offset get p1 => players.isNotEmpty ? players[0].position : Offset.zero;
   set p1(Offset value) {
@@ -239,6 +260,10 @@ class Frame extends HiveObject {
 }
 
 extension FrameMap on Frame {
+  // ════════════════════════════════════════════════════════════════════════════
+  // SERIALIZATION & DESERIALIZATION
+  // ════════════════════════════════════════════════════════════════════════════
+  // JSON-compatible map conversion for export/import and database persistence
   Map<String, dynamic> toMap() => {
         'players': players.map((p) => PlayerMap(p).toMap()).toList(),
         'balls': balls.map((b) => BallMap(b).toMap()).toList(),

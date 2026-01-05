@@ -38,6 +38,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _settings.innerCircleRadiusCm = 100.0;
       _settings.netCircleRadiusCm = 46.0;
       _settings.referenceRadiusCm = 260.0;
+      _settings.objectScaleMultiplier = 1.5;
+      _settings.serveZoneFactor = 1.3;
       _saveSettings();
     });
   }
@@ -49,6 +51,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(AppConstants.padding),
         children: [
+          ListTile(
+            title: const Text("Object Size"),
+            subtitle: Text("${_settings.objectScaleMultiplier.toStringAsFixed(1)}x marker scale"),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Wrap(
+              spacing: 12,
+              children: [
+                for (final v in const [1.0, 1.5, 2.2])
+                  ChoiceChip(
+                    label: Text("${v.toStringAsFixed(1)}x"),
+                    selected: (_settings.objectScaleMultiplier - v).abs() < 0.001,
+                    onSelected: (_) {
+                      setState(() => _settings.objectScaleMultiplier = v);
+                      _saveSettings();
+                    },
+                  ),
+              ],
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            title: const Text("Court Serve Zone Scaling"),
+            subtitle: Text("${_settings.serveZoneFactor.toStringAsFixed(1)}x zoom factor"),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Wrap(
+              spacing: 12,
+              children: [
+                for (final v in const [1.0, 1.3, 1.6])
+                  ChoiceChip(
+                    label: Text("${v.toStringAsFixed(1)}x"),
+                    selected: (_settings.serveZoneFactor - v).abs() < 0.001,
+                    onSelected: (_) {
+                      setState(() => _settings.serveZoneFactor = v);
+                      _saveSettings();
+                    },
+                  ),
+              ],
+            ),
+          ),
+          const Divider(),
           ListTile(
             title: const Text("Default Playback Speed"),
             subtitle: Text("${_settings.playbackSpeed.toStringAsFixed(1)}x"),
@@ -84,63 +130,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setState(() => _settings.showPathControlPoints = v);
               _saveSettings();
             },
-          ),
-          const Divider(),
-          ListTile(
-            title: const Text("Serve Zone Radius"),
-            subtitle: Text("${_settings.outerCircleRadiusCm.toStringAsFixed(0)} cm"),
-            trailing: SizedBox(
-              width: 150,
-              child: Slider(
-                value: _settings.outerCircleRadiusCm,
-                min: 200,
-                max: 400,
-                divisions: 20,
-                label: _settings.outerCircleRadiusCm.toStringAsFixed(0),
-                onChanged: (value) {
-                  setState(() => _settings.outerCircleRadiusCm = value);
-                  _saveSettings();
-                },
-              ),
-            ),
-          ),
-          const Divider(),
-          ListTile(
-            title: const Text("NoHitZone Radius"),
-            subtitle: Text("${_settings.innerCircleRadiusCm.toStringAsFixed(0)} cm"),
-            trailing: SizedBox(
-              width: 150,
-              child: Slider(
-                value: _settings.innerCircleRadiusCm,
-                min: 40,
-                max: 200,
-                divisions: 32,
-                label: _settings.innerCircleRadiusCm.toStringAsFixed(0),
-                onChanged: (value) {
-                  setState(() => _settings.innerCircleRadiusCm = value);
-                  _saveSettings();
-                },
-              ),
-            ),
-          ),
-          const Divider(),
-          ListTile(
-            title: const Text("Net Radius"),
-            subtitle: Text("${_settings.netCircleRadiusCm.toStringAsFixed(0)} cm"),
-            trailing: SizedBox(
-              width: 150,
-              child: Slider(
-                value: _settings.netCircleRadiusCm,
-                min: 10,
-                max: 80,
-                divisions: 35,
-                label: _settings.netCircleRadiusCm.toStringAsFixed(0),
-                onChanged: (value) {
-                  setState(() => _settings.netCircleRadiusCm = value);
-                  _saveSettings();
-                },
-              ),
-            ),
           ),
           const Divider(),
           ListTile(

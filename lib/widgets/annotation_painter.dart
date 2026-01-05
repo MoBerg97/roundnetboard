@@ -111,6 +111,8 @@ class _AnnotationCustomPainter extends CustomPainter {
           _paintCircle(canvas, annotation);
         case AnnotationType.rectangle:
           _paintRectangle(canvas, annotation);
+        case AnnotationType.sector:
+          _paintSector(canvas, annotation);
       }
     }
     // draw temporary/staged annotations (if any) with lighter style
@@ -123,6 +125,8 @@ class _AnnotationCustomPainter extends CustomPainter {
             _paintTempCircle(canvas, annotation);
           case AnnotationType.rectangle:
             _paintTempRectangle(canvas, annotation);
+          case AnnotationType.sector:
+            _paintTempSector(canvas, annotation);
         }
       }
     }
@@ -136,6 +140,8 @@ class _AnnotationCustomPainter extends CustomPainter {
             _paintErasingCircle(canvas, annotation);
           case AnnotationType.rectangle:
             _paintErasingRectangle(canvas, annotation);
+          case AnnotationType.sector:
+            _paintErasingSector(canvas, annotation);
         }
       }
     }
@@ -387,6 +393,83 @@ class _AnnotationCustomPainter extends CustomPainter {
     canvas.drawLine(centerScreen - Offset(xRadius, -xRadius), centerScreen + Offset(xRadius, -xRadius), xPaint);
 
     // Center marker removed for cleaner circles
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // CIRCLE SECTOR PAINTING METHODS
+  // ════════════════════════════════════════════════════════════════════════════
+
+  void _paintSector(Canvas canvas, Annotation annotation) {
+    if (annotation.points.length < 2) return;
+    if (annotation.startAngle == null || annotation.endAngle == null) return;
+
+    final center = annotation.points[0];
+    final radiusPoint = annotation.points[1];
+    final radius = (radiusPoint - center).distance;
+
+    final centerScreen = _cmToScreen(center);
+    final scalePerCm = settings.cmToLogical(1.0, screenSize);
+    final radiusScreen = radius * scalePerCm;
+
+    // Sector is always filled (per requirement)
+    final fill = Paint()
+      ..color = annotation.color.withValues(alpha: 0.5)
+      ..style = PaintingStyle.fill;
+
+    final rect = Rect.fromCircle(center: centerScreen, radius: radiusScreen);
+    canvas.drawArc(rect, annotation.startAngle!, annotation.endAngle! - annotation.startAngle!, true, fill);
+  }
+
+  void _paintTempSector(Canvas canvas, Annotation annotation) {
+    if (annotation.points.length < 2) return;
+    if (annotation.startAngle == null || annotation.endAngle == null) return;
+
+    final center = annotation.points[0];
+    final radiusPoint = annotation.points[1];
+    final radius = (radiusPoint - center).distance;
+
+    final centerScreen = _cmToScreen(center);
+    final scalePerCm = settings.cmToLogical(1.0, screenSize);
+    final radiusScreen = radius * scalePerCm;
+
+    // Temporary sector with lighter opacity
+    final fill = Paint()
+      ..color = annotation.color.withValues(alpha: 0.2)
+      ..style = PaintingStyle.fill;
+
+    final rect = Rect.fromCircle(center: centerScreen, radius: radiusScreen);
+    canvas.drawArc(rect, annotation.startAngle!, annotation.endAngle! - annotation.startAngle!, true, fill);
+  }
+
+  void _paintErasingSector(Canvas canvas, Annotation annotation) {
+    if (annotation.points.length < 2) return;
+    if (annotation.startAngle == null || annotation.endAngle == null) return;
+
+    final center = annotation.points[0];
+    final radiusPoint = annotation.points[1];
+    final radius = (radiusPoint - center).distance;
+
+    final centerScreen = _cmToScreen(center);
+    final scalePerCm = settings.cmToLogical(1.0, screenSize);
+    final radiusScreen = radius * scalePerCm;
+
+    // Faded sector
+    final fadePaint = Paint()
+      ..color = annotation.color.withValues(alpha: 0.1)
+      ..style = PaintingStyle.fill;
+
+    final rect = Rect.fromCircle(center: centerScreen, radius: radiusScreen);
+    canvas.drawArc(rect, annotation.startAngle!, annotation.endAngle! - annotation.startAngle!, true, fadePaint);
+
+    // Draw X through center as strikethrough
+    final xRadius = radiusScreen * 0.3;
+    final xPaint = Paint()
+      ..color = Colors.red.withValues(alpha: 0.6)
+      ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm)
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(centerScreen - Offset(xRadius, xRadius), centerScreen + Offset(xRadius, xRadius), xPaint);
+    canvas.drawLine(centerScreen - Offset(xRadius, -xRadius), centerScreen + Offset(xRadius, -xRadius), xPaint);
   }
 
   @override

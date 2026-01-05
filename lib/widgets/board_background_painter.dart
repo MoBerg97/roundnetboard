@@ -12,6 +12,8 @@ class BoardBackgroundPainter extends CustomPainter {
   final ProjectType? projectType; // null for play mode, training for training mode
   // Revision counter to force repaint when elements mutate in-place
   final int elementsRevision;
+  // Revision counter to force repaint when settings change (e.g., serveZoneFactor)
+  final int settingsRevision;
 
   BoardBackgroundPainter({
     required this.screenSize,
@@ -19,6 +21,7 @@ class BoardBackgroundPainter extends CustomPainter {
     this.customElements,
     this.projectType,
     this.elementsRevision = 0,
+    this.settingsRevision = 0,
   });
 
   Offset _boardCenter() {
@@ -209,6 +212,7 @@ class BoardBackgroundPainter extends CustomPainter {
         oldDelegate.screenSize != screenSize ||
         oldDelegate.projectType != projectType ||
         oldDelegate.elementsRevision != elementsRevision ||
+        oldDelegate.settingsRevision != settingsRevision ||
         listsDiffer;
   }
 }

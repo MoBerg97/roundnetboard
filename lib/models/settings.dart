@@ -3,30 +3,79 @@ import 'package:hive/hive.dart';
 
 part 'settings.g.dart';
 
+// ════════════════════════════════════════════════════════════════════════════
+// SETTINGS MODEL - Global Configuration & Screen Scaling
+// ════════════════════════════════════════════════════════════════════════════
+// Stores persistent configuration via Hive (local database)
+// Manages court dimensions and scaling for coordinate conversion
+// ════════════════════════════════════════════════════════════════════════════
+
 @HiveType(typeId: 4)
 class Settings extends HiveObject {
+  // ────────────────────────────────────────────────────────────────────────────
+  // PLAYBACK CONFIGURATION
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /// Playback speed multiplier: 0.1x (slow) to 2.0x (fast)
+  /// Default: 1.0x (normal speed)
   @HiveField(0)
   double playbackSpeed;
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // COURT DIMENSIONS (in cm, standard Roundnet court)
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /// Outer serve zone radius (~8.5m): contains all players and game area
+  /// Default: 260cm (matches official Roundnet court)
   @HiveField(1)
   double outerCircleRadiusCm;
 
+  /// Inner net structure radius: where the ball is played
+  /// Default: 100cm
   @HiveField(2)
   double innerCircleRadiusCm;
 
+  /// Actual net circle radius: the physical net structure
+  /// Default: 46cm
   @HiveField(3)
   double netCircleRadiusCm;
 
+  /// Outer boundary radius: full court extent (~28m diameter)
+  /// Default: 850cm
   @HiveField(4)
   double outerBoundsRadiusCm;
 
+  /// Reference scaling radius used on mobile/narrow screens
+  /// Fallback when screen width > 800px (desktop-like)
+  /// Default: 260cm (outer circle radius)
   @HiveField(5)
   double referenceRadiusCm;
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // VISUAL PREFERENCES & TOGGLES
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /// Show faded paths from two frames ago to indicate movement history
+  /// Default: true
   @HiveField(6)
   bool showPreviousFrameLines;
 
+  /// Show curved path control points on board during editing
+  /// When false, control points only appear while actively editing a path
+  /// Default: false (hidden by default for cleaner UI)
   @HiveField(7)
   bool showPathControlPoints;
+
+  /// Multiplier applied to player and ball marker sizes (1.0x, 1.5x, 2.2x)
+  /// Default: 1.5x for better visibility on most screens
+  @HiveField(8)
+  double objectScaleMultiplier;
+
+  /// Court serve zone scaling factor for coordinate conversion
+  /// Options: 1.0 (tight), 1.3 (balanced), 1.6 (wide)
+  /// Default: 1.3 for most use cases
+  @HiveField(9, defaultValue: 1.3)
+  double serveZoneFactor;
 
   Settings({
     this.playbackSpeed = 1.0,
@@ -37,6 +86,8 @@ class Settings extends HiveObject {
     this.referenceRadiusCm = 260.0,
     this.showPreviousFrameLines = true,
     this.showPathControlPoints = false,
+    this.objectScaleMultiplier = 1.5,
+    this.serveZoneFactor = 1.3,
   });
 
   // Converts cm to logical units (pixels)
@@ -50,10 +101,8 @@ class Settings extends HiveObject {
     final usableWidth = screenSize.width;
     final halfMinScreen = (usableHeight < usableWidth ? usableHeight : usableWidth) / 2 - padding;
 
-    // Heuristic: widths up to 800px behave like mobile/tablet; above that treat as desktop.
-    final bool isMobileLikeWidth = screenSize.width <= 800;
+    // Use the user-configured serve zone factor for scaling
     final double serveZoneRadius = outerCircleRadiusCm;
-    final double serveZoneFactor = isMobileLikeWidth ? 1.2 : 1.4;
     final double targetReference = serveZoneRadius * serveZoneFactor;
     final double safeReference = targetReference == 0 ? 1.0 : targetReference;
     return cm * (halfMinScreen / safeReference);
@@ -79,6 +128,8 @@ class Settings extends HiveObject {
     referenceRadiusCm: referenceRadiusCm,
     showPreviousFrameLines: showPreviousFrameLines,
     showPathControlPoints: showPathControlPoints,
+    objectScaleMultiplier: objectScaleMultiplier,
+    serveZoneFactor: serveZoneFactor,
   );
 
   @override
@@ -93,7 +144,9 @@ class Settings extends HiveObject {
           outerBoundsRadiusCm == other.outerBoundsRadiusCm &&
           referenceRadiusCm == other.referenceRadiusCm &&
           showPreviousFrameLines == other.showPreviousFrameLines &&
-          showPathControlPoints == other.showPathControlPoints;
+          showPathControlPoints == other.showPathControlPoints &&
+          objectScaleMultiplier == other.objectScaleMultiplier &&
+          serveZoneFactor == other.serveZoneFactor;
 
   @override
   int get hashCode =>
@@ -104,7 +157,9 @@ class Settings extends HiveObject {
       outerBoundsRadiusCm.hashCode ^
       referenceRadiusCm.hashCode ^
       showPreviousFrameLines.hashCode ^
-      showPathControlPoints.hashCode;
+      showPathControlPoints.hashCode ^
+      objectScaleMultiplier.hashCode ^
+      serveZoneFactor.hashCode;
 }
 
 extension SettingsMap on Settings {
@@ -117,6 +172,8 @@ extension SettingsMap on Settings {
     'referenceRadiusCm': referenceRadiusCm,
     'showPreviousFrameLines': showPreviousFrameLines,
     'showPathControlPoints': showPathControlPoints,
+    'objectScaleMultiplier': objectScaleMultiplier,
+    'serveZoneFactor': serveZoneFactor,
   };
 
   static Settings fromMap(Map<String, dynamic> m) => Settings(
@@ -128,5 +185,7 @@ extension SettingsMap on Settings {
     referenceRadiusCm: (m['referenceRadiusCm'] ?? 260.0).toDouble(),
     showPreviousFrameLines: (m['showPreviousFrameLines'] ?? true) as bool,
     showPathControlPoints: (m['showPathControlPoints'] ?? false) as bool,
+    objectScaleMultiplier: (m['objectScaleMultiplier'] ?? 1.5).toDouble(),
+    serveZoneFactor: (m['serveZoneFactor'] ?? 1.3).toDouble(),
   );
 }

@@ -248,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
               primary: 'Start a new animation board.',
               gestureHint: 'Tap once to create',
             ),
-            backgroundColor: AppTheme.darkGrey,
+            backgroundColor: AppTheme.lightGrey,
             contentLocation: ContentLocation.below,
             pulseDuration: const Duration(milliseconds: 950),
             overflowMode: OverflowMode.clipContent,
@@ -283,10 +283,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final projectService = ProjectService(box);
     var isTrainingMode = false;
 
+    // change background color of project create window to something brighter so that the text is readable
     showDialog(
       context: context,
       builder: (_) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
+          backgroundColor: AppTheme.darkGrey,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.dialogBorderRadius)),
           title: const Text("New Project"),
           content: SingleChildScrollView(

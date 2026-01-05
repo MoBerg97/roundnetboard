@@ -11,10 +11,10 @@ class AppTheme {
   // Color Palette - Modern Roundnet/Sports Theme
 
   /// Primary accent color for UI (buttons, highlights)
-  static const Color primaryBlue = Color(0xFF2196F3);
+  static const Color primaryBlue = Color(0xFF5f797b);
 
   /// Secondary action color - deeper blue
-  static const Color secondaryBlue = Color(0xFF1565C0);
+  static const Color secondaryBlue = Color(0xFF3d405b);
 
   /// Accent color - orange (used mainly on board)
   static const Color accentOrange = Color(0xFFFF6F00);
@@ -23,24 +23,24 @@ class AppTheme {
   static const Color darkGrey = Color(0xFF263238);
 
   /// Medium grey for cards/containers
-  static const Color mediumGrey = Color(0xFF37474F);
+  static const Color mediumGrey = Color(0xFF263238);
 
   /// Light grey for backgrounds and dividers
-  static const Color lightGrey = Color(0xFFECEFF1);
+  static const Color lightGrey = Color(0xFFf4f1de);
 
   /// Error red for destructive actions
   static const Color errorRed = Color(0xFFD32F2F);
 
   /// Success green for positive feedback
-  static const Color successGreen = Color(0xFF388E3C);
+  static const Color successGreen = Color(0xFF5D987B);
 
   /// Warning amber for cautions
-  static const Color warningAmber = Color(0xFFFFA726);
+  static const Color warningAmber = Color(0xFFe07a5f);
 
   // Court colors for board rendering (colorful – reserved for board objects)
 
   /// Court surface green - more subtle, darker, less neon
-  static const Color courtGreen = Color.fromARGB(255, 93, 164, 118);
+  static const Color courtGreen = Color(0xFF81b29a);
 
   /// Court line white
   static const Color courtLine = Color(0xFFFFFFFF);

@@ -13,7 +13,9 @@ class PlayerAdapter extends TypeAdapter<Player> {
   @override
   Player read(BinaryReader reader) {
     final numOfFields = reader.readByte();
-    final fields = <int, dynamic>{for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read()};
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
     return Player(
       position: fields[0] as Offset,
       rotation: fields[1] as double,
@@ -46,5 +48,8 @@ class PlayerAdapter extends TypeAdapter<Player> {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is PlayerAdapter && runtimeType == other.runtimeType && typeId == other.typeId;
+      identical(this, other) ||
+      other is PlayerAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }

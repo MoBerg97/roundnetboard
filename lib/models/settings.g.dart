@@ -24,13 +24,16 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       outerBoundsRadiusCm: fields[4] as double,
       referenceRadiusCm: fields[5] as double,
       showPreviousFrameLines: fields[6] as bool,
+      showPathControlPoints: fields[7] as bool,
+      objectScaleMultiplier: fields[8] as double,
+      serveZoneFactor: fields[9] == null ? 1.3 : fields[9] as double,
     );
   }
 
   @override
   void write(BinaryWriter writer, Settings obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.playbackSpeed)
       ..writeByte(1)
@@ -44,7 +47,13 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       ..writeByte(5)
       ..write(obj.referenceRadiusCm)
       ..writeByte(6)
-      ..write(obj.showPreviousFrameLines);
+      ..write(obj.showPreviousFrameLines)
+      ..writeByte(7)
+      ..write(obj.showPathControlPoints)
+      ..writeByte(8)
+      ..write(obj.objectScaleMultiplier)
+      ..writeByte(9)
+      ..write(obj.serveZoneFactor);
   }
 
   @override

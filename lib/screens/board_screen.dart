@@ -56,7 +56,7 @@ class BoardScreen extends StatefulWidget {
 // ANNOTATION TOOLS ENUM
 // ────────────────────────────────────────────────────────────────────────────
 // Available drawing tools for annotations on the board
-enum AnnotationTool { none, move, line, circle, rectangle }
+enum AnnotationTool { none, move, line, circle, rectangle, sector }
 
 class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin {
   // ──────────────────────────────────────────────────────────────────────────
@@ -68,6 +68,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   // Project settings (court dimensions, visual preferences)
   late Settings _settings;
+
+  // Settings revision counter to force repaint when settings change
+  int _settingsRevision = 0;
 
   // Undo/redo history manager
   late HistoryManager _history;
@@ -138,6 +141,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   Offset? _currentDragPos; // Current drag position for live preview
   Annotation? _draggingAnnotation; // Annotation being moved/dragged
   Offset? _annotationDragOffset; // Offset from touch point to annotation's start position for smooth dragging
+  String? _sectorZoneType; // Type of court zone for sector tool (innerCircle, outerCircle, outerBounds)
+  double? _sectorZoneRadius; // Radius of the selected zone for sector
+  Offset? _sectorStartPos; // Starting position for sector angle definition
 
   // ──────────────────────────────────────────────────────────────────────────
   // DRAG STATE (for moving objects and control points)
@@ -278,8 +284,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // COORDINATE CONVERSION HELPERS
+  // COORDINATE CONVERSION & SCREEN SIZE HELPERS
   // ══════════════════════════════════════════════════════════════════════════
+  // Converts between cm-based court coordinates and screen pixel coordinates
+  // Uses Settings.cmToLogical() for adaptive scaling based on screen size
 
   /// Calculate the center point of the board (accounting for AppBar and Timeline)
   Offset _boardCenter(Size size) {
@@ -292,6 +300,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   /// Convert cm logical position to screen pixel position
+  /// Uses Settings.cmToLogical() to scale based on:
+  /// - Screen size (adaptive: 1.1x serve zone on mobile, 1.5x on desktop)
+  /// - Usable board area (accounting for AppBar ~56px, Timeline 120px)
+  /// - Court reference radius (default 260cm outer circle)
   Offset _toScreenPosition(Offset cmPos, Size size) {
     final center = _boardCenter(size);
     return center + Offset(_settings.cmToLogical(cmPos.dx, size), _settings.cmToLogical(cmPos.dy, size));
@@ -335,7 +347,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _annotationEraserMenuEntry = OverlayEntry(
       builder: (_) => Stack(
         children: [
-          Positioned.fill(child: GestureDetector(onTap: _removeAnnotationEraserMenu)),
+          IgnorePointer(),
           Positioned(
             left: left,
             top: top,
@@ -399,14 +411,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     }
   }
 
-  void _finalizeAnnotationEraserSelection() {
-    if (_annotationEraserMenuEntry == null) return;
-    if (_annotationHoverEraserIndex >= 0 && _annotationHoverEraserIndex < _annotationEraserSizes.length) {
-      setState(() => _annotationEraserRadiusCm = _annotationEraserSizes[_annotationHoverEraserIndex]);
-    }
-    _removeAnnotationEraserMenu();
-  }
-
   void _removeAnnotationEraserMenu() {
     _annotationEraserMenuEntry?.remove();
     _annotationEraserMenuEntry = null;
@@ -442,7 +446,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _annotationStrokeMenuEntry = OverlayEntry(
       builder: (_) => Stack(
         children: [
-          Positioned.fill(child: GestureDetector(onTap: _removeAnnotationStrokeMenu)),
+          IgnorePointer(),
           Positioned(
             left: left,
             top: top,
@@ -514,14 +518,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _annotationStrokeHoverNotifier.value = -1;
   }
 
-  void _finalizeAnnotationStrokeSelection() {
-    if (_annotationStrokeMenuEntry == null) return;
-    if (_annotationStrokeHoverIndex >= 0 && _annotationStrokeHoverIndex < _annotationStrokeOptionsCm.length) {
-      setState(() => _annotationStrokeCm = _annotationStrokeOptionsCm[_annotationStrokeHoverIndex]);
-    }
-    _removeAnnotationStrokeMenu();
-  }
-
   void _toggleCircleFillMenu({Offset? globalPos, bool forceOpen = false}) {
     if (_circleFillMenuEntry != null) {
       _removeCircleFillMenu();
@@ -552,7 +548,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _circleFillMenuEntry = OverlayEntry(
       builder: (_) => Stack(
         children: [
-          Positioned.fill(child: GestureDetector(onTap: _removeCircleFillMenu)),
+          IgnorePointer(),
           Positioned(
             left: left,
             top: top,
@@ -622,14 +618,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _circleFillHoverNotifier.value = -1;
   }
 
-  void _finalizeCircleFillSelection() {
-    if (_circleFillMenuEntry == null) return;
-    if (_circleFillHoverIndex >= 0 && _circleFillHoverIndex < 2) {
-      setState(() => _circleFilled = [true, false][_circleFillHoverIndex]);
-    }
-    _removeCircleFillMenu();
-  }
-
   void _toggleRectangleFillMenu({Offset? globalPos, bool forceOpen = false}) {
     if (_rectangleFillMenuEntry != null) {
       _removeRectangleFillMenu();
@@ -660,7 +648,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _rectangleFillMenuEntry = OverlayEntry(
       builder: (_) => Stack(
         children: [
-          Positioned.fill(child: GestureDetector(onTap: _removeRectangleFillMenu)),
+          IgnorePointer(),
           Positioned(
             left: left,
             top: top,
@@ -730,14 +718,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _rectangleFillHoverNotifier.value = -1;
   }
 
-  void _finalizeRectangleFillSelection() {
-    if (_rectangleFillMenuEntry == null) return;
-    if (_rectangleFillHoverIndex >= 0 && _rectangleFillHoverIndex < 2) {
-      setState(() => _rectangleFilled = [true, false][_rectangleFillHoverIndex]);
-    }
-    _removeRectangleFillMenu();
-  }
-
   /// Derive available logical screen size from the active window (web/windows) or MediaQuery elsewhere.
   Size _effectiveScreenSize(BuildContext context) {
     final mqSize = MediaQuery.of(context).size;
@@ -788,8 +768,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // PLAYBACK LOGIC
+  // PLAYBACK LOGIC & ANIMATION STATE MANAGEMENT
   // ══════════════════════════════════════════════════════════════════════════
+  // Manages animation playback, frame interpolation, and timeline synchronization
+  // Key parameters:
+  //   _playbackFrameIndex: current keyframe (0 to frames.length-1)
+  //   _playbackT: interpolation [0.0..1.0] between keyframe and next
+  //   _playbackSpeed: 0.1x to 2.0x multiplier
+  //   _endedAtLastFrame: prevents auto-exit to edit mode; requires Stop button
 
   /// Called on every frame during playback to update animation state
   void _onTick(Duration elapsed) {
@@ -959,8 +945,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // FRAME INTERPOLATION (for smooth playback animation)
+  // FRAME INTERPOLATION & ANIMATION RENDERING
   // ══════════════════════════════════════════════════════════════════════════
+  // Smoothly interpolates between keyframes during playback or scrubbing
+  // Supports path-based movement via PathEngine (quadratic Bezier curves)
+  // Handles ball scale effects (set/hit animations) via _ballScaleAt()
 
   /// Generate interpolated frame between two keyframes during playback or scrubbing
   Frame? get _animatedFrame {
@@ -992,7 +981,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         final interpPos = getPathOrLinear(pB.id, pA.position, pB.position, pB.pathPoints);
         final interpRot = _interpolateRotation(pA.rotation, pB.rotation, t);
 
-        interpPlayers.add(Player(position: interpPos, rotation: interpRot, color: pB.color, id: pB.id));
+        interpPlayers.add(Player(position: interpPos, rotation: interpRot, color: pB.color, id: pB.id, label: pB.label));
       }
     }
 
@@ -1097,8 +1086,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // FRAME MANAGEMENT (Insert, Delete)
+  // FRAME MANAGEMENT (Insert, Delete, Undo/Redo)
   // ══════════════════════════════════════════════════════════════════════════
+  // Manages frame lifecycle and history tracking via HistoryManager
+  // All modifications are undoable/redoable
 
   /// Insert a new frame after the current frame (deep copy including annotations)
   void _insertFrameAfterCurrent() {
@@ -1202,34 +1193,38 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // COLOR PICKER DIALOG
+  // COLOR PICKER DIALOGS
   // ══════════════════════════════════════════════════════════════════════════
-  // Shows a dialog to select annotation color (grid of color circles)
+  // Provides UI for selecting annotation colors and player/ball colors
+  // Applies to all frames for player/ball color changes
 
+// todo make color picker background lightgrey
   void _showColorPicker() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Select Color'),
-        content: SizedBox(
+        content: Container(
           width: 280,
           height: 200,
+          color: AppTheme.lightGrey,
           child: GridView.count(
             crossAxisCount: 4,
             children:
+            // change the colors to hex color codes based on design template
                 [
-                      Colors.red,
-                      Colors.blue,
-                      Colors.green,
-                      Colors.yellow,
-                      Colors.orange,
-                      Colors.purple,
-                      Colors.pink,
-                      Colors.cyan,
-                      Colors.teal,
-                      Colors.lime,
-                      Colors.indigo,
-                      Colors.brown,
+                      Color(0xFFF4F1DE),
+                      Color(0xFF99999d),
+                      Color(0xFF3D405B),
+                      Color(0xFF5F797B),
+                      Color(0xFF81B29A),
+                      Color(0xFF5D987B),
+                      Color(0xFFE07A5F),
+                      Color(0xFFF2CC8F),
+                      Color(0xFFE59B24),
+                      Color(0xFFcddc39),
+                      Color(0xFF3f51b5),
+                      Color(0xFF795548),
                     ]
                     .map(
                       (color) => GestureDetector(
@@ -1242,7 +1237,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           decoration: BoxDecoration(
                             color: color,
                             shape: BoxShape.circle,
-                            border: _annotationColor == color ? Border.all(color: AppTheme.darkGrey, width: 2) : null,
+                            border: _annotationColor == color ? Border.all(color: AppTheme.lightGrey, width: 2) : null,
                           ),
                         ),
                       ),
@@ -1427,9 +1422,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // BOARD TAP HANDLER
-  // ══════════════════════════════════════════════════════════════════════════
-  // Handles taps on the board for placing ball modifiers or adding annotations
+  // BOARD TAP & DRAG INTERACTION HANDLERS
+  // ══════════────────────────────────────────────────────────────────────────
+  // Handles all touch/mouse interactions on the board:
+  // - Tap: ball marker placement, path midpoint addition
+  // - Drag: annotation drawing, eraser, object movement, path control editing
 
   void _handleBoardTap(Offset tapPos, Size size) {
     if (_isPlaying || _endedAtLastFrame) return;
@@ -1505,6 +1502,23 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (tryAdd("BALL", prev.ball, currentFrame.ball, currentFrame.ballPathPoints)) return;
   }
 
+  /// Get the court zone containing a point (for sector tool)
+  /// Returns zone type and radius, prioritizing inner zones
+  Map<String, dynamic>? _getContainingZone(Offset point) {
+    final distFromCenter = point.distance;
+    
+    // Check zones from inner to outer
+    if (distFromCenter <= _settings.innerCircleRadiusCm) {
+      return {'type': 'innerCircle', 'radius': _settings.innerCircleRadiusCm};
+    } else if (distFromCenter <= _settings.outerCircleRadiusCm) {
+      return {'type': 'outerCircle', 'radius': _settings.outerCircleRadiusCm};
+    } else if (distFromCenter <= _settings.outerBoundsRadiusCm) {
+      return {'type': 'outerBounds', 'radius': _settings.outerBoundsRadiusCm};
+    }
+    
+    return null; // Point is outside all zones
+  }
+
   /// Check if a point is near an annotation (for selecting it with move tool)
   bool _isPointNearAnnotation(Offset point, Annotation ann, double toleranceCm) {
     if (ann.type == AnnotationType.line && ann.points.length >= 2) {
@@ -1534,6 +1548,44 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final dRight = _distanceToLineSegment(point, tr, br);
       final minD = math.min(math.min(dTop, dBottom), math.min(dLeft, dRight));
       return minD <= toleranceCm;
+    } else if (ann.type == AnnotationType.sector && ann.points.length >= 2) {
+      // For sector, check if point is within the sector area
+      final center = ann.points[0];
+      final radiusPoint = ann.points[1];
+      final radius = (radiusPoint - center).distance;
+      final distToCenter = (point - center).distance;
+      
+      if (distToCenter > radius + toleranceCm) return false;
+      if (distToCenter < radius - toleranceCm) {
+        // Check if angle is within sector
+        if (ann.startAngle != null && ann.endAngle != null) {
+          final vec = point - center;
+          final angle = math.atan2(vec.dy, vec.dx);
+          final start = ann.startAngle!;
+          final end = ann.endAngle!;
+          
+          // Normalize angles to [0, 2π]
+          double normalizedAngle = angle;
+          while (normalizedAngle < 0) {
+            normalizedAngle += 2 * math.pi;
+          }
+          double normalizedStart = start;
+          while (normalizedStart < 0) {
+            normalizedStart += 2 * math.pi;
+          }
+          double normalizedEnd = end;
+          while (normalizedEnd < 0) {
+            normalizedEnd += 2 * math.pi;
+          }
+          
+          if (normalizedStart <= normalizedEnd) {
+            return normalizedAngle >= normalizedStart && normalizedAngle <= normalizedEnd;
+          } else {
+            return normalizedAngle >= normalizedStart || normalizedAngle <= normalizedEnd;
+          }
+        }
+      }
+      return distToCenter <= radius + toleranceCm;
     }
     return false;
   }
@@ -1588,6 +1640,23 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
     final localPos = box.globalToLocal(details.globalPosition);
     final cmPos = _screenToCm(localPos, size);
+    
+    // Special handling for sector tool
+    if (_activeAnnotationTool == AnnotationTool.sector) {
+      // Detect which zone the touch is in
+      final zone = _getContainingZone(cmPos);
+      setState(() {
+        _sectorStartPos = cmPos;
+        _sectorZoneType = zone?['type'];
+        _sectorZoneRadius = zone?['radius'];
+        _pendingAnnotationPoints.clear();
+        _pendingAnnotationPoints.add(cmPos);
+        _currentDragPos = cmPos;
+        _stagedAnnotations.clear();
+      });
+      return;
+    }
+    
     setState(() {
       _pendingAnnotationPoints.clear();
       _pendingAnnotationPoints.add(cmPos);
@@ -1621,14 +1690,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       });
       _saveProject();
     } else if (_activeAnnotationTool == AnnotationTool.move && _draggingAnnotation != null) {
-      // Update annotation position while dragging
+      // Update annotation position while dragging with snapping
       setState(() {
         final offset = _annotationDragOffset ?? Offset.zero;
-        final newPos = cmPos + offset;
+        var newPos = cmPos + offset;
 
         if (_draggingAnnotation!.points.isNotEmpty) {
           final idx = currentFrame.annotations.indexOf(_draggingAnnotation!);
           if (idx != -1) {
+            // Apply snapping to the new position
+            newPos = _applyAnnotationSnap(newPos, _draggingAnnotation!, currentFrame.annotations);
+            
             final delta = newPos - _draggingAnnotation!.points.first;
             final updated = _draggingAnnotation!.copy();
             updated.points = updated.points.map((p) => p + delta).toList();
@@ -1662,6 +1734,39 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               points: [_pendingAnnotationPoints.first, cmPos],
               filled: _circleFilled,
               strokeWidthCm: _annotationStrokeCm,
+            ),
+          );
+        } else if (_activeAnnotationTool == AnnotationTool.sector && _sectorZoneRadius != null && _sectorStartPos != null) {
+          // Preview sector annotation based on court zone
+          final center = Offset.zero; // Court center
+          final radius = _sectorZoneRadius!;
+          final radiusPoint = Offset(radius, 0); // Point at radius distance
+          
+          // Calculate angles
+          final startVec = _sectorStartPos!;
+          final endVec = cmPos;
+          double startAngle = math.atan2(startVec.dy, startVec.dx);
+          double endAngle = math.atan2(endVec.dy, endVec.dx);
+          
+          // Ensure the sector sweeps in the drag direction
+          if ((endAngle - startAngle).abs() > math.pi) {
+            if (endAngle > startAngle) {
+              startAngle += 2 * math.pi;
+            } else {
+              endAngle += 2 * math.pi;
+            }
+          }
+          
+          _stagedAnnotations.add(
+            Annotation(
+              type: AnnotationType.sector,
+              color: _annotationColor,
+              points: [center, radiusPoint],
+              filled: true,
+              strokeWidthCm: _annotationStrokeCm,
+              circleAnnotationId: _sectorZoneType,
+              startAngle: startAngle,
+              endAngle: endAngle,
             ),
           );
         }
@@ -1715,6 +1820,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final dRight = _distanceToLineSegment(eraserCenterCm, tr, br);
       final minD = math.min(math.min(dTop, dBottom), math.min(dLeft, dRight));
       return minD <= eraserRadiusCm;
+    } else if (ann.type == AnnotationType.sector && ann.points.length >= 2) {
+      final center = ann.points[0];
+      final radiusPoint = ann.points[1];
+      final radius = (radiusPoint - center).distance;
+      final distToCenter = (eraserCenterCm - center).distance;
+      // Check if eraser overlaps with sector area
+      return distToCenter <= (eraserRadiusCm + radius);
     }
     return false;
   }
@@ -1728,6 +1840,115 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final t = ((ap.dx * ab.dx + ap.dy * ab.dy) / abDot).clamp(0.0, 1.0);
     final closest = a + Offset(ab.dx * t, ab.dy * t);
     return (p - closest).distance;
+  }
+
+  /// Apply snapping to annotation position based on nearby annotations
+  Offset _applyAnnotationSnap(Offset newPos, Annotation dragged, List<Annotation> allAnnotations) {
+    const double thresholdCm = 20.0; // 20cm snap threshold for cm-based coordinates
+    final anchors = _annotationAnchorPoints(dragged, newPos);
+    final candidates = _snapPointsFromOtherAnnotations(dragged, allAnnotations);
+
+    double bestDist = thresholdCm;
+    Offset bestDelta = Offset.zero;
+
+    for (final anchor in anchors) {
+      for (final target in candidates) {
+        final d = (target - anchor).distance;
+        if (d < bestDist) {
+          bestDist = d;
+          bestDelta = target - anchor;
+        }
+      }
+    }
+
+    if (bestDist < thresholdCm) {
+      return newPos + bestDelta;
+    }
+
+    return newPos;
+  }
+
+  /// Get anchor points from the dragged annotation (center, endpoints, corners)
+  List<Offset> _annotationAnchorPoints(Annotation annotation, Offset newPos) {
+    final anchors = <Offset>[];
+    
+    if (annotation.points.isEmpty) return anchors;
+
+    // Calculate delta from original to new position
+    final delta = newPos - annotation.points.first;
+
+    // Add all points as anchors
+    for (final point in annotation.points) {
+      anchors.add(point + delta);
+    }
+
+    // For rectangles, add the four corners
+    if (annotation.type == AnnotationType.rectangle && annotation.points.length >= 2) {
+      final a = annotation.points[0] + delta;
+      final b = annotation.points[1] + delta;
+      final tl = Offset(math.min(a.dx, b.dx), math.min(a.dy, b.dy));
+      final tr = Offset(math.max(a.dx, b.dx), math.min(a.dy, b.dy));
+      final bl = Offset(math.min(a.dx, b.dx), math.max(a.dy, b.dy));
+      final br = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
+      anchors.addAll([tl, tr, bl, br]);
+      
+      // Add midpoints of rectangle edges
+      anchors.add((tl + tr) / 2); // top mid
+      anchors.add((tr + br) / 2); // right mid
+      anchors.add((br + bl) / 2); // bottom mid
+      anchors.add((bl + tl) / 2); // left mid
+    }
+
+    // For lines, add midpoint
+    if (annotation.type == AnnotationType.line && annotation.points.length >= 2) {
+      final a = annotation.points[0] + delta;
+      final b = annotation.points[1] + delta;
+      anchors.add((a + b) / 2);
+    }
+
+    // For circles, add center (already included as first point)
+    // Could add points on the circle perimeter if needed
+
+    return anchors;
+  }
+
+  /// Get snap target points from other annotations
+  List<Offset> _snapPointsFromOtherAnnotations(Annotation dragged, List<Annotation> allAnnotations) {
+    final points = <Offset>[];
+
+    for (final ann in allAnnotations) {
+      if (identical(ann, dragged)) continue;
+      if (ann.points.isEmpty) continue;
+
+      // Add all annotation points
+      points.addAll(ann.points);
+
+      // For rectangles, add corners and midpoints
+      if (ann.type == AnnotationType.rectangle && ann.points.length >= 2) {
+        final a = ann.points[0];
+        final b = ann.points[1];
+        final tl = Offset(math.min(a.dx, b.dx), math.min(a.dy, b.dy));
+        final tr = Offset(math.max(a.dx, b.dx), math.min(a.dy, b.dy));
+        final bl = Offset(math.min(a.dx, b.dx), math.max(a.dy, b.dy));
+        final br = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
+        points.addAll([tl, tr, bl, br]);
+        
+        // Add midpoints of rectangle edges
+        points.add((tl + tr) / 2); // top mid
+        points.add((tr + br) / 2); // right mid
+        points.add((br + bl) / 2); // bottom mid
+        points.add((bl + tl) / 2); // left mid
+      }
+
+      // For lines, add midpoint
+      if (ann.type == AnnotationType.line && ann.points.length >= 2) {
+        points.add((ann.points[0] + ann.points[1]) / 2);
+      }
+
+      // For circles, could add points on perimeter if needed
+    }
+
+    return points;
   }
 
   /// Handle drag end for committing line or finishing erase
@@ -1759,7 +1980,42 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
       final dist = (end - start).distance;
       Annotation? ann;
-      if (dist > 10) {
+      
+      // Special handling for sector tool - create regardless of distance
+      if (_activeAnnotationTool == AnnotationTool.sector) {
+        // Create sector from court zone
+        if (_sectorZoneRadius != null && _sectorStartPos != null) {
+          final center = Offset.zero; // Court center
+          final radius = _sectorZoneRadius!;
+          final radiusPoint = Offset(radius, 0);
+          
+          // Calculate angles
+          final startVec = _sectorStartPos!;
+          final endVec = end;
+          double startAngle = math.atan2(startVec.dy, startVec.dx);
+          double endAngle = math.atan2(endVec.dy, endVec.dx);
+          
+          // Ensure the sector sweeps in the drag direction
+          if ((endAngle - startAngle).abs() > math.pi) {
+            if (endAngle > startAngle) {
+              startAngle += 2 * math.pi;
+            } else {
+              endAngle += 2 * math.pi;
+            }
+          }
+          
+          ann = Annotation(
+            type: AnnotationType.sector,
+            color: _annotationColor,
+            points: [center, radiusPoint],
+            filled: true, // Sectors are always filled
+            strokeWidthCm: _annotationStrokeCm,
+            circleAnnotationId: _sectorZoneType,
+            startAngle: startAngle,
+            endAngle: endAngle,
+          );
+        }
+      } else if (dist > 10) {
         if (_activeAnnotationTool == AnnotationTool.line) {
           ann = Annotation(
             type: AnnotationType.line,
@@ -1795,6 +2051,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           strokeWidthCm: _annotationStrokeCm,
         );
       }
+      // Remove the duplicate sector handling that was here
 
       if (ann != null) {
         setState(() {
@@ -1802,6 +2059,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           _pendingAnnotationPoints.clear();
           _currentDragPos = null;
           _stagedAnnotations.clear();
+          _sectorStartPos = null;
+          _sectorZoneType = null;
+          _sectorZoneRadius = null;
         });
         _saveProject();
       } else {
@@ -1809,6 +2069,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           _pendingAnnotationPoints.clear();
           _currentDragPos = null;
           _stagedAnnotations.clear();
+          _sectorStartPos = null;
+          _sectorZoneType = null;
+          _sectorZoneRadius = null;
         });
       }
     }
@@ -1963,9 +2226,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     return (left + right) / 2;
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // PATH CONTROL DRAG HELPERS
-  // ──────────────────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  // PATH CONTROL POINT EDITING & DRAG HANDLING
+  // ══════════════════════════════════════════════════════════════════════════
+  // Manages curve paths for players and balls during animation transitions
+  // Uses PathEngine for quadratic Bezier sampling and hit detection
+  // Key parameters:
+  //   bufferCm: 50cm tap radius for path hit detection (adaptive via cmToLogical)
+  //   pathPoints: first point is control point; stores in entity.pathPoints
 
   List<Offset>? _pathPointsForLabel(String label) {
     // Support both old hardcoded format (P1-P4) and new dynamic IDs
@@ -2187,8 +2455,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // UI BUILD HELPERS
+  // OBJECT RENDERING & VISUAL BUILDERS
   // ══════════════════════════════════════════════════════════════════════════
+  // Renders players, balls, hit/set markers, and decorative elements
+  // Includes selection highlighting (cyan glow) for active objects
 
   /// Build hit markers for all balls in the current frame during editing
   List<Widget> _buildAllHitMarkersForEditing(Size size) {
@@ -2402,7 +2672,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// Build player widgets with drag handling
   Widget _buildPlayer(Offset posCm, double rotation, Color color, String playerId, Size size, {String? label}) {
     final screenPos = _toScreenPosition(posCm, size);
-    final playerRadiusPx = _settings.cmToLogical(AppConstants.playerRadiusCm, size).clamp(14.0, 64.0);
+    final playerScale = _settings.objectScaleMultiplier;
+    final basePlayerRadius = _settings.cmToLogical(AppConstants.playerRadiusCm, size);
+    final playerRadiusPx = (basePlayerRadius * playerScale).clamp(14.0 * playerScale, 64.0 * playerScale);
     final playerDiameterPx = playerRadiusPx * 2;
     final borderWidth = math.max(2.0, playerRadiusPx * 0.12);
     final shadowBlur = math.max(4.0, playerRadiusPx * 0.2);
@@ -2539,7 +2811,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     Color? color,
   }) {
     final screenPos = _toScreenPosition(posCm, size);
-    final ballRadiusPx = _settings.cmToLogical(AppConstants.ballRadiusCm, size).clamp(9.0, 48.0);
+    final ballScale = _settings.objectScaleMultiplier;
+    final baseBallRadius = _settings.cmToLogical(AppConstants.ballRadiusCm, size);
+    final ballRadiusPx = (baseBallRadius * ballScale).clamp(9.0 * ballScale, 48.0 * ballScale);
     final ballDiameterPx = ballRadiusPx * 2;
     final borderWidth = math.max(2.0, ballRadiusPx * 0.14);
     final shadowBlur = math.max(3.0, ballRadiusPx * 0.18);
@@ -2616,7 +2890,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             alignment: Alignment.center,
             children: [
               // Pulsing sonar highlight - circular and extends beyond object
-              if (isSelected)
+              if (isSelected && _showModifierMenu)
                 Positioned.fill(
                   child: AnimatedBuilder(
                     animation: _selectionPulseController,
@@ -2898,6 +3172,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 // Reload settings after returning from settings screen so toggles take effect immediately
                 setState(() {
                   _settings = widget.project.settings!;
+                  _settingsRevision++; // Force repaint of court elements with new scaling
                 });
               },
             ),
@@ -2931,6 +3206,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               settings: _settings,
                               customElements: widget.project.customCourtElements,
                               projectType: widget.project.projectType,
+                              settingsRevision: _settingsRevision,
                             ),
                           ),
                         ),
@@ -3616,10 +3892,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                   height: 56,
                   child: Container(
                     color: AppTheme.lightGrey,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
                         // Set button - toggle, mutually exclusive with Hit
                         GestureDetector(
                           onTap: () {
@@ -3797,8 +4075,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             ),
                           ),
                         ),
-                        // Color Picker button - only in training mode
-                        if (widget.project.projectType == ProjectType.training && _activeBallId != null)
+                        // Color Picker button - in training mode with active ball or in play mode with ball
+                        if ((widget.project.projectType == ProjectType.training && _activeBallId != null) ||
+                            (widget.project.projectType == ProjectType.play && currentFrame.balls.isNotEmpty))
                           GestureDetector(
                             onTap: _showBallColorPicker,
                             child: Container(
@@ -3809,9 +4088,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 color: Colors.transparent,
                                 borderRadius: BorderRadius.circular(24),
                                 border: Border.all(
-                                  color: _activeBallId != null
+                                  color: (widget.project.projectType == ProjectType.training && _activeBallId != null)
                                       ? (currentFrame.getBallById(_activeBallId!)?.color ?? AppTheme.lightGrey)
-                                      : AppTheme.lightGrey,
+                                      : (currentFrame.balls.isNotEmpty
+                                          ? (currentFrame.balls.first.color ?? AppTheme.lightGrey)
+                                          : AppTheme.lightGrey),
                                   width: 2,
                                 ),
                               ),
@@ -3821,20 +4102,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   Icon(
                                     Icons.palette,
                                     size: 24,
-                                    color: _activeBallId != null
+                                    color: (widget.project.projectType == ProjectType.training && _activeBallId != null)
                                         ? (currentFrame.getBallById(_activeBallId!)?.color ?? AppTheme.lightGrey)
-                                        : AppTheme.lightGrey,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Color',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: _activeBallId != null
-                                          ? (currentFrame.getBallById(_activeBallId!)?.color ?? AppTheme.lightGrey)
-                                          : AppTheme.lightGrey,
-                                      fontWeight: FontWeight.normal,
-                                    ),
+                                        : (currentFrame.balls.isNotEmpty
+                                            ? (currentFrame.balls.first.color ?? AppTheme.lightGrey)
+                                            : AppTheme.lightGrey),
                                   ),
                                 ],
                               ),
@@ -3857,24 +4129,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 borderRadius: BorderRadius.circular(24),
                                 border: Border.all(color: AppTheme.errorRed, width: 2),
                               ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.delete, size: 24, color: AppTheme.errorRed),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Delete',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: AppTheme.errorRed,
-                                      fontWeight: FontWeight.normal,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              child: Icon(Icons.delete, size: 24, color: AppTheme.errorRed),
                             ),
                           ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -3887,20 +4146,22 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                   height: 56,
                   child: Container(
                     color: AppTheme.lightGrey,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Builder(
-                      builder: (context) {
-                        final activePlayer = _activePlayerId != null
-                            ? currentFrame.getPlayerById(_activePlayerId!)
-                            : null;
-                        final activeLabel = activePlayer?.label;
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Color Picker button
-                            GestureDetector(
-                              onTap: _showPlayerColorPicker,
-                              child: Container(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Builder(
+                        builder: (context) {
+                          final activePlayer = _activePlayerId != null
+                              ? currentFrame.getPlayerById(_activePlayerId!)
+                              : null;
+                          final activeLabel = activePlayer?.label;
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Color Picker button
+                              GestureDetector(
+                                onTap: _showPlayerColorPicker,
+                                child: Container(
                                 width: 80,
                                 height: 44,
                                 margin: const EdgeInsets.symmetric(horizontal: 8),
@@ -3913,21 +4174,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(Icons.palette, size: 24, color: activePlayer?.color ?? AppTheme.primaryBlue),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Color',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: activePlayer?.color ?? AppTheme.primaryBlue,
-                                        fontWeight: FontWeight.normal,
-                                      ),
-                                    ),
                                   ],
                                 ),
                               ),
                             ),
                             const SizedBox(width: 8),
                             // Label button
+                            // should only show "Label" independent of whether a label is already assigned
                             GestureDetector(
                               onTap: _showPlayerLabelDialog,
                               child: Container(
@@ -3945,9 +4198,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     Icon(Icons.tag, size: 20, color: AppTheme.mediumGrey),
                                     const SizedBox(width: 6),
                                     Text(
-                                      activeLabel != null && activeLabel.isNotEmpty
-                                          ? 'Label (${activeLabel.toUpperCase()})'
-                                          : 'Add Label',
+                                      'Label',
                                       style: TextStyle(
                                         fontSize: 11,
                                         color: AppTheme.mediumGrey,
@@ -3960,7 +4211,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             ),
                             const SizedBox(width: 8),
                             // Delete button - training only and only if more than 1 player
-                            if (widget.project.projectType == ProjectType.training && currentFrame.players.length > 1)
+                            if (widget.project.projectType == ProjectType.training && currentFrame.players.length > 1) ...[
                               GestureDetector(
                                 onTap: () {
                                   if (_activePlayerId != null) {
@@ -3976,26 +4227,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     borderRadius: BorderRadius.circular(24),
                                     border: Border.all(color: AppTheme.errorRed, width: 2),
                                   ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.delete, size: 24, color: AppTheme.errorRed),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Delete',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: AppTheme.errorRed,
-                                          fontWeight: FontWeight.normal,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                  child: Icon(Icons.delete, size: 24, color: AppTheme.errorRed),
                                 ),
                               ),
+                            ],
                           ],
                         );
-                      },
+                        },
+                      ),
                     ),
                   ),
                 ),
@@ -4027,18 +4266,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           ),
                           GestureDetector(
                             key: _circleFillButtonKey,
-                            onSecondaryTapDown: (details) =>
-                                _toggleCircleFillMenu(globalPos: details.globalPosition, forceOpen: true),
-                            onLongPressStart: (details) =>
-                                _toggleCircleFillMenu(globalPos: details.globalPosition, forceOpen: true),
-                            onLongPressMoveUpdate: (details) => _updateCircleFillMenuHover(details.globalPosition),
-                            onLongPressEnd: (details) {
-                              _updateCircleFillMenuHover(details.globalPosition);
-                              _finalizeCircleFillSelection();
-                            },
+                            onDoubleTap: () =>
+                                _toggleCircleFillMenu(forceOpen: true),
                             child: _buildAnnotationCreationButton(
                               icon: Icon(_circleFilled ? Icons.circle : Icons.circle_outlined),
-                              tooltip: 'Circle Tool (long-press to set fill)',
+                              tooltip: 'Circle Tool (double-tap to set fill)',
                               isActive: _activeAnnotationTool == AnnotationTool.circle,
                               buttonKey: null,
                               cornerBadge: _circleFilled
@@ -4053,11 +4285,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     )
                                   : null,
                               onPressed: () {
-                                if (_circleFillMenuEntry != null) {
-                                  _removeCircleFillMenu();
-                                } else {
-                                  _toggleCircleFillMenu(forceOpen: true);
-                                }
                                 setState(() {
                                   if (_activeAnnotationTool != AnnotationTool.circle) {
                                     _activeAnnotationTool = AnnotationTool.circle;
@@ -4069,18 +4296,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           ),
                           GestureDetector(
                             key: _rectangleFillButtonKey,
-                            onSecondaryTapDown: (details) =>
-                                _toggleRectangleFillMenu(globalPos: details.globalPosition, forceOpen: true),
-                            onLongPressStart: (details) =>
-                                _toggleRectangleFillMenu(globalPos: details.globalPosition, forceOpen: true),
-                            onLongPressMoveUpdate: (details) => _updateRectangleFillMenuHover(details.globalPosition),
-                            onLongPressEnd: (details) {
-                              _updateRectangleFillMenuHover(details.globalPosition);
-                              _finalizeRectangleFillSelection();
-                            },
+                            onDoubleTap: () =>
+                                _toggleRectangleFillMenu(forceOpen: true),
                             child: _buildAnnotationCreationButton(
                               icon: Icon(_rectangleFilled ? Icons.stop : Icons.crop_square),
-                              tooltip: 'Rectangle Tool (long-press to set fill)',
+                              tooltip: 'Rectangle Tool (double-tap to set fill)',
                               isActive: _activeAnnotationTool == AnnotationTool.rectangle,
                               buttonKey: null,
                               cornerBadge: _rectangleFilled
@@ -4095,11 +4315,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     )
                                   : null,
                               onPressed: () {
-                                if (_rectangleFillMenuEntry != null) {
-                                  _removeRectangleFillMenu();
-                                } else {
-                                  _toggleRectangleFillMenu(forceOpen: true);
-                                }
                                 setState(() {
                                   if (_activeAnnotationTool != AnnotationTool.rectangle) {
                                     _activeAnnotationTool = AnnotationTool.rectangle;
@@ -4108,6 +4323,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 });
                               },
                             ),
+                          ),
+                          _buildAnnotationCreationButton(
+                            icon: const Icon(Symbols.pie_chart),
+                            tooltip: 'Circle Sector Tool (tap in a court zone)',
+                            isActive: _activeAnnotationTool == AnnotationTool.sector,
+                            onPressed: () => setState(() {
+                              _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.sector
+                                  ? AnnotationTool.none
+                                  : AnnotationTool.sector;
+                              _eraserMode = false;
+                            }),
                           ),
                           const SizedBox(width: 12),
                           IconButton(
@@ -4131,26 +4357,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           ),
                           GestureDetector(
                             key: _annotationEraserButtonKey,
-                            onSecondaryTapDown: (details) =>
-                                _toggleAnnotationEraserMenu(globalPos: details.globalPosition, forceOpen: true),
-                            onLongPressStart: (details) =>
-                                _toggleAnnotationEraserMenu(globalPos: details.globalPosition, forceOpen: true),
-                            onLongPressMoveUpdate: (details) =>
-                                _updateAnnotationEraserMenuHover(details.globalPosition),
-                            onLongPressEnd: (details) {
-                              _updateAnnotationEraserMenuHover(details.globalPosition);
-                              _finalizeAnnotationEraserSelection();
-                            },
+                            onDoubleTap: () =>
+                                _toggleAnnotationEraserMenu(forceOpen: true),
                             child: IconButton(
                               icon: const Icon(Symbols.ink_eraser),
-                              tooltip: 'Eraser (long-press for size)',
+                              tooltip: 'Eraser (double-tap for size)',
                               color: _eraserMode ? AppTheme.errorRed : AppTheme.mediumGrey,
                               onPressed: () {
-                                if (_annotationEraserMenuEntry != null) {
-                                  _removeAnnotationEraserMenu();
-                                } else {
-                                  _toggleAnnotationEraserMenu(forceOpen: true);
-                                }
                                 setState(() {
                                   if (!_eraserMode) {
                                     _eraserMode = true;
@@ -4178,22 +4391,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           ),
                           const SizedBox(width: 8),
                           GestureDetector(
-                            onSecondaryTapDown: (details) =>
-                                _toggleAnnotationStrokeMenu(globalPos: details.globalPosition, forceOpen: true),
-                            onLongPressStart: (details) =>
-                                _toggleAnnotationStrokeMenu(globalPos: details.globalPosition, forceOpen: true),
-                            onLongPressMoveUpdate: (details) =>
-                                _updateAnnotationStrokeMenuHover(details.globalPosition),
-                            onLongPressEnd: (details) {
-                              _updateAnnotationStrokeMenuHover(details.globalPosition);
-                              _finalizeAnnotationStrokeSelection();
-                            },
+                            onDoubleTap: () =>
+                                _toggleAnnotationStrokeMenu(forceOpen: true),
                             child: IconButton(
                               key: _annotationStrokeButtonKey,
                               icon: const Icon(Symbols.line_weight),
-                              tooltip: 'Annotation stroke width',
+                              tooltip: 'Annotation stroke width (double-tap to adjust)',
                               color: AppTheme.mediumGrey,
-                              onPressed: () => _toggleAnnotationStrokeMenu(forceOpen: true),
+                              onPressed: () {
+                                // Stroke width button - only selects the stroke tool, menu opens on double-tap
+                              },
                             ),
                           ),
                           const SizedBox(width: 8),
