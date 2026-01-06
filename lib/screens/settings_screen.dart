@@ -3,6 +3,7 @@ import '../config/app_theme.dart';
 import '../config/app_constants.dart';
 import '../models/settings.dart';
 import '../models/animation_project.dart';
+import 'export_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final AnimationProject project;
@@ -44,6 +45,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
+  void _openExportScreen() {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => ExportScreen(project: widget.project)));
+  }
+
+  void _showExportInfo() {
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Export options'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text('Video: MP4 (H.264) recommended; GIF available when preferred.'),
+              SizedBox(height: 8),
+              Text('Frames: PNG sequence per frame for highest quality.'),
+              SizedBox(height: 8),
+              Text('Sprite sheet: PNG with frames stacked top to bottom.'),
+            ],
+          ),
+          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Got it'))],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -51,6 +79,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(AppConstants.padding),
         children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppConstants.paddingLarge),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: Text('Export', style: Theme.of(context).textTheme.titleMedium)),
+                    IconButton(
+                      onPressed: _showExportInfo,
+                      icon: const Icon(Icons.info_outline),
+                      tooltip: 'Export options info',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppConstants.padding),
+                FilledButton.icon(
+                  onPressed: _openExportScreen,
+                  icon: const Icon(Icons.file_download_outlined),
+                  label: const Text('Open Export Screen'),
+                ),
+              ],
+            ),
+          ),
           ListTile(
             title: const Text("Object Size"),
             subtitle: Text("${_settings.objectScaleMultiplier.toStringAsFixed(1)}x marker scale"),

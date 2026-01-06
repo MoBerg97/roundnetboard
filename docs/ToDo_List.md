@@ -87,7 +87,7 @@ Quick tips to add to helper screen:
 ### project screen
 
 - [x] users are not able to share or export projects in web version currently.
-- [ ] add two exemplary projects that are preloaded when the app is first installed, showcasing all features of the app (one play scenario, one training scenario)
+- [x] add two exemplary projects that are preloaded when the app is first installed, showcasing all features of the app (one play scenario, one training scenario)
 
 ### intuitive actions
 
@@ -95,7 +95,7 @@ Quick tips to add to helper screen:
 - [ ] when a user drags an object and stays holding that object for more than 1sec on about the same location (within 50px), a magnifying window (1.5x) showing the object and its surrounding 10% of displaymin = min(screenwidth,screenheight) is shown hovering 20% of displaymin above the location that user is holding.
 - [ ] the magnifying window is deactivated as soon as the user changed the position of the object over 50px in the last .5 seconds
 - [x] #n court elements snap to corners and center points of other court elements when being dragged within 20px of such a point.
-- [ ] automaticaaly snap annotations upon creation to annotation objects (e.g. line endpoints snap to circle circumference when created within 20px of it)
+- [ ] automatically snap annotations upon creation to annotation objects (e.g. line endpoints snap to circle circumference when created within 20px of it)
 
 ### court
 
@@ -132,8 +132,8 @@ Quick tips to add to helper screen:
 
 ### sharing
 
-- [ ] **users can export each frame as a single image, or all frames as images appended to each other, to form a left to right or top to bottom succession.**
-- [ ] **users can export the animation as a video file. the speed of the exported animation should match the last selected playback speed of the animation.**
+- [ ] users can export each frame as a single image, or all frames as images appended to each other, to form a left to right or top to bottom succession.
+- [ ] users can export the animation as a video file. the speed of the exported animation should match the last selected playback speed of the animation.
 - [x] users can share projects as a json file and import shared json files
 
 ### players
