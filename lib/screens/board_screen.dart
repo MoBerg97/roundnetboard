@@ -71,6 +71,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   // Settings revision counter to force repaint when settings change
   int _settingsRevision = 0;
+  // Path revision counter to force repaint when path control points change
+  int _pathRevision = 0;
 
   // Undo/redo history manager
   late HistoryManager _history;
@@ -152,6 +154,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   final Map<String, Offset> _dragStartScreen = {}; // Starting position in screen pixels
   String? _activePathDragId; // Which entity ID's path control is being dragged
   int? _activePathDragIndex; // Index of the control point being dragged (currently first only)
+  final Map<String, List<Offset>> _pathDragStartPoints =
+      {}; // Stores initial path points when drag starts for undo/redo
 
   // ──────────────────────────────────────────────────────────────────────────
   // TRAINING MODE STATE (for dynamic player/ball management)
@@ -174,6 +178,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   final GlobalKey _frameAddButtonKey = GlobalKey(debugLabel: 'timeline_add'); // Key for frame add button
   final GlobalKey _annotationModeButtonKey = GlobalKey(debugLabel: 'annotation_menu'); // Key for annotation mode toggle
   late final ScrollController _timelineController; // Scroll controller for timeline
+  int? _deleteFrameButtonIndex; // Which frame index currently shows the delete button (double-tap toggle)
 
   @override
   void initState() {
@@ -1134,6 +1139,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final index = widget.project.frames.indexOf(frame);
       _history.push(DeleteFrameAction(frameIndex: index));
       setState(() {
+        _deleteFrameButtonIndex = null;
         if (widget.project.frames.isEmpty) {
           // Create default frame if all frames deleted
           final r = _settings.outerCircleRadiusCm;
@@ -1487,14 +1493,25 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final midCm = (startCm + endCm) / 2;
       final midScreen = _toScreenPosition(midCm, size);
       if ((tapPos - midScreen).distance < 24) {
+        final fromPoints = List<Offset>.from(points); // Empty list
         setState(() {
           points.add(midCm);
           // ensure the project's frame list has the updated frame object
           final idx = widget.project.frames.indexOf(currentFrame);
           if (idx >= 0) widget.project.frames[idx] = currentFrame;
+          _pathRevision++;
         });
         final idx = widget.project.frames.indexOf(currentFrame);
         PathEngine.invalidateCacheFor(idx, label);
+
+        // Save to history
+        if (idx >= 0) {
+          final toPoints = List<Offset>.from(points);
+          _history.push(
+            EditPathControlPointsAction(frameIndex: idx, entityId: label, fromPoints: fromPoints, toPoints: toPoints),
+          );
+        }
+
         _saveProject();
         return true;
       }
@@ -2407,12 +2424,20 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final pathPoints = points;
     if (pathPoints == null) return false;
 
+    // Determine the actual entity ID for history tracking
+    // For balls, use the ball ID instead of "BALL" label
+    final entityIdForHistory = (labelToUse == "BALL" && bestBallId != null) ? bestBallId : labelToUse;
+
+    // Store the initial state for undo/redo
+    final fromPoints = List<Offset>.from(pathPoints);
+
     setState(() {
       if (pathPoints.isEmpty) {
         pathPoints.add(snappedPoint);
       } else {
         pathPoints[0] = snappedPoint;
       }
+      _pathRevision++;
       _activePathDragId = labelToUse;
       _activePathDragIndex = 0;
       _dragStartLogical["PATH-$labelToUse-0"] = pathPoints[0];
@@ -2428,6 +2453,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       widget.project.frames[idx] = currentFrame;
       PathEngine.invalidateCacheFor(idx, labelToUse);
     }
+
+    // Store the initial path state for this drag operation using entity ID
+    if (entityIdForHistory != null) {
+      _pathDragStartPoints[entityIdForHistory] = fromPoints;
+    }
+
     return true;
   }
 
@@ -2445,6 +2476,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     setState(() {
       final deltaScreen = localPos - startScreen;
       points[index] = startLogical + deltaScreen / scalePerCm;
+      _pathRevision++;
     });
 
     final frameIdx = widget.project.frames.indexOf(currentFrame);
@@ -2452,6 +2484,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   void _endPathDrag() {
+    bool changed = false;
     final label = _activePathDragId;
     final index = _activePathDragIndex;
     if (label != null && index != null) {
@@ -2459,6 +2492,31 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       if (frameIdx >= 0) {
         widget.project.frames[frameIdx] = currentFrame;
         PathEngine.invalidateCacheFor(frameIdx, label);
+
+        // Determine the actual entity ID for history (use ball ID if label is "BALL")
+        final entityIdForHistory = (label == "BALL" && _activeBallId != null) ? _activeBallId! : label;
+
+        // Save to history if path points changed
+        final fromPoints = _pathDragStartPoints[entityIdForHistory];
+        if (fromPoints != null) {
+          final currentPoints = _pathPointsForLabel(label);
+          if (currentPoints != null) {
+            final toPoints = List<Offset>.from(currentPoints);
+            // Only add to history if points actually changed
+            if (fromPoints.length != toPoints.length || !_offsetListsEqual(fromPoints, toPoints)) {
+              _history.push(
+                EditPathControlPointsAction(
+                  frameIndex: frameIdx,
+                  entityId: entityIdForHistory,
+                  fromPoints: fromPoints,
+                  toPoints: toPoints,
+                ),
+              );
+              changed = true;
+            }
+          }
+          _pathDragStartPoints.remove(entityIdForHistory);
+        }
       }
       _dragStartLogical.remove("PATH-$label-$index");
       _dragStartScreen.remove("PATH-$label-$index");
@@ -2467,6 +2525,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     setState(() {
       _activePathDragId = null;
       _activePathDragIndex = null;
+      if (changed) _pathRevision++;
     });
   }
 
@@ -2882,6 +2941,28 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// Remove a control point with animation
   void _removeControlPoint(List<Offset> points, int index, Offset startCm, Offset endCm, Size size) {
     if (index < 0 || index >= points.length) return;
+
+    // Store initial state for undo/redo
+    final fromPoints = List<Offset>.from(points);
+    final frameIdx = widget.project.frames.indexOf(currentFrame);
+
+    // Find which entity this belongs to
+    String? entityId;
+    for (final player in currentFrame.players) {
+      if (player.pathPoints == points) {
+        entityId = player.id;
+        break;
+      }
+    }
+    if (entityId == null) {
+      for (final ball in currentFrame.balls) {
+        if (ball.pathPoints == points) {
+          entityId = ball.id;
+          break;
+        }
+      }
+    }
+
     final removedPoint = points[index];
     final target = (startCm + endCm) / 2;
     final controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
@@ -2899,11 +2980,37 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       setState(() {
         points.removeAt(index);
         controller.dispose();
-        final idx = widget.project.frames.indexOf(currentFrame);
-        if (idx >= 0) widget.project.frames[idx] = currentFrame;
+        if (frameIdx >= 0) {
+          widget.project.frames[frameIdx] = currentFrame;
+
+          // Save to history
+          if (entityId != null) {
+            final toPoints = List<Offset>.from(points);
+            _history.push(
+              EditPathControlPointsAction(
+                frameIndex: frameIdx,
+                entityId: entityId,
+                fromPoints: fromPoints,
+                toPoints: toPoints,
+              ),
+            );
+          }
+        }
+        _pathRevision++;
         _saveProject();
       });
     });
+  }
+
+  /// Helper to compare two lists of Offsets for equality
+  bool _offsetListsEqual(List<Offset> a, List<Offset> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if ((a[i].dx - b[i].dx).abs() > 0.01 || (a[i].dy - b[i].dy).abs() > 0.01) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /// Calculate perceived brightness of a color (0.0 = dark, 1.0 = light)
@@ -3475,6 +3582,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               twoFramesAgo: _getTwoFramesAgo(),
                               screenSize: screenSize,
                               settings: _settings,
+                              pathRevision: _pathRevision,
                             ),
                           ),
                         // Draw annotations below objects when toggled off
@@ -3746,13 +3854,31 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               final frame = inPlaybackView
                                   ? widget.project.frames[index + 1]
                                   : widget.project.frames[index];
+                              final frameIndex = widget.project.frames.indexOf(frame);
                               final isSelected = frame == currentFrame;
                               return GestureDetector(
                                 onTap: () {
                                   if (!(_isPlaying || _endedAtLastFrame)) {
-                                    setState(() => currentFrame = frame);
+                                    setState(() {
+                                      currentFrame = frame;
+                                      _deleteFrameButtonIndex = null;
+                                    });
                                     _scrollToSelectedFrame();
                                   }
+                                },
+                                onDoubleTap: () {
+                                  if (_isPlaying || _endedAtLastFrame) return;
+                                  setState(() {
+                                    if (isSelected) {
+                                      _deleteFrameButtonIndex = _deleteFrameButtonIndex == frameIndex
+                                          ? null
+                                          : frameIndex;
+                                    } else {
+                                      currentFrame = frame;
+                                      _deleteFrameButtonIndex = null;
+                                    }
+                                  });
+                                  _scrollToSelectedFrame();
                                 },
                                 child: Stack(
                                   children: [
@@ -3790,12 +3916,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                         ),
                                       ), // Playback: starts at 1, Edit: starts at 0
                                     ),
-                                    if (isSelected && !(_isPlaying || _endedAtLastFrame))
+                                    if (isSelected &&
+                                        !(_isPlaying || _endedAtLastFrame) &&
+                                        _deleteFrameButtonIndex == frameIndex)
                                       Positioned(
                                         top: 4,
                                         right: 4,
                                         child: GestureDetector(
-                                          onTap: () => _confirmDeleteFrame(frame),
+                                          onTap: () {
+                                            _confirmDeleteFrame(frame);
+                                            setState(() => _deleteFrameButtonIndex = null);
+                                          },
                                           child: Container(
                                             width: 20,
                                             height: 20,
@@ -3810,7 +3941,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                                 ),
                                               ],
                                             ),
-                                            child: const Icon(Icons.close, size: 14, color: Colors.white),
+                                            child: const Icon(Symbols.delete, size: 14, color: Colors.white),
                                           ),
                                         ),
                                       ),
@@ -4105,10 +4236,19 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                               ? () {
                                                   final idx = _history.undo();
                                                   if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
-                                                    setState(() => currentFrame = widget.project.frames[idx]);
+                                                    setState(() {
+                                                      currentFrame = widget.project.frames[idx];
+                                                      _activePathDragId = null;
+                                                      _activePathDragIndex = null;
+                                                      _pathRevision++;
+                                                    });
                                                     _scrollToSelectedFrame();
                                                   } else {
-                                                    setState(() {});
+                                                    setState(() {
+                                                      _activePathDragId = null;
+                                                      _activePathDragIndex = null;
+                                                      _pathRevision++;
+                                                    });
                                                   }
                                                 }
                                               : null),
@@ -4124,10 +4264,19 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                               ? () {
                                                   final idx = _history.redo();
                                                   if (idx != null && idx >= 0 && idx < widget.project.frames.length) {
-                                                    setState(() => currentFrame = widget.project.frames[idx]);
+                                                    setState(() {
+                                                      currentFrame = widget.project.frames[idx];
+                                                      _activePathDragId = null;
+                                                      _activePathDragIndex = null;
+                                                      _pathRevision++;
+                                                    });
                                                     _scrollToSelectedFrame();
                                                   } else {
-                                                    setState(() {});
+                                                    setState(() {
+                                                      _activePathDragId = null;
+                                                      _activePathDragIndex = null;
+                                                      _pathRevision++;
+                                                    });
                                                   }
                                                 }
                                               : null),

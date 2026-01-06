@@ -4,6 +4,7 @@ import '../models/frame.dart';
 import '../models/settings.dart';
 import '../models/player.dart';
 import '../models/ball.dart';
+import 'path_engine.dart';
 
 abstract class ProjectAction {
   int frameIndex;
@@ -352,6 +353,70 @@ class ChangeBallColorAllFramesAction extends ProjectAction {
       if (ball != null) {
         ball.color = from;
       }
+    }
+  }
+}
+
+/// Edit path control points (add, move, or remove control points on entity paths)
+class EditPathControlPointsAction extends ProjectAction {
+  final String entityId; // Player or Ball ID
+  final List<Offset> fromPoints; // Previous path control points
+  final List<Offset> toPoints; // New path control points
+
+  EditPathControlPointsAction({
+    required super.frameIndex,
+    required this.entityId,
+    required this.fromPoints,
+    required this.toPoints,
+  }) : super(description: 'Edit path control points');
+
+  @override
+  void apply(AnimationProject project) {
+    if (frameIndex >= project.frames.length) return;
+    final frame = project.frames[frameIndex];
+
+    // Try to find player first
+    final player = frame.getPlayerById(entityId);
+    if (player != null) {
+      player.pathPoints.clear();
+      player.pathPoints.addAll(toPoints.map((p) => Offset(p.dx, p.dy)));
+      // Invalidate path cache so the visual path updates
+      PathEngine.invalidateCacheFor(frameIndex, entityId);
+      return;
+    }
+
+    // Try to find ball
+    final ball = frame.getBallById(entityId);
+    if (ball != null) {
+      ball.pathPoints.clear();
+      ball.pathPoints.addAll(toPoints.map((p) => Offset(p.dx, p.dy)));
+      // Invalidate path cache so the visual path updates
+      PathEngine.invalidateCacheFor(frameIndex, entityId);
+    }
+  }
+
+  @override
+  void revert(AnimationProject project) {
+    if (frameIndex >= project.frames.length) return;
+    final frame = project.frames[frameIndex];
+
+    // Try to find player first
+    final player = frame.getPlayerById(entityId);
+    if (player != null) {
+      player.pathPoints.clear();
+      player.pathPoints.addAll(fromPoints.map((p) => Offset(p.dx, p.dy)));
+      // Invalidate path cache so the visual path updates
+      PathEngine.invalidateCacheFor(frameIndex, entityId);
+      return;
+    }
+
+    // Try to find ball
+    final ball = frame.getBallById(entityId);
+    if (ball != null) {
+      ball.pathPoints.clear();
+      ball.pathPoints.addAll(fromPoints.map((p) => Offset(p.dx, p.dy)));
+      // Invalidate path cache so the visual path updates
+      PathEngine.invalidateCacheFor(frameIndex, entityId);
     }
   }
 }
