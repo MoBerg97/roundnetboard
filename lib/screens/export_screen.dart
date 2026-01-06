@@ -196,10 +196,7 @@ class _ExportScreenState extends State<ExportScreen> with TickerProviderStateMix
           textDirection: TextDirection.ltr,
         );
         textPainter.layout();
-        textPainter.paint(
-          canvas,
-          screenPos - Offset(textPainter.width / 2, textPainter.height / 2),
-        );
+        textPainter.paint(canvas, screenPos - Offset(textPainter.width / 2, textPainter.height / 2));
       }
     }
   }
@@ -738,12 +735,7 @@ class _VideoPreviewPainter extends CustomPainter {
   final int baseIndex; // Interpolate between baseIndex and baseIndex+1
   final double t; // 0..1 within segment
 
-  _VideoPreviewPainter({
-    required this.project,
-    required this.settings,
-    required this.baseIndex,
-    required this.t,
-  });
+  _VideoPreviewPainter({required this.project, required this.settings, required this.baseIndex, required this.t});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -845,7 +837,9 @@ class _VideoPreviewPainter extends CustomPainter {
   void _paintPlayers(Canvas canvas, Frame frame, Size size, Settings settings) {
     final center = _boardCenter(size);
     for (final player in frame.players) {
-      final screenPos = center + Offset(settings.cmToLogical(player.position.dx, size), settings.cmToLogical(player.position.dy, size));
+      final screenPos =
+          center +
+          Offset(settings.cmToLogical(player.position.dx, size), settings.cmToLogical(player.position.dy, size));
       final scale = settings.objectScaleMultiplier;
       final baseR = settings.cmToLogical(AppConstants.playerRadiusCm, size);
       final r = (baseR * scale).clamp(14.0 * scale, 64.0 * scale);
@@ -886,7 +880,8 @@ class _VideoPreviewPainter extends CustomPainter {
   void _paintBalls(Canvas canvas, Frame frame, Size size, Settings settings) {
     final center = _boardCenter(size);
     for (final ball in frame.balls) {
-      final screenPos = center + Offset(settings.cmToLogical(ball.position.dx, size), settings.cmToLogical(ball.position.dy, size));
+      final screenPos =
+          center + Offset(settings.cmToLogical(ball.position.dx, size), settings.cmToLogical(ball.position.dy, size));
       final scale = settings.objectScaleMultiplier;
       final baseR = settings.cmToLogical(AppConstants.ballRadiusCm, size);
       final r = (baseR * scale).clamp(8.0 * scale, 32.0 * scale);
