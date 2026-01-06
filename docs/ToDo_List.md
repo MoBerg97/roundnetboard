@@ -10,6 +10,8 @@ clearing cache on a device/emulator:
 fully clear app data on an android device/emulator:
 `adb -s emulator-5554 shell pm clear com.moritzberg.roundnetboard; adb -s emulator-5554 shell run-as com.moritzberg.roundnetboard rm -rf /data/data/com.moritzberg.roundnetboard/files; adb -s emulator-5554 shell run-as com.moritzberg.roundnetboard rm -rf /data/data/com.moritzberg.roundnetboard/shared_prefs`
 
+When finalizing an implementation or edit with large chunks of code changes, make sure to run `flutter analyze` and fix all warnings and errors that come up there.
+
 ## Current Implementation
 
 ## Design
@@ -126,7 +128,7 @@ Quick tips to add to helper screen:
 - [ ] footwork statistics shows for each frame the amount of distance each player travels, as small bars on the top side of the screen.
 - [ ] the maximum footwork distance is 850cm and the minimum is 0cm.
 - [ ] if turned on, the footwork statistics will also be depicted in the animation playback with showing the footwork of a certain frame during the playback of this frame.
-- [ ] #n **during animation playback, when the playback is paused, the user can toggle full path revision of a player or the ball by tapping the player or ball and this shows the path that this object already moved (full line) and the upcoming path of this object (dashed line). toggles off when the object is tapped again.**
+- [x] #n **during animation playback, when the playback is paused, the user can toggle full path revision of a player or the ball by tapping the player or ball and this shows the path that this object already moved (full line) and the upcoming path of this object (dashed line). toggles off when the object is tapped again.**
 
 ### sharing
 

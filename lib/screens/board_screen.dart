@@ -161,6 +161,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   String? _addingObjectType; // Indicates "player" or "ball" when user is in place-object mode, null otherwise
 
   // ──────────────────────────────────────────────────────────────────────────
+  // PATH TRACKING STATE (for showing full paths during paused playback)
+  // ──────────────────────────────────────────────────────────────────────────
+  final Set<String> _trackedEntityIds = {}; // Entity IDs with full path tracking enabled
+
+  // ──────────────────────────────────────────────────────────────────────────
   // UI REFERENCES
   // ──────────────────────────────────────────────────────────────────────────
   final GlobalKey _boardKey = GlobalKey(debugLabel: 'board'); // Key for board RenderBox (coordinate conversion)
@@ -847,6 +852,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _scrubberMovedManually = false;
       _playbackFrameIndex = 0;
       _playbackT = 0.0;
+      _trackedEntityIds.clear(); // Clear path tracking when stopping playback
     });
     _ticker.stop();
   }
@@ -981,7 +987,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         final interpPos = getPathOrLinear(pB.id, pA.position, pB.position, pB.pathPoints);
         final interpRot = _interpolateRotation(pA.rotation, pB.rotation, t);
 
-        interpPlayers.add(Player(position: interpPos, rotation: interpRot, color: pB.color, id: pB.id, label: pB.label));
+        interpPlayers.add(
+          Player(position: interpPos, rotation: interpRot, color: pB.color, id: pB.id, label: pB.label),
+        );
       }
     }
 
@@ -1198,7 +1206,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   // Provides UI for selecting annotation colors and player/ball colors
   // Applies to all frames for player/ball color changes
 
-// todo make color picker background lightgrey
+  // todo make color picker background lightgrey
   void _showColorPicker() {
     showDialog(
       context: context,
@@ -1211,7 +1219,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           child: GridView.count(
             crossAxisCount: 4,
             children:
-            // change the colors to hex color codes based on design template
+                // change the colors to hex color codes based on design template
                 [
                       Color(0xFFF4F1DE),
                       Color(0xFF99999d),
@@ -1429,6 +1437,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   // - Drag: annotation drawing, eraser, object movement, path control editing
 
   void _handleBoardTap(Offset tapPos, Size size) {
+    // Path tracking toggle during paused playback
+    if (_isPlaying && _isPaused) {
+      _togglePathTracking(tapPos, size);
+      return;
+    }
+
     if (_isPlaying || _endedAtLastFrame) return;
 
     // Convert tap position to cm coordinates
@@ -1506,7 +1520,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// Returns zone type and radius, prioritizing inner zones
   Map<String, dynamic>? _getContainingZone(Offset point) {
     final distFromCenter = point.distance;
-    
+
     // Check zones from inner to outer
     if (distFromCenter <= _settings.innerCircleRadiusCm) {
       return {'type': 'innerCircle', 'radius': _settings.innerCircleRadiusCm};
@@ -1515,7 +1529,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     } else if (distFromCenter <= _settings.outerBoundsRadiusCm) {
       return {'type': 'outerBounds', 'radius': _settings.outerBoundsRadiusCm};
     }
-    
+
     return null; // Point is outside all zones
   }
 
@@ -1554,7 +1568,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final radiusPoint = ann.points[1];
       final radius = (radiusPoint - center).distance;
       final distToCenter = (point - center).distance;
-      
+
       if (distToCenter > radius + toleranceCm) return false;
       if (distToCenter < radius - toleranceCm) {
         // Check if angle is within sector
@@ -1563,7 +1577,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           final angle = math.atan2(vec.dy, vec.dx);
           final start = ann.startAngle!;
           final end = ann.endAngle!;
-          
+
           // Normalize angles to [0, 2π]
           double normalizedAngle = angle;
           while (normalizedAngle < 0) {
@@ -1577,7 +1591,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           while (normalizedEnd < 0) {
             normalizedEnd += 2 * math.pi;
           }
-          
+
           if (normalizedStart <= normalizedEnd) {
             return normalizedAngle >= normalizedStart && normalizedAngle <= normalizedEnd;
           } else {
@@ -1640,7 +1654,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
     final localPos = box.globalToLocal(details.globalPosition);
     final cmPos = _screenToCm(localPos, size);
-    
+
     // Special handling for sector tool
     if (_activeAnnotationTool == AnnotationTool.sector) {
       // Detect which zone the touch is in
@@ -1656,7 +1670,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       });
       return;
     }
-    
+
     setState(() {
       _pendingAnnotationPoints.clear();
       _pendingAnnotationPoints.add(cmPos);
@@ -1700,7 +1714,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           if (idx != -1) {
             // Apply snapping to the new position
             newPos = _applyAnnotationSnap(newPos, _draggingAnnotation!, currentFrame.annotations);
-            
+
             final delta = newPos - _draggingAnnotation!.points.first;
             final updated = _draggingAnnotation!.copy();
             updated.points = updated.points.map((p) => p + delta).toList();
@@ -1736,18 +1750,20 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               strokeWidthCm: _annotationStrokeCm,
             ),
           );
-        } else if (_activeAnnotationTool == AnnotationTool.sector && _sectorZoneRadius != null && _sectorStartPos != null) {
+        } else if (_activeAnnotationTool == AnnotationTool.sector &&
+            _sectorZoneRadius != null &&
+            _sectorStartPos != null) {
           // Preview sector annotation based on court zone
           final center = Offset.zero; // Court center
           final radius = _sectorZoneRadius!;
           final radiusPoint = Offset(radius, 0); // Point at radius distance
-          
+
           // Calculate angles
           final startVec = _sectorStartPos!;
           final endVec = cmPos;
           double startAngle = math.atan2(startVec.dy, startVec.dx);
           double endAngle = math.atan2(endVec.dy, endVec.dx);
-          
+
           // Ensure the sector sweeps in the drag direction
           if ((endAngle - startAngle).abs() > math.pi) {
             if (endAngle > startAngle) {
@@ -1756,7 +1772,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               endAngle += 2 * math.pi;
             }
           }
-          
+
           _stagedAnnotations.add(
             Annotation(
               type: AnnotationType.sector,
@@ -1871,7 +1887,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// Get anchor points from the dragged annotation (center, endpoints, corners)
   List<Offset> _annotationAnchorPoints(Annotation annotation, Offset newPos) {
     final anchors = <Offset>[];
-    
+
     if (annotation.points.isEmpty) return anchors;
 
     // Calculate delta from original to new position
@@ -1891,7 +1907,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final bl = Offset(math.min(a.dx, b.dx), math.max(a.dy, b.dy));
       final br = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
       anchors.addAll([tl, tr, bl, br]);
-      
+
       // Add midpoints of rectangle edges
       anchors.add((tl + tr) / 2); // top mid
       anchors.add((tr + br) / 2); // right mid
@@ -1932,7 +1948,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         final bl = Offset(math.min(a.dx, b.dx), math.max(a.dy, b.dy));
         final br = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
         points.addAll([tl, tr, bl, br]);
-        
+
         // Add midpoints of rectangle edges
         points.add((tl + tr) / 2); // top mid
         points.add((tr + br) / 2); // right mid
@@ -1980,7 +1996,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
       final dist = (end - start).distance;
       Annotation? ann;
-      
+
       // Special handling for sector tool - create regardless of distance
       if (_activeAnnotationTool == AnnotationTool.sector) {
         // Create sector from court zone
@@ -1988,13 +2004,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           final center = Offset.zero; // Court center
           final radius = _sectorZoneRadius!;
           final radiusPoint = Offset(radius, 0);
-          
+
           // Calculate angles
           final startVec = _sectorStartPos!;
           final endVec = end;
           double startAngle = math.atan2(startVec.dy, startVec.dx);
           double endAngle = math.atan2(endVec.dy, endVec.dx);
-          
+
           // Ensure the sector sweeps in the drag direction
           if ((endAngle - startAngle).abs() > math.pi) {
             if (endAngle > startAngle) {
@@ -2003,7 +2019,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               endAngle += 2 * math.pi;
             }
           }
-          
+
           ann = Annotation(
             type: AnnotationType.sector,
             color: _annotationColor,
@@ -2455,6 +2471,232 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   // ══════════════════════════════════════════════════════════════════════════
+  // PATH TRACKING DURING PAUSED PLAYBACK
+  // ══════════════════════════════════════════════════════════════════════════
+  // Handles toggling full path display for players/balls during paused playback
+  // Shows past path as solid line and future path as dashed line
+
+  /// Toggle path tracking for the entity (player or ball) at the tap position
+  void _togglePathTracking(Offset tapPos, Size size) {
+    final tapCm = _screenToCm(tapPos, size);
+    const hitRadiusCm = 30.0; // Tap radius for detecting objects
+
+    // Get the interpolated playback frame
+    final displayFrame = _animatedFrame;
+    if (displayFrame == null) return;
+
+    // Check players
+    for (final playerId in ['P1', 'P2', 'P3', 'P4']) {
+      Offset? playerPos;
+      switch (playerId) {
+        case 'P1':
+          playerPos = displayFrame.p1;
+          break;
+        case 'P2':
+          playerPos = displayFrame.p2;
+          break;
+        case 'P3':
+          playerPos = displayFrame.p3;
+          break;
+        case 'P4':
+          playerPos = displayFrame.p4;
+          break;
+      }
+      if (playerPos != null && (playerPos - tapCm).distance < hitRadiusCm) {
+        setState(() {
+          if (_trackedEntityIds.contains(playerId)) {
+            _trackedEntityIds.remove(playerId);
+          } else {
+            _trackedEntityIds.add(playerId);
+          }
+        });
+        return;
+      }
+    }
+
+    // Check balls
+    for (final ball in displayFrame.balls) {
+      if ((ball.position - tapCm).distance < hitRadiusCm) {
+        setState(() {
+          if (_trackedEntityIds.contains(ball.id)) {
+            _trackedEntityIds.remove(ball.id);
+          } else {
+            _trackedEntityIds.add(ball.id);
+          }
+        });
+        return;
+      }
+    }
+  }
+
+  /// Build full path visualization widgets for tracked entities during paused playback
+  List<Widget> _buildTrackedPaths(Size size) {
+    // Show paths whenever playback is active (playing or paused) and tracking is enabled
+    if ((!_isPlaying && !_isPaused) || _trackedEntityIds.isEmpty) {
+      return [];
+    }
+
+    final widgets = <Widget>[];
+    final currentPlaybackIndex = _playbackFrameIndex.clamp(0, widget.project.frames.length - 1);
+    final frames = widget.project.frames;
+
+    for (final entityId in _trackedEntityIds) {
+      // Helper: append sampled segment (curved if control point exists)
+      void appendSegment({
+        required List<Offset> out,
+        required Offset start,
+        required Offset end,
+        required List<Offset> pathPoints,
+        required double tStart,
+        required double tEnd,
+      }) {
+        final samples = math.max(6, ((tEnd - tStart) * 40).ceil());
+        if (pathPoints.isNotEmpty) {
+          final engine = PathEngine.fromTwoQuadratics(
+            start: start,
+            control: pathPoints.first,
+            end: end,
+            resolution: 400,
+          );
+          for (int i = 0; i <= samples; i++) {
+            final t = tStart + (tEnd - tStart) * (i / samples);
+            out.add(_toScreenPosition(engine.sample(t), size));
+          }
+        } else {
+          for (int i = 0; i <= samples; i++) {
+            final t = tStart + (tEnd - tStart) * (i / samples);
+            out.add(_toScreenPosition(Offset.lerp(start, end, t)!, size));
+          }
+        }
+      }
+
+      Offset? entityPos(Frame f) => _getEntityPosition(f, entityId);
+      List<Offset> entityPath(Frame f) {
+        final player = f.getPlayerById(entityId);
+        if (player != null) return player.pathPoints;
+        final ball = f.getBallById(entityId);
+        if (ball != null) return ball.pathPoints;
+        return const [];
+      }
+
+      // Build past path (solid): full segments up to currentPlaybackIndex, plus partial current segment to _playbackT
+      final pastPathPoints = <Offset>[];
+      for (int i = 0; i < currentPlaybackIndex; i++) {
+        final a = entityPos(frames[i]);
+        final b = entityPos(frames[i + 1]);
+        if (a == null || b == null) continue;
+        appendSegment(out: pastPathPoints, start: a, end: b, pathPoints: entityPath(frames[i + 1]), tStart: 0, tEnd: 1);
+      }
+      // Partial segment into current playback frame
+      if (_isPlaying && currentPlaybackIndex < frames.length - 1) {
+        final a = entityPos(frames[currentPlaybackIndex]);
+        final b = entityPos(frames[currentPlaybackIndex + 1]);
+        if (a != null && b != null) {
+          appendSegment(
+            out: pastPathPoints,
+            start: a,
+            end: b,
+            pathPoints: entityPath(frames[currentPlaybackIndex + 1]),
+            tStart: 0,
+            tEnd: _playbackT.clamp(0.0, 1.0),
+          );
+        }
+      }
+
+      // Build future path (dashed): from current playback position to end
+      final futurePathPoints = <Offset>[];
+      if (_isPlaying && currentPlaybackIndex < frames.length - 1) {
+        // Remainder of current segment
+        final a = entityPos(frames[currentPlaybackIndex]);
+        final b = entityPos(frames[currentPlaybackIndex + 1]);
+        if (a != null && b != null) {
+          appendSegment(
+            out: futurePathPoints,
+            start: a,
+            end: b,
+            pathPoints: entityPath(frames[currentPlaybackIndex + 1]),
+            tStart: _playbackT.clamp(0.0, 1.0),
+            tEnd: 1,
+          );
+        }
+      }
+      for (int i = currentPlaybackIndex + 1; i < frames.length - 1; i++) {
+        final a = entityPos(frames[i]);
+        final b = entityPos(frames[i + 1]);
+        if (a == null || b == null) continue;
+        appendSegment(
+          out: futurePathPoints,
+          start: a,
+          end: b,
+          pathPoints: entityPath(frames[i + 1]),
+          tStart: 0,
+          tEnd: 1,
+        );
+      }
+
+      // Render past path (solid)
+      if (pastPathPoints.length > 1) {
+        widgets.add(
+          CustomPaint(
+            painter: _TrackedPathPainter(points: pastPathPoints, color: _getEntityColor(entityId), isDashed: false),
+            size: size,
+          ),
+        );
+      }
+
+      // Render future path (dashed)
+      if (futurePathPoints.length > 1) {
+        widgets.add(
+          CustomPaint(
+            painter: _TrackedPathPainter(points: futurePathPoints, color: _getEntityColor(entityId), isDashed: true),
+            size: size,
+          ),
+        );
+      }
+    }
+
+    return widgets;
+  }
+
+  /// Get position of an entity (player or ball) from a frame
+  Offset? _getEntityPosition(Frame frame, String entityId) {
+    switch (entityId) {
+      case 'P1':
+        return frame.p1;
+      case 'P2':
+        return frame.p2;
+      case 'P3':
+        return frame.p3;
+      case 'P4':
+        return frame.p4;
+      default:
+        // Try to find ball by ID
+        final ball = frame.balls.firstWhere(
+          (b) => b.id == entityId,
+          orElse: () => Ball(id: '', position: Offset.zero),
+        );
+        return ball.id.isNotEmpty ? ball.position : null;
+    }
+  }
+
+  /// Get color of an entity for path rendering
+  Color _getEntityColor(String entityId) {
+    // For players, use their color from current frame
+    final player = currentFrame.getPlayerById(entityId);
+    if (player != null) {
+      return player.color;
+    }
+
+    // For balls, use their color from current frame
+    final ball = currentFrame.getBallById(entityId);
+    if (ball != null) {
+      return ball.color ?? Colors.white;
+    }
+
+    return Colors.grey;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
   // OBJECT RENDERING & VISUAL BUILDERS
   // ══════════════════════════════════════════════════════════════════════════
   // Renders players, balls, hit/set markers, and decorative elements
@@ -2687,6 +2929,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         ignoring: _annotationMode,
         child: GestureDetector(
           onTap: () {
+            if (_isPlaying && _isPaused) {
+              _togglePathTracking(screenPos, size);
+              return;
+            }
             if (_isPlaying || _endedAtLastFrame) return;
             setState(() => _lastTappedPlayerColor = color);
             final togglingSame = _showPlayerMenu && _activePlayerId == playerId;
@@ -2828,6 +3074,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         ignoring: _annotationMode,
         child: GestureDetector(
           onTap: () {
+            if (_isPlaying && _isPaused) {
+              // Toggle path tracking for this ball when paused during playback
+              _togglePathTracking(screenPos, size);
+              return;
+            }
             if (!_isPlaying && !_endedAtLastFrame) {
               // If modifier menu is open, close it; otherwise open it
               if (_showModifierMenu) {
@@ -3188,7 +3439,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               Positioned.fill(
                 bottom: 120, // Leave room for timeline (no grey strip)
                 child: AbsorbPointer(
-                  absorbing: inPlaybackView,
+                  absorbing: inPlaybackView && !_isPaused, // Allow taps during paused playback for path tracking
                   child: Container(
                     key: _boardKey,
                     color: const Color.fromARGB(255, 55, 49, 120),
@@ -3269,6 +3520,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         Positioned.fill(
                           child: GestureDetector(
                             onTapUp: (details) {
+                              // Handle path tracking toggle during paused playback
+                              if (_isPlaying && _isPaused) {
+                                _togglePathTracking(details.localPosition, screenSize);
+                                return;
+                              }
                               if (!(_isPlaying || _endedAtLastFrame)) {
                                 if (_pendingBallMark == 'hit') {
                                   _placeBallHitAt(details.localPosition, screenSize);
@@ -3317,6 +3573,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             child: Container(),
                           ),
                         ),
+                        // Tracked paths (behind objects)
+                        ..._buildTrackedPaths(screenSize),
                         if (widget.project.projectType == ProjectType.training) ...[
                           for (final player in frameToShow.players)
                             _buildPlayer(
@@ -3898,14 +4156,24 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                        // Set button - toggle, mutually exclusive with Hit
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              // In training mode, use index-based access
-                              if (widget.project.projectType == ProjectType.training && _activeBallId != null) {
-                                final ball = currentFrame.getBallById(_activeBallId!);
-                                if (ball != null) {
+                          // Set button - toggle, mutually exclusive with Hit
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                // In training mode, use index-based access
+                                if (widget.project.projectType == ProjectType.training && _activeBallId != null) {
+                                  final ball = currentFrame.getBallById(_activeBallId!);
+                                  if (ball != null) {
+                                    if (ball.isSet ?? false) {
+                                      ball.isSet = false;
+                                    } else {
+                                      ball.isSet = true;
+                                      ball.hitT = null; // Clear Hit when setting Set
+                                    }
+                                  }
+                                } else if (currentFrame.balls.isNotEmpty) {
+                                  // Play mode: use first ball
+                                  final ball = currentFrame.balls.first;
                                   if (ball.isSet ?? false) {
                                     ball.isSet = false;
                                   } else {
@@ -3913,89 +4181,92 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     ball.hitT = null; // Clear Hit when setting Set
                                   }
                                 }
-                              } else if (currentFrame.balls.isNotEmpty) {
-                                // Play mode: use first ball
-                                final ball = currentFrame.balls.first;
-                                if (ball.isSet ?? false) {
-                                  ball.isSet = false;
-                                } else {
-                                  ball.isSet = true;
-                                  ball.hitT = null; // Clear Hit when setting Set
-                                }
-                              }
-                            });
-                            _saveProject();
-                          },
-                          child: Container(
-                            width: 80,
-                            height: 44,
-                            margin: const EdgeInsets.symmetric(horizontal: 8),
-                            decoration: BoxDecoration(
-                              color:
-                                  (widget.project.projectType == ProjectType.training && _activeBallId != null
-                                      ? (currentFrame.getBallById(_activeBallId!)?.isSet ?? false)
-                                      : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.isSet ?? false)))
-                                  ? AppTheme.accentOrange.withValues(alpha: 0.15)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(
+                              });
+                              _saveProject();
+                            },
+                            child: Container(
+                              width: 80,
+                              height: 44,
+                              margin: const EdgeInsets.symmetric(horizontal: 8),
+                              decoration: BoxDecoration(
                                 color:
                                     (widget.project.projectType == ProjectType.training && _activeBallId != null
                                         ? (currentFrame.getBallById(_activeBallId!)?.isSet ?? false)
                                         : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.isSet ?? false)))
-                                    ? AppTheme.accentOrange
-                                    : AppTheme.mediumGrey,
-                                width: 2,
+                                    ? AppTheme.accentOrange.withValues(alpha: 0.15)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color:
+                                      (widget.project.projectType == ProjectType.training && _activeBallId != null
+                                          ? (currentFrame.getBallById(_activeBallId!)?.isSet ?? false)
+                                          : (currentFrame.balls.isNotEmpty &&
+                                                (currentFrame.balls.first.isSet ?? false)))
+                                      ? AppTheme.accentOrange
+                                      : AppTheme.mediumGrey,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  CustomPaint(
+                                    size: const Size(24, 24),
+                                    painter: _SetIconPainter(
+                                      active:
+                                          widget.project.projectType == ProjectType.training && _activeBallId != null
+                                          ? (currentFrame.getBallById(_activeBallId!)?.isSet ?? false)
+                                          : (currentFrame.balls.isNotEmpty &&
+                                                (currentFrame.balls.first.isSet ?? false)),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Set',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color:
+                                          (widget.project.projectType == ProjectType.training && _activeBallId != null
+                                              ? (currentFrame.getBallById(_activeBallId!)?.isSet ?? false)
+                                              : (currentFrame.balls.isNotEmpty &&
+                                                    (currentFrame.balls.first.isSet ?? false)))
+                                          ? AppTheme.accentOrange
+                                          : AppTheme.mediumGrey,
+                                      fontWeight:
+                                          (widget.project.projectType == ProjectType.training && _activeBallId != null
+                                              ? (currentFrame.getBallById(_activeBallId!)?.isSet ?? false)
+                                              : (currentFrame.balls.isNotEmpty &&
+                                                    (currentFrame.balls.first.isSet ?? false)))
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                CustomPaint(
-                                  size: const Size(24, 24),
-                                  painter: _SetIconPainter(
-                                    active: widget.project.projectType == ProjectType.training && _activeBallId != null
-                                        ? (currentFrame.getBallById(_activeBallId!)?.isSet ?? false)
-                                        : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.isSet ?? false)),
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Set',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color:
-                                        (widget.project.projectType == ProjectType.training && _activeBallId != null
-                                            ? (currentFrame.getBallById(_activeBallId!)?.isSet ?? false)
-                                            : (currentFrame.balls.isNotEmpty &&
-                                                  (currentFrame.balls.first.isSet ?? false)))
-                                        ? AppTheme.accentOrange
-                                        : AppTheme.mediumGrey,
-                                    fontWeight:
-                                        (widget.project.projectType == ProjectType.training && _activeBallId != null
-                                            ? (currentFrame.getBallById(_activeBallId!)?.isSet ?? false)
-                                            : (currentFrame.balls.isNotEmpty &&
-                                                  (currentFrame.balls.first.isSet ?? false)))
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                  ),
-                                ),
-                              ],
-                            ),
                           ),
-                        ),
-                        // Hit button - toggle, mutually exclusive with Set
-                        GestureDetector(
-                          onTap: () {
-                            final prev = _getPreviousFrame();
-                            if (prev != null) {
-                              // User requirement: Hit marker should be at beginning of path (t=0.0)
-                              final tStart = 0.0;
-                              setState(() {
-                                // In training mode, use ID-based access
-                                if (widget.project.projectType == ProjectType.training && _activeBallId != null) {
-                                  final ball = currentFrame.getBallById(_activeBallId!);
-                                  if (ball != null) {
+                          // Hit button - toggle, mutually exclusive with Set
+                          GestureDetector(
+                            onTap: () {
+                              final prev = _getPreviousFrame();
+                              if (prev != null) {
+                                // User requirement: Hit marker should be at beginning of path (t=0.0)
+                                final tStart = 0.0;
+                                setState(() {
+                                  // In training mode, use ID-based access
+                                  if (widget.project.projectType == ProjectType.training && _activeBallId != null) {
+                                    final ball = currentFrame.getBallById(_activeBallId!);
+                                    if (ball != null) {
+                                      if (ball.hitT != null) {
+                                        ball.hitT = null;
+                                      } else {
+                                        ball.hitT = tStart;
+                                        ball.isSet = false; // Clear Set when setting Hit
+                                      }
+                                    }
+                                  } else if (currentFrame.balls.isNotEmpty) {
+                                    // Play mode: use first ball
+                                    final ball = currentFrame.balls.first;
                                     if (ball.hitT != null) {
                                       ball.hitT = null;
                                     } else {
@@ -4003,135 +4274,127 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                       ball.isSet = false; // Clear Set when setting Hit
                                     }
                                   }
-                                } else if (currentFrame.balls.isNotEmpty) {
-                                  // Play mode: use first ball
-                                  final ball = currentFrame.balls.first;
-                                  if (ball.hitT != null) {
-                                    ball.hitT = null;
-                                  } else {
-                                    ball.hitT = tStart;
-                                    ball.isSet = false; // Clear Set when setting Hit
-                                  }
-                                }
-                              });
-                              _saveProject();
-                            }
-                          },
-                          child: Container(
-                            width: 80,
-                            height: 44,
-                            margin: const EdgeInsets.symmetric(horizontal: 8),
-                            decoration: BoxDecoration(
-                              color:
-                                  (widget.project.projectType == ProjectType.training && _activeBallId != null
-                                      ? (currentFrame.getBallById(_activeBallId!)?.hitT != null)
-                                      : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.hitT != null)))
-                                  ? AppTheme.warningAmber.withValues(alpha: 0.15)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(
-                                color:
-                                    (widget.project.projectType == ProjectType.training && _activeBallId != null
-                                        ? (currentFrame.getBallById(_activeBallId!)?.hitT != null)
-                                        : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.hitT != null)))
-                                    ? AppTheme.warningAmber
-                                    : AppTheme.mediumGrey,
-                                width: 2,
-                              ),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                CustomPaint(
-                                  size: const Size(24, 24),
-                                  painter: _HitIconPainter(
-                                    active: widget.project.projectType == ProjectType.training && _activeBallId != null
-                                        ? (currentFrame.getBallById(_activeBallId!)?.hitT != null)
-                                        : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.hitT != null)),
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Hit',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color:
-                                        (widget.project.projectType == ProjectType.training && _activeBallId != null
-                                            ? (currentFrame.getBallById(_activeBallId!)?.hitT != null)
-                                            : (currentFrame.balls.isNotEmpty &&
-                                                  (currentFrame.balls.first.hitT != null)))
-                                        ? AppTheme.warningAmber
-                                        : AppTheme.mediumGrey,
-                                    fontWeight:
-                                        (widget.project.projectType == ProjectType.training && _activeBallId != null
-                                            ? (currentFrame.getBallById(_activeBallId!)?.hitT != null)
-                                            : (currentFrame.balls.isNotEmpty &&
-                                                  (currentFrame.balls.first.hitT != null)))
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        // Color Picker button - in training mode with active ball or in play mode with ball
-                        if ((widget.project.projectType == ProjectType.training && _activeBallId != null) ||
-                            (widget.project.projectType == ProjectType.play && currentFrame.balls.isNotEmpty))
-                          GestureDetector(
-                            onTap: _showBallColorPicker,
-                            child: Container(
-                              width: 80,
-                              height: 44,
-                              margin: const EdgeInsets.symmetric(horizontal: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.transparent,
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(
-                                  color: (widget.project.projectType == ProjectType.training && _activeBallId != null)
-                                      ? (currentFrame.getBallById(_activeBallId!)?.color ?? AppTheme.lightGrey)
-                                      : (currentFrame.balls.isNotEmpty
-                                          ? (currentFrame.balls.first.color ?? AppTheme.lightGrey)
-                                          : AppTheme.lightGrey),
-                                  width: 2,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.palette,
-                                    size: 24,
-                                    color: (widget.project.projectType == ProjectType.training && _activeBallId != null)
-                                        ? (currentFrame.getBallById(_activeBallId!)?.color ?? AppTheme.lightGrey)
-                                        : (currentFrame.balls.isNotEmpty
-                                            ? (currentFrame.balls.first.color ?? AppTheme.lightGrey)
-                                            : AppTheme.lightGrey),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        // Delete button - only in training mode with multiple balls
-                        if (widget.project.projectType == ProjectType.training &&
-                            currentFrame.balls.length > 1 &&
-                            _activeBallId != null)
-                          GestureDetector(
-                            onTap: () {
-                              _undoableDeleteBallFromAllFrames(_activeBallId!);
+                                });
+                                _saveProject();
+                              }
                             },
                             child: Container(
                               width: 80,
                               height: 44,
                               margin: const EdgeInsets.symmetric(horizontal: 8),
                               decoration: BoxDecoration(
-                                color: Colors.transparent,
+                                color:
+                                    (widget.project.projectType == ProjectType.training && _activeBallId != null
+                                        ? (currentFrame.getBallById(_activeBallId!)?.hitT != null)
+                                        : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.hitT != null)))
+                                    ? AppTheme.warningAmber.withValues(alpha: 0.15)
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(24),
-                                border: Border.all(color: AppTheme.errorRed, width: 2),
+                                border: Border.all(
+                                  color:
+                                      (widget.project.projectType == ProjectType.training && _activeBallId != null
+                                          ? (currentFrame.getBallById(_activeBallId!)?.hitT != null)
+                                          : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.hitT != null)))
+                                      ? AppTheme.warningAmber
+                                      : AppTheme.mediumGrey,
+                                  width: 2,
+                                ),
                               ),
-                              child: Icon(Icons.delete, size: 24, color: AppTheme.errorRed),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  CustomPaint(
+                                    size: const Size(24, 24),
+                                    painter: _HitIconPainter(
+                                      active:
+                                          widget.project.projectType == ProjectType.training && _activeBallId != null
+                                          ? (currentFrame.getBallById(_activeBallId!)?.hitT != null)
+                                          : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.hitT != null)),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Hit',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color:
+                                          (widget.project.projectType == ProjectType.training && _activeBallId != null
+                                              ? (currentFrame.getBallById(_activeBallId!)?.hitT != null)
+                                              : (currentFrame.balls.isNotEmpty &&
+                                                    (currentFrame.balls.first.hitT != null)))
+                                          ? AppTheme.warningAmber
+                                          : AppTheme.mediumGrey,
+                                      fontWeight:
+                                          (widget.project.projectType == ProjectType.training && _activeBallId != null
+                                              ? (currentFrame.getBallById(_activeBallId!)?.hitT != null)
+                                              : (currentFrame.balls.isNotEmpty &&
+                                                    (currentFrame.balls.first.hitT != null)))
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
+                          // Color Picker button - in training mode with active ball or in play mode with ball
+                          if ((widget.project.projectType == ProjectType.training && _activeBallId != null) ||
+                              (widget.project.projectType == ProjectType.play && currentFrame.balls.isNotEmpty))
+                            GestureDetector(
+                              onTap: _showBallColorPicker,
+                              child: Container(
+                                width: 80,
+                                height: 44,
+                                margin: const EdgeInsets.symmetric(horizontal: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.transparent,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                    color: (widget.project.projectType == ProjectType.training && _activeBallId != null)
+                                        ? (currentFrame.getBallById(_activeBallId!)?.color ?? AppTheme.lightGrey)
+                                        : (currentFrame.balls.isNotEmpty
+                                              ? (currentFrame.balls.first.color ?? AppTheme.lightGrey)
+                                              : AppTheme.lightGrey),
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.palette,
+                                      size: 24,
+                                      color:
+                                          (widget.project.projectType == ProjectType.training && _activeBallId != null)
+                                          ? (currentFrame.getBallById(_activeBallId!)?.color ?? AppTheme.lightGrey)
+                                          : (currentFrame.balls.isNotEmpty
+                                                ? (currentFrame.balls.first.color ?? AppTheme.lightGrey)
+                                                : AppTheme.lightGrey),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          // Delete button - only in training mode with multiple balls
+                          if (widget.project.projectType == ProjectType.training &&
+                              currentFrame.balls.length > 1 &&
+                              _activeBallId != null)
+                            GestureDetector(
+                              onTap: () {
+                                _undoableDeleteBallFromAllFrames(_activeBallId!);
+                              },
+                              child: Container(
+                                width: 80,
+                                height: 44,
+                                margin: const EdgeInsets.symmetric(horizontal: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.transparent,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: AppTheme.errorRed, width: 2),
+                                ),
+                                child: Icon(Icons.delete, size: 24, color: AppTheme.errorRed),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -4162,77 +4425,78 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               GestureDetector(
                                 onTap: _showPlayerColorPicker,
                                 child: Container(
-                                width: 80,
-                                height: 44,
-                                margin: const EdgeInsets.symmetric(horizontal: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.transparent,
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(color: activePlayer?.color ?? AppTheme.primaryBlue, width: 2),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.palette, size: 24, color: activePlayer?.color ?? AppTheme.primaryBlue),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            // Label button
-                            // should only show "Label" independent of whether a label is already assigned
-                            GestureDetector(
-                              onTap: _showPlayerLabelDialog,
-                              child: Container(
-                                width: 110,
-                                height: 44,
-                                margin: const EdgeInsets.symmetric(horizontal: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.transparent,
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(color: AppTheme.mediumGrey, width: 2),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.tag, size: 20, color: AppTheme.mediumGrey),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Label',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: AppTheme.mediumGrey,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            // Delete button - training only and only if more than 1 player
-                            if (widget.project.projectType == ProjectType.training && currentFrame.players.length > 1) ...[
-                              GestureDetector(
-                                onTap: () {
-                                  if (_activePlayerId != null) {
-                                    _undoableDeletePlayerFromAllFrames(_activePlayerId!);
-                                  }
-                                },
-                                child: Container(
                                   width: 80,
                                   height: 44,
                                   margin: const EdgeInsets.symmetric(horizontal: 8),
                                   decoration: BoxDecoration(
                                     color: Colors.transparent,
                                     borderRadius: BorderRadius.circular(24),
-                                    border: Border.all(color: AppTheme.errorRed, width: 2),
+                                    border: Border.all(color: activePlayer?.color ?? AppTheme.primaryBlue, width: 2),
                                   ),
-                                  child: Icon(Icons.delete, size: 24, color: AppTheme.errorRed),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.palette, size: 24, color: activePlayer?.color ?? AppTheme.primaryBlue),
+                                    ],
+                                  ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              // Label button
+                              // should only show "Label" independent of whether a label is already assigned
+                              GestureDetector(
+                                onTap: _showPlayerLabelDialog,
+                                child: Container(
+                                  width: 110,
+                                  height: 44,
+                                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.transparent,
+                                    borderRadius: BorderRadius.circular(24),
+                                    border: Border.all(color: AppTheme.mediumGrey, width: 2),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.tag, size: 20, color: AppTheme.mediumGrey),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Label',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: AppTheme.mediumGrey,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Delete button - training only and only if more than 1 player
+                              if (widget.project.projectType == ProjectType.training &&
+                                  currentFrame.players.length > 1) ...[
+                                GestureDetector(
+                                  onTap: () {
+                                    if (_activePlayerId != null) {
+                                      _undoableDeletePlayerFromAllFrames(_activePlayerId!);
+                                    }
+                                  },
+                                  child: Container(
+                                    width: 80,
+                                    height: 44,
+                                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.transparent,
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(color: AppTheme.errorRed, width: 2),
+                                    ),
+                                    child: Icon(Icons.delete, size: 24, color: AppTheme.errorRed),
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
-                        );
+                          );
                         },
                       ),
                     ),
@@ -4266,8 +4530,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           ),
                           GestureDetector(
                             key: _circleFillButtonKey,
-                            onDoubleTap: () =>
-                                _toggleCircleFillMenu(forceOpen: true),
+                            onDoubleTap: () => _toggleCircleFillMenu(forceOpen: true),
                             child: _buildAnnotationCreationButton(
                               icon: Icon(_circleFilled ? Icons.circle : Icons.circle_outlined),
                               tooltip: 'Circle Tool (double-tap to set fill)',
@@ -4296,8 +4559,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           ),
                           GestureDetector(
                             key: _rectangleFillButtonKey,
-                            onDoubleTap: () =>
-                                _toggleRectangleFillMenu(forceOpen: true),
+                            onDoubleTap: () => _toggleRectangleFillMenu(forceOpen: true),
                             child: _buildAnnotationCreationButton(
                               icon: Icon(_rectangleFilled ? Icons.stop : Icons.crop_square),
                               tooltip: 'Rectangle Tool (double-tap to set fill)',
@@ -4357,8 +4619,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           ),
                           GestureDetector(
                             key: _annotationEraserButtonKey,
-                            onDoubleTap: () =>
-                                _toggleAnnotationEraserMenu(forceOpen: true),
+                            onDoubleTap: () => _toggleAnnotationEraserMenu(forceOpen: true),
                             child: IconButton(
                               icon: const Icon(Symbols.ink_eraser),
                               tooltip: 'Eraser (double-tap for size)',
@@ -4391,8 +4652,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           ),
                           const SizedBox(width: 8),
                           GestureDetector(
-                            onDoubleTap: () =>
-                                _toggleAnnotationStrokeMenu(forceOpen: true),
+                            onDoubleTap: () => _toggleAnnotationStrokeMenu(forceOpen: true),
                             child: IconButton(
                               key: _annotationStrokeButtonKey,
                               icon: const Icon(Symbols.line_weight),
@@ -4623,4 +4883,69 @@ class _CenterCrossPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _CenterCrossPainter oldDelegate) =>
       oldDelegate.screenSize != screenSize || oldDelegate.settings != settings;
+}
+
+/// Painter for tracked entity paths during paused playback
+/// Shows past path as solid line and future path as dashed line
+class _TrackedPathPainter extends CustomPainter {
+  final List<Offset> points;
+  final Color color;
+  final bool isDashed;
+
+  _TrackedPathPainter({required this.points, required this.color, required this.isDashed});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.length < 2) return;
+
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.8)
+      ..strokeWidth = 3.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    if (isDashed) {
+      // Draw dashed line with dash phase continuous across segments
+      const dashLength = 10.0;
+      const gapLength = 5.0;
+      const pattern = dashLength + gapLength;
+
+      // Build a polyline path from sampled points
+      final path = Path()..moveTo(points.first.dx, points.first.dy);
+      for (int i = 1; i < points.length; i++) {
+        path.lineTo(points[i].dx, points[i].dy);
+      }
+
+      double globalPos = 0.0; // keeps dash phase across metrics
+      for (final metric in path.computeMetrics()) {
+        double local = 0.0;
+        while (local < metric.length) {
+          final phase = globalPos % pattern;
+          final take = phase < dashLength ? (dashLength - phase) : (pattern - phase);
+          final segStart = local;
+          final segEnd = (local + take).clamp(0.0, metric.length);
+
+          if (phase < dashLength && segStart < segEnd) {
+            canvas.drawPath(metric.extractPath(segStart, segEnd), paint);
+          }
+
+          local += take;
+          globalPos += take;
+        }
+      }
+    } else {
+      // Draw solid line for past path
+      final path = Path();
+      path.moveTo(points[0].dx, points[0].dy);
+      for (int i = 1; i < points.length; i++) {
+        path.lineTo(points[i].dx, points[i].dy);
+      }
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TrackedPathPainter oldDelegate) =>
+      oldDelegate.points != points || oldDelegate.color != color || oldDelegate.isDashed != isDashed;
 }
