@@ -4,7 +4,7 @@ publish_to: "none"
 
 # ⚠️ IMPORTANT: Update version in lib/utils/version_check.dart too!
 # Run check-version.ps1 to verify before deploying
-version: 0.1.0+7
+version: 0.1.0+8
 
 environment:
   sdk: ^3.9.0
