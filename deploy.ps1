@@ -8,7 +8,8 @@ $pubspecContent = Get-Content "pubspec.yaml" -Raw
 if ($pubspecContent -match 'version:\s*([0-9]+\.[0-9]+\.[0-9]+\+[0-9]+)') {
     $pubspecVersion = $matches[1]
     Write-Host "checkmark pubspec.yaml version: $pubspecVersion" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "x Could not find version in pubspec.yaml" -ForegroundColor Red
     exit 1
 }
@@ -18,7 +19,8 @@ $versionCheckContent = Get-Content "lib/utils/version_check.dart" -Raw
 if ($versionCheckContent -match "currentVersion\s*=\s*'([^']*)'") {
     $versionCheckVersion = $matches[1]
     Write-Host "checkmark version_check.dart version: $versionCheckVersion" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "x Could not find version in version_check.dart" -ForegroundColor Red
     exit 1
 }
