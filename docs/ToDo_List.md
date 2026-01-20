@@ -10,6 +10,8 @@ clearing cache on a device/emulator:
 fully clear app data on an android device/emulator:
 `adb -s emulator-5554 shell pm clear com.moritzberg.roundnetboard; adb -s emulator-5554 shell run-as com.moritzberg.roundnetboard rm -rf /data/data/com.moritzberg.roundnetboard/files; adb -s emulator-5554 shell run-as com.moritzberg.roundnetboard rm -rf /data/data/com.moritzberg.roundnetboard/shared_prefs`
 
+When finalizing an implementation or edit with large chunks of code changes, make sure to run `flutter analyze` and fix all warnings and errors that come up there.
+
 ## Current Implementation
 
 ## Design
@@ -79,20 +81,21 @@ Quick tips to add to helper screen:
 
 - [ ] "Want to emphasize a certain position? Copy the specific frame and increase the duration of the new frame for an obersevational pause in the animation" in quick tips
 - [ ] "Use the annotation tools to highlight specific tactics or movements on the court"
+- [ ] "Delete unwanted frames by double tapping the frame thumbnail in the timeline and tapping the trash can icon"
 
 ## Features
 
 ### project screen
 
 - [x] users are not able to share or export projects in web version currently.
-- [ ] add two exemplary projects that are preloaded when the app is first installed, showcasing all features of the app (one play scenario, one training scenario)
+- [x] add two exemplary projects that are preloaded when the app is first installed, showcasing all features of the app (one play scenario, one training scenario)
 
 ### intuitive actions
 
-- [ ] #n hide all current complex project settings (anything size on board related) in the board screen under "advanced settings"
+- [x] hide all current complex project settings (anything size on board related) in the board screen under "advanced settings"
 - [ ] when a user drags an object and stays holding that object for more than 1sec on about the same location (within 50px), a magnifying window (1.5x) showing the object and its surrounding 10% of displaymin = min(screenwidth,screenheight) is shown hovering 20% of displaymin above the location that user is holding.
 - [ ] the magnifying window is deactivated as soon as the user changed the position of the object over 50px in the last .5 seconds
-- [x] #n court elements snap to corners and center points of other court elements when being dragged within 20px of such a point.
+- [x] court elements snap to corners and center points of other court elements when being dragged within 20px of such a point.
 - [ ] automaticaaly snap annotations upon creation to annotation objects (e.g. line endpoints snap to circle circumference when created within 20px of it)
 
 ### court
@@ -105,19 +108,23 @@ Quick tips to add to helper screen:
 
 ### annotations
 
-- [ ] annotation menu should be horizontally scrollable when screen width is too small to show all annotation tools at once.
+- [x] annotation menu should be horizontally scrollable when screen width is too small to show all annotation tools at once.
 - [x] #n add a drag and drop tool, that allows to move annotations around on the court, as it is currently implemented in the court editor screen.
 - [x] there should be a foldable menu for annotations that provides frame specific annotations.
 - [x] add a line annotation tool, that also is editable in color, user can manually edit the end points of the line.
 - [x] annotations should be frame specific and also should be copyed along all other objects when a new frame is inserted.
-- [ ] annotations should only be permament (saved per frame) when added in the annotation mode in the editing board screen.
+- [ ] temporary annotations can be added in animation playback mode, that are not frame specific and are deleted when the user stops playback. annotations should only be permament (saved per frame) when added in the annotation mode in the editing board screen.
 - [ ] #n add a text annotation tool, that allows to add text labels on the court. (fixed font color, size adjustable via pop-up menu, draggable position, editable text content (double tap to edit text))
 - [x] #n default width for circles when only tapping once should be 30cm radius.
 - [x] right click or long tap on annotation tools should open a small menu to select default color and default size for this annotation tool (line width/stroke size in 3 steps, indicated by small preview icons, for circle and rectangles: filled or outline only, for text: font size in 3 steps)
 - [ ] add a pop-up menu for the line tool to select between straight line, arrowed line and dashed line.
 - [ ] annotations that are added in paused mode in the animation playback are only temporarely visible during this playback until the current playback is left (going back to the editing screen or back to project overview)
 - [x] add a trash can icon to erase all annotations of the current frame
-- [ ] circle sector annotation tool (like a pie chart slice) to highlight certain areas on the court. the sector is defined for the last selected circle element. first touch position defines the start of the sector angle and dragging the finger around the circle defines the end angle of the sector. the sector is filled with the selected color. Circle sector annotation are filled shapes only, no outline only option.
+- [x] circle sector annotation tool (like a pie chart slice) to highlight certain areas on the court. the sector is defined for the last selected circle element. first touch position defines the start of the sector angle and dragging the finger around the circle defines the end angle of the sector. the sector is filled with the selected color. Circle sector annotation are filled shapes only, no outline only option.
+  - [ ] add a pop-up menu for the circle sector tool to select to which object or court element it should be attached (center point can be ball, player or zone court element)
+  - [ ] for ball or player attachment, the sector is not moving with the object during animation playback, it is only attached to the object in the frame it is created in at the end position of the object in this frame. the sector radius is fixed to 260cm for ball or player attachment.
+  - [ ] for zone attachment, the sector radius is equal to the zone radius.
+  - [ ]  the sector does not snap onto the zero coordinate point of the court, but to the center point of the respective zone court element or player or ball object at that frames end position.
 - [ ] automatically snap annotation objects to court element corners and center points when being dragged within 20px of such a point.
 
 ### statistics
@@ -126,12 +133,12 @@ Quick tips to add to helper screen:
 - [ ] footwork statistics shows for each frame the amount of distance each player travels, as small bars on the top side of the screen.
 - [ ] the maximum footwork distance is 850cm and the minimum is 0cm.
 - [ ] if turned on, the footwork statistics will also be depicted in the animation playback with showing the footwork of a certain frame during the playback of this frame.
-- [ ] #n **during animation playback, when the playback is paused, the user can toggle full path revision of a player or the ball by tapping the player or ball and this shows the path that this object already moved (full line) and the upcoming path of this object (dashed line). toggles off when the object is tapped again.**
+- [x] during animation playback, when the playback is paused, the user can toggle full path revision of a player or the ball by tapping the player or ball and this shows the path that this object already moved (full line) and the upcoming path of this object (dashed line). toggles off when the object is tapped again.
 
 ### sharing
 
-- [ ] **users can export each frame as a single image, or all frames as images appended to each other, to form a left to right or top to bottom succession.**
-- [ ] **users can export the animation as a video file. the speed of the exported animation should match the last selected playback speed of the animation.**
+- [ ] users can export each frame as a single image, or all frames as images appended to each other, to form a left to right or top to bottom succession.
+- [ ] users can export the animation as a video file. the speed of the exported animation should match the last selected playback speed of the animation.
 - [x] users can share projects as a json file and import shared json files
 
 ### players
@@ -154,7 +161,7 @@ Quick tips to add to helper screen:
 timeline:
 
 - [ ] playback scrubber should be time related, taking frame duration into account. Currently the playback scrubber moves with equal speed through all frames, regardless of their duration setting.
-- [ ] #n the delete current frame button should only appear when a frame is long pressed if it is the currently selected frame and then disappears again if any place else is tapped again.
+- [x] the delete current frame button should only appear when a frame is double tapped if it is the currently selected frame and then disappears again if double tapped or any place else is tapped again.
 
 ## Fixes
 
@@ -165,16 +172,16 @@ timeline:
 - [x] when playback is through, meaning the playback reached the end while playing, the timeline should only go back to the editing controls after the stop button is tapped, not automatically after playback reached the end
 - [x] enlarge the hit box for catching the path control points on mobile devices
 - [x] the buttons should not overflow on small screen devices, either scale them down or make them scrollable horizontally
-- [ ] the court should fit either 1.2 times the serve zone radius around the center of the court in width or height (which is smaller and based on orientation) instead of always fitting the whole court only in width (depending on screen width)
+- [x] the court should fit either 1.2 times the serve zone radius around the center of the court in width or height (which is smaller and based on orientation) instead of always fitting the whole court only in width (depending on screen width)
 - [x] there is a small light grey section above the timeline section. this should be removed and the timeline should directly connect to the court area. when creating court elements, they overlap with this grey area which looks bad.
-- [ ] when undoing a path edit, the path control points of the edit remain. these should be removed when undoing the edit. when redoing the edit, the path control points should reappear.
+- [x] when undoing a path edit, the path control points of the edit remain. these should be removed when undoing the edit. when redoing the edit, the path control points should reappear. path control points should be part of the undo/redo history.
 
 ### Other fixes
 
 - [x] after the animaiton reached the end, the scrubber is not accessible anymore (touching it leaves playback view) and the edit timeline instantly shows up. instead only the stop button should make the screen switch back to editing mode.
 - [ ] the undo and redo history should also track annotation edits (creation, deletion, etc).
 - [ ] the numerated suffix does not supply increasing numbers in brackets. Instead each copy gets another (1) suffix resulting in e.g. framename (1) (1) (1)
-- [ ] the annotations are not copied and displayed in a new frame when this is added.
+- [x] the annotations are not copied and displayed in a new frame when this is added.
 
 ## Else
 

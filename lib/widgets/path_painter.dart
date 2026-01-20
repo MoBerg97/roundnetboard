@@ -11,6 +11,7 @@ class PathPainter extends CustomPainter {
   final Frame? currentFrame;
   final Size screenSize;
   final Settings settings;
+  final int pathRevision; // Incremented whenever path control points change to force repaint
 
   PathPainter({
     required this.twoFramesAgo,
@@ -18,6 +19,7 @@ class PathPainter extends CustomPainter {
     required this.currentFrame,
     required this.screenSize,
     required this.settings,
+    required this.pathRevision,
   });
 
   Offset _boardCenter(Size size) {
@@ -190,6 +192,7 @@ class PathPainter extends CustomPainter {
         oldDelegate.previousFrame != previousFrame ||
         oldDelegate.currentFrame != currentFrame ||
         oldDelegate.screenSize != screenSize ||
-        oldDelegate.settings != settings;
+        oldDelegate.settings != settings ||
+        oldDelegate.pathRevision != pathRevision;
   }
 }
