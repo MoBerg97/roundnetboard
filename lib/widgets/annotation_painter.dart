@@ -93,6 +93,9 @@ class _AnnotationCustomPainter extends CustomPainter {
       final y = b[i];
       if (x.type != y.type || x.colorValue != y.colorValue || x.filled != y.filled) return true;
       if (x.strokeWidthCm != y.strokeWidthCm) return true;
+      if (x.startAngle != y.startAngle || x.endAngle != y.endAngle) return true;
+      if ((x.fontSize ?? 0) != (y.fontSize ?? 0)) return true;
+      if ((x.text ?? '') != (y.text ?? '')) return true;
       if (x.points.length != y.points.length) return true;
       for (var j = 0; j < x.points.length; j++) {
         if (x.points[j] != y.points[j]) return true;
@@ -113,6 +116,8 @@ class _AnnotationCustomPainter extends CustomPainter {
           _paintRectangle(canvas, annotation);
         case AnnotationType.sector:
           _paintSector(canvas, annotation);
+        case AnnotationType.text:
+          _paintText(canvas, annotation);
       }
     }
     // draw temporary/staged annotations (if any) with lighter style
@@ -127,6 +132,8 @@ class _AnnotationCustomPainter extends CustomPainter {
             _paintTempRectangle(canvas, annotation);
           case AnnotationType.sector:
             _paintTempSector(canvas, annotation);
+          case AnnotationType.text:
+            _paintTempText(canvas, annotation);
         }
       }
     }
@@ -142,6 +149,8 @@ class _AnnotationCustomPainter extends CustomPainter {
             _paintErasingRectangle(canvas, annotation);
           case AnnotationType.sector:
             _paintErasingSector(canvas, annotation);
+          case AnnotationType.text:
+            _paintErasingText(canvas, annotation);
         }
       }
     }
@@ -324,6 +333,63 @@ class _AnnotationCustomPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     canvas.drawCircle(centerScreen, radiusScreen, outline);
+  }
+
+  static const double _defaultTextSize = 20.0;
+  static const String _textFontFamily = 'Roboto';
+
+  TextPainter _textPainterFor(Annotation annotation, {double alpha = 0.9}) {
+    return TextPainter(
+      text: TextSpan(
+        text: annotation.text ?? '',
+        style: TextStyle(
+          color: annotation.color.withValues(alpha: alpha),
+          fontSize: annotation.fontSize ?? _defaultTextSize,
+          fontFamily: _textFontFamily,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    )..layout();
+  }
+
+  void _paintText(Canvas canvas, Annotation annotation) {
+    if (annotation.points.isEmpty) return;
+    final text = annotation.text ?? '';
+    if (text.isEmpty) return;
+    final center = _cmToScreen(annotation.points.first);
+    final painter = _textPainterFor(annotation, alpha: 0.95);
+    final topLeft = center - Offset(painter.width / 2, painter.height / 2);
+    painter.paint(canvas, topLeft);
+  }
+
+  void _paintTempText(Canvas canvas, Annotation annotation) {
+    if (annotation.points.isEmpty) return;
+    final text = annotation.text ?? '';
+    if (text.isEmpty) return;
+    final center = _cmToScreen(annotation.points.first);
+    final painter = _textPainterFor(annotation, alpha: 0.5);
+    final topLeft = center - Offset(painter.width / 2, painter.height / 2);
+    painter.paint(canvas, topLeft);
+  }
+
+  void _paintErasingText(Canvas canvas, Annotation annotation) {
+    if (annotation.points.isEmpty) return;
+    final text = annotation.text ?? '';
+    if (text.isEmpty) return;
+    final center = _cmToScreen(annotation.points.first);
+    final painter = _textPainterFor(annotation, alpha: 0.25);
+    final topLeft = center - Offset(painter.width / 2, painter.height / 2);
+    painter.paint(canvas, topLeft);
+
+    final strikePaint = Paint()
+      ..color = Colors.red.withValues(alpha: 0.6)
+      ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm)
+      ..strokeCap = StrokeCap.round;
+    final rect = Rect.fromLTWH(topLeft.dx, topLeft.dy, painter.width, painter.height);
+    canvas.drawLine(rect.topLeft, rect.bottomRight, strikePaint);
+    canvas.drawLine(rect.topRight, rect.bottomLeft, strikePaint);
   }
 
   // Rendering for annotations being erased (faded + strikethrough effect)

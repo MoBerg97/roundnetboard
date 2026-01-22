@@ -25,13 +25,15 @@ class AnnotationAdapter extends TypeAdapter<Annotation> {
       startAngle: fields[9] as double?,
       endAngle: fields[10] as double?,
       id: fields[11] as String?,
+      text: fields[12] as String?,
+      fontSize: fields[13] as double?,
     )..colorValue = fields[4] as int;
   }
 
   @override
   void write(BinaryWriter writer, Annotation obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(11)
       ..writeByte(3)
       ..write(obj.type)
       ..writeByte(4)
@@ -49,7 +51,11 @@ class AnnotationAdapter extends TypeAdapter<Annotation> {
       ..writeByte(10)
       ..write(obj.endAngle)
       ..writeByte(11)
-      ..write(obj.id);
+      ..write(obj.id)
+      ..writeByte(12)
+      ..write(obj.text)
+      ..writeByte(13)
+      ..write(obj.fontSize);
   }
 
   @override
@@ -78,6 +84,8 @@ class AnnotationTypeAdapter extends TypeAdapter<AnnotationType> {
         return AnnotationType.rectangle;
       case 3:
         return AnnotationType.sector;
+      case 4:
+        return AnnotationType.text;
       default:
         return AnnotationType.line;
     }
@@ -97,6 +105,9 @@ class AnnotationTypeAdapter extends TypeAdapter<AnnotationType> {
         break;
       case AnnotationType.sector:
         writer.writeByte(3);
+        break;
+      case AnnotationType.text:
+        writer.writeByte(4);
         break;
     }
   }

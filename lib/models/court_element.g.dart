@@ -22,6 +22,8 @@ class CourtElementAdapter extends TypeAdapter<CourtElement> {
       endPosition: fields[3] as Offset?,
       strokeWidth: fields[5] as double,
       isVisible: fields[6] as bool,
+      text: fields[7] as String?,
+      fontSize: fields[8] as double?,
     )
       ..typeIndex = fields[0] as int
       ..colorValue = fields[4] as int;
@@ -30,7 +32,7 @@ class CourtElementAdapter extends TypeAdapter<CourtElement> {
   @override
   void write(BinaryWriter writer, CourtElement obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.typeIndex)
       ..writeByte(1)
@@ -44,7 +46,11 @@ class CourtElementAdapter extends TypeAdapter<CourtElement> {
       ..writeByte(5)
       ..write(obj.strokeWidth)
       ..writeByte(6)
-      ..write(obj.isVisible);
+      ..write(obj.isVisible)
+      ..writeByte(7)
+      ..write(obj.text)
+      ..writeByte(8)
+      ..write(obj.fontSize);
   }
 
   @override

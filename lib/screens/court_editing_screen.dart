@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -11,7 +12,7 @@ import '../widgets/board_background_painter.dart';
 import '../widgets/court_editor_painter.dart';
 import '../widgets/hover_selection_menu.dart';
 
-enum CourtEditorTool { select, net, zone, customCircle, customLine, customRectangle, eraser }
+enum CourtEditorTool { select, net, zone, customCircle, customLine, customRectangle, text, eraser }
 
 /// Represents a snapshot of the editor state for undo/redo functionality
 class _EditorSnapshot {
@@ -39,6 +40,12 @@ class _ZoneOption {
   const _ZoneOption(this.label, this.mode);
 }
 
+class _TextDialogResult {
+  final String text;
+  final double size;
+  const _TextDialogResult(this.text, this.size);
+}
+
 class CourtEditingScreen extends StatefulWidget {
   final AnimationProject project;
 
@@ -49,6 +56,8 @@ class CourtEditingScreen extends StatefulWidget {
 }
 
 class _CourtEditingScreenState extends State<CourtEditingScreen> {
+  static const String _textFontFamily = 'Roboto';
+  static const double _defaultTextSize = 20.0;
   late CourtEditorTool _currentTool;
   late List<CourtElement> _elements;
   late Settings _settings;
@@ -72,6 +81,13 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   final GlobalKey _strokeWidthButtonKey = GlobalKey(debugLabel: 'court_editor_stroke_button');
   final GlobalKey _strokeWidthMenuKey = GlobalKey(debugLabel: 'court_editor_stroke_menu');
   final ValueNotifier<int> _strokeHoverNotifier = ValueNotifier<int>(-1);
+  final List<double> _textSizeOptions = const [16.0, 20.0, 26.0];
+  double _textFontSize = _defaultTextSize;
+  OverlayEntry? _textSizeMenuEntry;
+  int _hoverTextSizeIndex = -1;
+  final GlobalKey _textToolButtonKey = GlobalKey(debugLabel: 'court_editor_text_button');
+  final GlobalKey _textSizeMenuKey = GlobalKey(debugLabel: 'court_editor_text_size_menu');
+  final ValueNotifier<int> _textSizeHoverNotifier = ValueNotifier<int>(-1);
   OverlayEntry? _zoneMenuEntry;
   int _hoverZoneIndex = -1;
   final GlobalKey _zoneButtonKey = GlobalKey(debugLabel: 'court_editor_zone_button');
@@ -82,6 +98,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     _ZoneOption('SZ', ZoneMode.serve),
     _ZoneOption('OB', ZoneMode.outer),
   ];
+
   final GlobalKey _canvasKey = GlobalKey(debugLabel: 'court_editor_canvas');
   Color _currentColor = Colors.white;
   ZoneMode _zoneMode = ZoneMode.inner;
@@ -135,6 +152,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   void dispose() {
     _removeEraserMenu();
     _removeStrokeWidthMenu();
+    _removeTextSizeMenu();
     _removeZoneMenu();
     super.dispose();
   }
@@ -164,6 +182,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
               child: Center(
                 child: GestureDetector(
                   key: _canvasKey,
+                  onDoubleTapDown: _onDoubleTapDown,
                   onPanDown: _onPanDown,
                   onPanUpdate: _onPanUpdate,
                   onPanEnd: _onPanEnd,
@@ -245,6 +264,8 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                   const SizedBox(width: 4),
                   _buildToolButton(CourtEditorTool.customRectangle, Icons.crop_square, 'Rect'),
                   const SizedBox(width: 4),
+                  _buildTextToolButton(),
+                  const SizedBox(width: 4),
                   _buildEraserButton(),
                   const SizedBox(width: 8),
                   _buildStrokeWidthButton(),
@@ -301,6 +322,23 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
         backgroundColor: isActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
         onPressed: () => setState(() => _currentTool = tool),
         child: iconWidget,
+      ),
+    );
+  }
+
+  Widget _buildTextToolButton() {
+    final isActive = _currentTool == CourtEditorTool.text;
+    return Tooltip(
+      message: 'Text (double-tap for size presets)',
+      child: GestureDetector(
+        onDoubleTap: () => _toggleTextSizeMenu(forceOpen: true),
+        child: FloatingActionButton.small(
+          key: _textToolButtonKey,
+          heroTag: 'tool-text',
+          backgroundColor: isActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+          onPressed: () => setState(() => _currentTool = CourtEditorTool.text),
+          child: Icon(Icons.text_fields, color: isActive ? _currentColor : Colors.white),
+        ),
       ),
     );
   }
@@ -537,6 +575,104 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       _strokeHoverNotifier.value = idx;
       setState(() => _hoverStrokeIndex = idx);
     }
+  }
+
+  void _toggleTextSizeMenu({Offset? globalPos, bool forceOpen = false}) {
+    if (_textSizeMenuEntry != null) {
+      _removeTextSizeMenu();
+      if (!forceOpen) return;
+    }
+
+    final overlay = Overlay.of(context);
+    final box = _textToolButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final buttonOrigin = box.localToGlobal(Offset.zero);
+    final buttonSize = box.size;
+    final origin = globalPos ?? buttonOrigin + Offset(buttonSize.width / 2, 0);
+
+    final menuHeight = HoverSelectionMenu.totalHeightForCount(_textSizeOptions.length);
+    final menuWidth = HoverSelectionMenu.menuWidth;
+    final left = origin.dx - (menuWidth / 2);
+    final top = buttonOrigin.dy - menuHeight - 12;
+
+    _hoverTextSizeIndex = _textSizeOptions.indexOf(_textFontSize);
+    _textSizeHoverNotifier.value = _hoverTextSizeIndex;
+
+    _textSizeMenuEntry = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          IgnorePointer(),
+          Positioned(
+            left: left,
+            top: top,
+            child: HoverSelectionMenu(
+              options: _textSizeOptions
+                  .map(
+                    (size) => HoverMenuOption(
+                      builder: (isHover) => Container(
+                        alignment: Alignment.center,
+                        child: Text(
+                          size.toStringAsFixed(0),
+                          style: TextStyle(
+                            color: isHover ? AppTheme.primaryBlue : Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              initialHover: _hoverTextSizeIndex,
+              hoverNotifier: _textSizeHoverNotifier,
+              onHover: (i) => setState(() => _hoverTextSizeIndex = i),
+              onSelect: (i) {
+                _applyTextSize(_textSizeOptions[i]);
+                _removeTextSizeMenu();
+              },
+              onDismiss: _removeTextSizeMenu,
+              menuKey: _textSizeMenuKey,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(_textSizeMenuEntry!);
+    _updateTextSizeMenuHover(globalPos ?? origin);
+  }
+
+  void _removeTextSizeMenu() {
+    _textSizeMenuEntry?.remove();
+    _textSizeMenuEntry = null;
+    _hoverTextSizeIndex = -1;
+    _textSizeHoverNotifier.value = -1;
+  }
+
+  void _updateTextSizeMenuHover(Offset globalPos) {
+    final box = _textSizeMenuKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(globalPos);
+    final width = HoverSelectionMenu.menuWidth;
+    final height = HoverSelectionMenu.totalHeightForCount(_textSizeOptions.length);
+    if (local.dx < 0 || local.dx > width || local.dy < 0 || local.dy > height) {
+      _textSizeHoverNotifier.value = -1;
+      setState(() => _hoverTextSizeIndex = -1);
+      return;
+    }
+    final idx = (local.dy / HoverSelectionMenu.itemExtent).floor().clamp(0, _textSizeOptions.length - 1);
+    if (idx != _hoverTextSizeIndex) {
+      _textSizeHoverNotifier.value = idx;
+      setState(() => _hoverTextSizeIndex = idx);
+    }
+  }
+
+  void _applyTextSize(double size) {
+    if (_textFontSize == size) return;
+    setState(() {
+      _textFontSize = size;
+    });
   }
 
   void _toggleZoneMenu({Offset? globalPos, bool forceOpen = false}) {
@@ -803,6 +939,14 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       return;
     }
 
+    if (tool == CourtEditorTool.text) {
+      unawaited(_handleTextPlacement(end));
+      _startPos = null;
+      _currentPos = null;
+      _previewElement = null;
+      return;
+    }
+
     // Create new element based on tool
     final element = _createElementFromTool(tool, start, end);
     if (element != null) {
@@ -817,9 +961,136 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     _previewElement = null;
   }
 
+  void _onDoubleTapDown(TapDownDetails details) {
+    final localPos = details.localPosition;
+    final localPosCm = _screenToCm(localPos, _screenSize);
+    final textElement = _findTextElementAt(localPosCm);
+    if (textElement != null) {
+      unawaited(_editTextElement(textElement));
+    }
+  }
+
+  CourtElement? _findTextElementAt(Offset localPosCm) {
+    for (final element in _elements.reversed) {
+      if (element.type != CourtElementType.text) continue;
+      if (_isPointNearElement(localPosCm, element)) {
+        return element;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _handleTextPlacement(Offset positionCm) async {
+    final result = await _promptForText();
+    final textValue = result?.text.trim();
+    if (textValue == null || textValue.isEmpty) return;
+
+    final size = result!.size;
+    _textFontSize = size;
+
+    final element = _createElementFromTool(
+      CourtEditorTool.text,
+      positionCm,
+      positionCm,
+      textContent: textValue,
+    )
+      ?..fontSize = size;
+
+    if (element == null) return;
+
+    _saveToHistory();
+    if (!mounted) return;
+    setState(() {
+      _elements.add(element);
+      _elementsRevision++;
+    });
+  }
+
+  Future<void> _editTextElement(CourtElement element) async {
+    final result = await _promptForText(
+      initialText: element.text ?? '',
+      initialSize: element.fontSize ?? _textFontSize,
+    );
+    final textValue = result?.text.trim();
+    if (textValue == null || textValue.isEmpty) return;
+
+    final size = result!.size;
+
+    // If nothing changed, skip history churn
+    if (textValue == (element.text ?? '') && size == (element.fontSize ?? _textFontSize)) {
+      return;
+    }
+
+    _saveToHistory();
+    if (!mounted) return;
+    setState(() {
+      element
+        ..text = textValue
+        ..fontSize = size;
+      _elementsRevision++;
+    });
+  }
+
+  Future<_TextDialogResult?> _promptForText({String initialText = '', double? initialSize}) async {
+    final controller = TextEditingController(text: initialText);
+    double size = initialSize ?? _textFontSize;
+
+    return showDialog<_TextDialogResult>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text('Add Text'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration: const InputDecoration(labelText: 'Text content'),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Size', style: Theme.of(context).textTheme.labelLarge),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: _textSizeOptions.map((opt) {
+                    final isActive = opt == size;
+                    return ChoiceChip(
+                      label: Text(opt.toStringAsFixed(0)),
+                      selected: isActive,
+                      onSelected: (_) => setStateDialog(() => size = opt),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, _TextDialogResult(controller.text, size)),
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   void _eraseAtPosition(Offset pos) {
     final eraserRadiusCm = _eraserRadius;
+    final eraserRadiusPx = _settings.cmToLogical(eraserRadiusCm, _screenSize);
     bool intersects(CourtElement e) {
+      if (e.type == CourtElementType.text) {
+        final rect = _textBoundsPx(e);
+        if (rect == null) return false;
+        final pointPx = _toScreenPosition(pos, _screenSize);
+        return rect.inflate(eraserRadiusPx).contains(pointPx);
+      }
       if (e.type == CourtElementType.customLine && e.endPosition != null) {
         final d = _distanceToLineSegment(pos, e.position, e.endPosition!);
         return d <= eraserRadiusCm;
@@ -864,6 +1135,26 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     final t = ((ap.dx * ab.dx + ap.dy * ab.dy) / abDot).clamp(0.0, 1.0);
     final closest = a + Offset(ab.dx * t, ab.dy * t);
     return (p - closest).distance;
+  }
+
+  Rect? _textBoundsPx(CourtElement element) {
+    final label = element.text ?? '';
+    if (label.isEmpty) return null;
+
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: TextStyle(
+          fontSize: element.fontSize ?? _textFontSize,
+          fontFamily: _textFontFamily,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    final centerPx = _toScreenPosition(element.position, _screenSize);
+    return Rect.fromCenter(center: centerPx, width: textPainter.width, height: textPainter.height);
   }
 
   MapEntry<Offset, Offset?> _applySnap(Offset pos, Offset? end, CourtElement dragged) {
@@ -937,7 +1228,13 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     return points;
   }
 
-  CourtElement? _createElementFromTool(CourtEditorTool tool, Offset start, Offset end, {bool preview = false}) {
+  CourtElement? _createElementFromTool(
+    CourtEditorTool tool,
+    Offset start,
+    Offset end, {
+    bool preview = false,
+    String? textContent,
+  }) {
     final position = end; // Use finger-up position so tap or drag works the same.
     switch (tool) {
       case CourtEditorTool.net:
@@ -987,6 +1284,16 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
           color: _currentColor,
           strokeWidth: _elementStrokeWidth,
         );
+      case CourtEditorTool.text:
+        final resolvedText = textContent ?? (preview ? 'Text' : '');
+        return CourtElement(
+          type: CourtElementType.text,
+          position: end,
+          color: _currentColor,
+          strokeWidth: _elementStrokeWidth,
+          text: resolvedText,
+          fontSize: _textFontSize,
+        );
       default:
         return null;
     }
@@ -994,6 +1301,13 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
 
   bool _isPointNearElement(Offset point, CourtElement element) {
     const threshold = 20.0; // 20cm threshold for cm-based coordinates
+
+    if (element.type == CourtElementType.text) {
+      final rect = _textBoundsPx(element);
+      if (rect == null) return false;
+      final pointPx = _toScreenPosition(point, _screenSize);
+      return rect.inflate(12).contains(pointPx);
+    }
 
     // NET elements: draggable from anywhere within the widest circle
     if (element.type == CourtElementType.net) {
@@ -1170,6 +1484,9 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       if ((a.radius ?? 0) != (b.radius ?? 0)) return false;
       if (a.color.toARGB32() != b.color.toARGB32()) return false;
       if (a.strokeWidth != b.strokeWidth) return false;
+      if (a.isVisible != b.isVisible) return false;
+      if ((a.text ?? '') != (b.text ?? '')) return false;
+      if ((a.fontSize ?? _textFontSize) != (b.fontSize ?? _textFontSize)) return false;
     }
     if (snap.currentColor.toARGB32() != _currentColor.toARGB32()) return false;
     if (snap.zoneMode != _zoneMode) return false;

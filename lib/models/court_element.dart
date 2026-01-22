@@ -11,6 +11,7 @@ enum CourtElementType {
   customCircle,
   customLine,
   customRectangle,
+  text,
 }
 
 /// Base court element model
@@ -37,6 +38,12 @@ class CourtElement extends HiveObject {
   @HiveField(6)
   bool isVisible;
 
+  @HiveField(7)
+  String? text;
+
+  @HiveField(8)
+  double? fontSize;
+
   CourtElement({
     CourtElementType? type,
     required this.position,
@@ -45,6 +52,8 @@ class CourtElement extends HiveObject {
     Color? color,
     this.strokeWidth = 2.0,
     this.isVisible = true,
+    this.text,
+    this.fontSize,
   })  : typeIndex = (type ?? CourtElementType.net).index,
       colorValue = (color ?? Colors.white).toARGB32();
 
@@ -68,6 +77,8 @@ class CourtElement extends HiveObject {
         color: color,
         strokeWidth: strokeWidth,
         isVisible: isVisible,
+        text: text,
+        fontSize: fontSize,
       );
 }
 
@@ -80,6 +91,8 @@ extension CourtElementMap on CourtElement {
         'color': colorValue,
         'strokeWidth': strokeWidth,
         'isVisible': isVisible,
+        'text': text,
+        'fontSize': fontSize,
       };
 
   static CourtElement fromMap(Map<String, dynamic> m) => CourtElement(
@@ -92,5 +105,7 @@ extension CourtElementMap on CourtElement {
         color: Color(m['color'] as int),
         strokeWidth: (m['strokeWidth'] ?? 2.0).toDouble(),
         isVisible: m['isVisible'] ?? true,
+        text: m['text'] as String?,
+        fontSize: (m['fontSize'] as num?)?.toDouble(),
       );
 }

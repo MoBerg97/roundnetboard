@@ -56,7 +56,13 @@ class BoardScreen extends StatefulWidget {
 // ANNOTATION TOOLS ENUM
 // ────────────────────────────────────────────────────────────────────────────
 // Available drawing tools for annotations on the board
-enum AnnotationTool { none, move, line, circle, rectangle, sector }
+enum AnnotationTool { none, move, line, circle, rectangle, sector, text }
+
+class _AnnotationTextDialogResult {
+  final String text;
+  final double size;
+  const _AnnotationTextDialogResult(this.text, this.size);
+}
 
 class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin {
   // ──────────────────────────────────────────────────────────────────────────
@@ -138,6 +144,15 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   final GlobalKey _rectangleFillMenuKey = GlobalKey(debugLabel: 'annotation_rectangle_fill_menu');
   final ValueNotifier<int> _circleFillHoverNotifier = ValueNotifier<int>(-1);
   final ValueNotifier<int> _rectangleFillHoverNotifier = ValueNotifier<int>(-1);
+  static const String _annotationTextFontFamily = 'Roboto';
+  static const double _defaultAnnotationTextSize = 20.0;
+  final List<double> _annotationTextSizeOptions = const [16.0, 20.0, 26.0];
+  double _annotationTextSize = _defaultAnnotationTextSize;
+  OverlayEntry? _annotationTextSizeMenuEntry;
+  int _annotationTextSizeHoverIndex = -1;
+  final GlobalKey _annotationTextButtonKey = GlobalKey(debugLabel: 'annotation_text_button');
+  final GlobalKey _annotationTextSizeMenuKey = GlobalKey(debugLabel: 'annotation_text_size_menu');
+  final ValueNotifier<int> _annotationTextSizeHoverNotifier = ValueNotifier<int>(-1);
   final List<Annotation> _stagedAnnotations = []; // Annotations staged for preview
   final List<Annotation> _erasingAnnotations = []; // Annotations being erased (preview)
   Offset? _currentDragPos; // Current drag position for live preview
@@ -251,6 +266,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _timelineController.dispose();
     _removeAnnotationEraserMenu();
     _removeAnnotationStrokeMenu();
+    _removeAnnotationTextSizeMenu();
     super.dispose();
   }
 
@@ -726,6 +742,102 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _rectangleFillMenuEntry = null;
     _rectangleFillHoverIndex = -1;
     _rectangleFillHoverNotifier.value = -1;
+  }
+
+  void _toggleAnnotationTextSizeMenu({Offset? globalPos, bool forceOpen = false}) {
+    if (_annotationTextSizeMenuEntry != null) {
+      _removeAnnotationTextSizeMenu();
+      if (!forceOpen) return;
+    }
+
+    final overlay = Overlay.of(context);
+    final box = _annotationTextButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final buttonOrigin = box.localToGlobal(Offset.zero);
+    final buttonSize = box.size;
+    final anchor = buttonOrigin + Offset(buttonSize.width / 2, buttonSize.height / 2);
+    final menuHeight = HoverSelectionMenu.totalHeightForCount(_annotationTextSizeOptions.length);
+    final menuWidth = HoverSelectionMenu.menuWidth;
+    final screenSize = MediaQuery.of(context).size;
+    final placeAbove = anchor.dy > (screenSize.height / 2);
+    final unclampedLeft = anchor.dx - (menuWidth / 2);
+    final unclampedTop = placeAbove ? buttonOrigin.dy - menuHeight - 12 : buttonOrigin.dy + buttonSize.height + 12;
+    final left = unclampedLeft.clamp(8.0, screenSize.width - menuWidth - 8.0);
+    final top = unclampedTop.clamp(8.0, screenSize.height - menuHeight - 8.0);
+
+    _annotationTextSizeHoverIndex = _annotationTextSizeOptions.indexOf(_annotationTextSize);
+    _annotationTextSizeHoverNotifier.value = _annotationTextSizeHoverIndex;
+
+    _annotationTextSizeMenuEntry = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          IgnorePointer(),
+          Positioned(
+            left: left,
+            top: top,
+            child: HoverSelectionMenu(
+              options: _annotationTextSizeOptions
+                  .map(
+                    (size) => HoverMenuOption(
+                      builder: (isHover) => Container(
+                        alignment: Alignment.center,
+                        child: Text(
+                          size.toStringAsFixed(0),
+                          style: TextStyle(
+                            color: isHover ? AppTheme.primaryBlue : Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              initialHover: _annotationTextSizeHoverIndex,
+              hoverNotifier: _annotationTextSizeHoverNotifier,
+              onHover: (i) => setState(() => _annotationTextSizeHoverIndex = i),
+              onSelect: (i) {
+                setState(() => _annotationTextSize = _annotationTextSizeOptions[i]);
+                _removeAnnotationTextSizeMenu();
+              },
+              onDismiss: _removeAnnotationTextSizeMenu,
+              menuKey: _annotationTextSizeMenuKey,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(_annotationTextSizeMenuEntry!);
+    _updateAnnotationTextSizeMenuHover(anchor);
+  }
+
+  void _updateAnnotationTextSizeMenuHover(Offset globalPos) {
+    final box = _annotationTextSizeMenuKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(globalPos);
+    final width = HoverSelectionMenu.menuWidth;
+    final height = HoverSelectionMenu.totalHeightForCount(_annotationTextSizeOptions.length);
+    if (local.dx < 0 || local.dx > width || local.dy < 0 || local.dy > height) {
+      _annotationTextSizeHoverNotifier.value = -1;
+      setState(() => _annotationTextSizeHoverIndex = -1);
+      return;
+    }
+    final idx = (local.dy / HoverSelectionMenu.itemExtent)
+        .floor()
+        .clamp(0, _annotationTextSizeOptions.length - 1);
+    if (idx != _annotationTextSizeHoverIndex) {
+      _annotationTextSizeHoverNotifier.value = idx;
+      setState(() => _annotationTextSizeHoverIndex = idx);
+    }
+  }
+
+  void _removeAnnotationTextSizeMenu() {
+    _annotationTextSizeMenuEntry?.remove();
+    _annotationTextSizeMenuEntry = null;
+    _annotationTextSizeHoverIndex = -1;
+    _annotationTextSizeHoverNotifier.value = -1;
   }
 
   /// Derive available logical screen size from the active window (web/windows) or MediaQuery elsewhere.
@@ -1464,8 +1576,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       return;
     }
 
-    // If in annotation mode, ignore taps (drawing uses drag instead)
+    // If in annotation mode, handle text tool tap and skip other tap handling
     if (_annotationMode) {
+      if (_activeAnnotationTool == AnnotationTool.text && !_eraserMode) {
+        _handleTextAnnotationTap(tapCm, size);
+      }
       return;
     }
 
@@ -1550,8 +1665,133 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     return null; // Point is outside all zones
   }
 
+  Rect? _textBoundsPx(Annotation annotation, Size size) {
+    final label = annotation.text ?? '';
+    if (label.isEmpty || annotation.points.isEmpty) return null;
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: TextStyle(
+          fontSize: annotation.fontSize ?? _annotationTextSize,
+          fontFamily: _annotationTextFontFamily,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    )..layout();
+
+    final centerPx = _toScreenPosition(annotation.points.first, size);
+    return Rect.fromCenter(center: centerPx, width: textPainter.width, height: textPainter.height);
+  }
+
+  Annotation? _findTextAnnotationAt(Offset pointCm, Size size) {
+    for (final ann in currentFrame.annotations.reversed) {
+      if (ann.type != AnnotationType.text) continue;
+      final rect = _textBoundsPx(ann, size);
+      if (rect == null) continue;
+      final pointPx = _toScreenPosition(pointCm, size);
+      if (rect.inflate(_settings.cmToLogical(20, size).abs()).contains(pointPx)) {
+        return ann;
+      }
+    }
+    return null;
+  }
+
+  Future<_AnnotationTextDialogResult?> _promptForAnnotationText({String initialText = '', double? initialSize}) async {
+    final controller = TextEditingController(text: initialText);
+    double size = initialSize ?? _annotationTextSize;
+
+    return showDialog<_AnnotationTextDialogResult>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: Text(initialText.isEmpty ? 'Add Text' : 'Edit Text'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration: const InputDecoration(labelText: 'Text content'),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Size', style: Theme.of(context).textTheme.labelLarge),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: _annotationTextSizeOptions.map((opt) {
+                    final isActive = opt == size;
+                    return ChoiceChip(
+                      label: Text(opt.toStringAsFixed(0)),
+                      selected: isActive,
+                      onSelected: (_) => setStateDialog(() => size = opt),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, _AnnotationTextDialogResult(controller.text, size)),
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _handleTextAnnotationTap(Offset positionCm, Size size) async {
+    final result = await _promptForAnnotationText(initialSize: _annotationTextSize);
+    final textValue = result?.text.trim();
+    if (textValue == null || textValue.isEmpty) return;
+
+    final chosenSize = result!.size;
+    setState(() {
+      _annotationTextSize = chosenSize;
+      currentFrame.annotations.add(
+        Annotation(
+          type: AnnotationType.text,
+          color: _annotationColor,
+          points: [positionCm],
+          text: textValue,
+          fontSize: chosenSize,
+          strokeWidthCm: _annotationStrokeCm,
+        ),
+      );
+    });
+    _saveProject();
+  }
+
+  Future<void> _editTextAnnotation(Annotation annotation, Size size) async {
+    final result = await _promptForAnnotationText(
+      initialText: annotation.text ?? '',
+      initialSize: annotation.fontSize ?? _annotationTextSize,
+    );
+    final textValue = result?.text.trim();
+    if (textValue == null || textValue.isEmpty) return;
+
+    final chosenSize = result!.size;
+    final hasChanges = textValue != (annotation.text ?? '') || chosenSize != (annotation.fontSize ?? _annotationTextSize);
+    if (!hasChanges) return;
+
+    setState(() {
+      annotation
+        ..text = textValue
+        ..fontSize = chosenSize;
+    });
+    _saveProject();
+  }
+
   /// Check if a point is near an annotation (for selecting it with move tool)
-  bool _isPointNearAnnotation(Offset point, Annotation ann, double toleranceCm) {
+  bool _isPointNearAnnotation(Offset point, Annotation ann, double toleranceCm, Size size) {
     if (ann.type == AnnotationType.line && ann.points.length >= 2) {
       final start = ann.points[0];
       final end = ann.points[1];
@@ -1617,6 +1857,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         }
       }
       return distToCenter <= radius + toleranceCm;
+    } else if (ann.type == AnnotationType.text && ann.points.isNotEmpty) {
+      final rect = _textBoundsPx(ann, size);
+      if (rect == null) return false;
+      final pointPx = _toScreenPosition(point, size);
+      final tolerancePx = _settings.cmToLogical(toleranceCm, size).abs();
+      return rect.inflate(tolerancePx).contains(pointPx);
     }
     return false;
   }
@@ -1649,7 +1895,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
       // Find annotation under cursor (check in reverse order so top annotations are selected first)
       for (final ann in currentFrame.annotations.reversed) {
-        if (_isPointNearAnnotation(cmPos, ann, 30.0)) {
+        if (_isPointNearAnnotation(cmPos, ann, 30.0, size)) {
           setState(() {
             _draggingAnnotation = ann;
             _annotationDragOffset = ann.points.isNotEmpty ? ann.points.first - cmPos : Offset.zero;
@@ -1659,6 +1905,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       }
       return;
     }
+
+    if (_activeAnnotationTool == AnnotationTool.text) return;
 
     if (_activeAnnotationTool == AnnotationTool.none) return;
 
@@ -1716,10 +1964,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       setState(() {
         _eraserPosCm = cmPos;
         currentFrame.annotations.removeWhere(
-          (ann) => _isAnnotationTouchedByCircle(ann, cmPos, _annotationEraserRadiusCm),
+          (ann) => _isAnnotationTouchedByCircle(ann, cmPos, _annotationEraserRadiusCm, size),
         );
       });
       _saveProject();
+    } else if (!_eraserMode && _activeAnnotationTool == AnnotationTool.text) {
+      return;
     } else if (_activeAnnotationTool == AnnotationTool.move && _draggingAnnotation != null) {
       // Update annotation position while dragging with snapping
       setState(() {
@@ -1822,7 +2072,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   /// Check if an annotation intersects with the eraser circle
-  bool _isAnnotationTouchedByCircle(Annotation ann, Offset eraserCenterCm, double eraserRadiusCm) {
+  bool _isAnnotationTouchedByCircle(Annotation ann, Offset eraserCenterCm, double eraserRadiusCm, Size size) {
     if (ann.type == AnnotationType.line && ann.points.length >= 2) {
       final start = ann.points[0];
       final end = ann.points[1];
@@ -1860,6 +2110,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final distToCenter = (eraserCenterCm - center).distance;
       // Check if eraser overlaps with sector area
       return distToCenter <= (eraserRadiusCm + radius);
+    } else if (ann.type == AnnotationType.text && ann.points.isNotEmpty) {
+      final rect = _textBoundsPx(ann, size);
+      if (rect == null) return false;
+      final eraserCenterPx = _toScreenPosition(eraserCenterCm, size);
+      final eraserRadiusPx = _settings.cmToLogical(eraserRadiusCm, size).abs();
+      return rect.inflate(eraserRadiusPx).contains(eraserCenterPx);
     }
     return false;
   }
@@ -2004,6 +2260,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         _erasingAnnotations.clear();
         _eraserPosCm = null;
       });
+      return;
+    }
+
+    if (_activeAnnotationTool == AnnotationTool.text) {
+      _pendingAnnotationPoints.clear();
+      _currentDragPos = null;
       return;
     }
 
@@ -3516,6 +3778,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       _pendingAnnotationPoints.clear();
                       _removeAnnotationEraserMenu();
                       _removeAnnotationStrokeMenu();
+                      _removeAnnotationTextSizeMenu();
                     }
                   });
                 },
@@ -3640,6 +3903,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   WidgetsBinding.instance.addPostFrameCallback((_) {
                                     _handleBoardTap(details.localPosition, screenSize);
                                   });
+                                }
+                              }
+                            },
+                            onDoubleTapDown: (details) {
+                              if (_isPlaying || _endedAtLastFrame) return;
+                              if (_annotationMode) {
+                                final tapCm = _screenToCm(details.localPosition, screenSize);
+                                final target = _findTextAnnotationAt(tapCm, screenSize);
+                                if (target != null) {
+                                  _editTextAnnotation(target, screenSize);
                                 }
                               }
                             },
@@ -4730,6 +5003,35 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   if (_activeAnnotationTool != AnnotationTool.rectangle) {
                                     _activeAnnotationTool = AnnotationTool.rectangle;
                                   }
+                                  _eraserMode = false;
+                                });
+                              },
+                            ),
+                          ),
+                          GestureDetector(
+                            key: _annotationTextButtonKey,
+                            onDoubleTap: () => _toggleAnnotationTextSizeMenu(forceOpen: true),
+                            child: _buildAnnotationCreationButton(
+                              icon: const Icon(Icons.text_fields),
+                              tooltip: 'Text Tool (double-tap to set size)',
+                              isActive: _activeAnnotationTool == AnnotationTool.text,
+                              buttonKey: _annotationTextButtonKey,
+                              cornerBadge: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.darkGrey,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.white, width: 0.5),
+                                ),
+                                child: Text(
+                                  _annotationTextSize.toStringAsFixed(0),
+                                  style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _activeAnnotationTool =
+                                      _activeAnnotationTool == AnnotationTool.text ? AnnotationTool.none : AnnotationTool.text;
                                   _eraserMode = false;
                                 });
                               },

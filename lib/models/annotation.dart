@@ -16,6 +16,8 @@ enum AnnotationType {
   rectangle,
   @HiveField(3)
   sector,
+  @HiveField(4)
+  text,
 }
 
 /// Annotation model for frame-specific drawings
@@ -48,6 +50,12 @@ class Annotation extends HiveObject {
   @HiveField(11)
   String? id; // Unique identifier for this annotation (for referencing from other annotations)
 
+  @HiveField(12)
+  String? text; // For text annotations: displayed label
+
+  @HiveField(13)
+  double? fontSize; // For text annotations: font size in logical pixels
+
   Annotation({
     required this.type,
     Color? color,
@@ -58,6 +66,8 @@ class Annotation extends HiveObject {
     this.startAngle,
     this.endAngle,
     String? id,
+    this.text,
+    this.fontSize,
   }) {
     colorValue = (color ?? Colors.white).toARGB32();
     this.id = id ?? _generateId();
@@ -74,6 +84,8 @@ class Annotation extends HiveObject {
     startAngle = null;
     endAngle = null;
     id = _generateId();
+    text = null;
+    fontSize = null;
   }
 
   /// Generate a unique ID for this annotation
@@ -98,6 +110,8 @@ class Annotation extends HiveObject {
         circleAnnotationId: circleAnnotationId,
         startAngle: startAngle,
         endAngle: endAngle,
+        text: text,
+        fontSize: fontSize,
       );
 
   /// Get radius for circle annotations
@@ -118,6 +132,8 @@ extension AnnotationMap on Annotation {
         'circleAnnotationId': circleAnnotationId,
         'startAngle': startAngle,
         'endAngle': endAngle,
+        'text': text,
+        'fontSize': fontSize,
       };
 
   static Annotation fromMap(Map<String, dynamic> m) => Annotation(
@@ -130,5 +146,7 @@ extension AnnotationMap on Annotation {
         id: m['id'] as String?,
         startAngle: (m['startAngle'] as num?)?.toDouble(),
         endAngle: (m['endAngle'] as num?)?.toDouble(),
+        text: m['text'] as String?,
+        fontSize: (m['fontSize'] as num?)?.toDouble() ?? 20.0,
       );
 }

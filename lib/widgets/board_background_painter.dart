@@ -5,6 +5,8 @@ import '../models/settings.dart';
 import '../models/court_element.dart';
 import '../models/animation_project.dart';
 
+const String _textFontFamily = 'Roboto';
+
 class BoardBackgroundPainter extends CustomPainter {
   final Size screenSize;
   final Settings settings;
@@ -147,6 +149,25 @@ class BoardBackgroundPainter extends CustomPainter {
             final rect = Rect.fromPoints(scaledPos, scaledEnd);
             canvas.drawRect(rect, paint);
           }
+          break;
+        case CourtElementType.text:
+          final label = element.text ?? '';
+          if (label.isEmpty) break;
+          final textPainter = TextPainter(
+            text: TextSpan(
+              text: label,
+              style: TextStyle(
+                color: element.color,
+                fontSize: element.fontSize ?? 20,
+                fontFamily: _textFontFamily,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            textDirection: TextDirection.ltr,
+          )..layout();
+
+          final paintOffset = scaledPos - Offset(textPainter.width / 2, textPainter.height / 2);
+          textPainter.paint(canvas, paintOffset);
           break;
       }
     }

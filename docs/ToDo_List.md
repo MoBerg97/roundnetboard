@@ -32,6 +32,7 @@ the menu bar is horizontally scrollable when screen width is too small to show a
 
 ### design ideas
 
+- [ ] separate the annotation tools in two rows. One  for the tools that create annotations (Pcircel, lines, rectangles, circle sections) and one row for the tools that modify existing annotations (move, delete, duplicate, fore/background, line width, color).
 - [x] #n rename "add label" --> "label" in player menu, does not change when label is already added
 - [x] #n selected objects (players and balls) should be highlighted on court (e.g. circular sonar waves around object)
 - [ ] objects are only highlighted when their respective menu is open, not when dragged or long pressed. Tapping on an object opens its menu and highlights it, tapping elsewhere closes menu and removes highlight.

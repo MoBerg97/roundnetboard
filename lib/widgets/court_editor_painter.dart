@@ -4,6 +4,8 @@ import '../models/court_element.dart';
 import '../models/settings.dart';
 import '../config/app_theme.dart';
 
+const String _textFontFamily = 'Roboto';
+
 class CourtEditorPainter extends CustomPainter {
   final List<CourtElement> elements;
   final Offset? eraserPos;
@@ -112,6 +114,25 @@ class CourtEditorPainter extends CustomPainter {
           final rect = Rect.fromPoints(scaledPos, scaledEnd);
           canvas.drawRect(rect, paint);
         }
+        break;
+      case CourtElementType.text:
+        final label = element.text ?? '';
+        if (label.isEmpty) return;
+        final textPainter = TextPainter(
+          text: TextSpan(
+            text: label,
+            style: TextStyle(
+              color: element.color.withValues(alpha: isPreview ? 0.6 : 1.0),
+              fontSize: element.fontSize ?? 20,
+              fontFamily: _textFontFamily,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+
+        final paintOffset = scaledPos - Offset(textPainter.width / 2, textPainter.height / 2);
+        textPainter.paint(canvas, paintOffset);
         break;
     }
   }
