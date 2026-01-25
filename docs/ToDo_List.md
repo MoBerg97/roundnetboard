@@ -32,16 +32,15 @@ the menu bar is horizontally scrollable when screen width is too small to show a
 
 ### design ideas
 
-- [ ] separate the annotation tools in two rows. One  for the tools that create annotations (Pcircel, lines, rectangles, circle sections) and one row for the tools that modify existing annotations (move, delete, duplicate, fore/background, line width, color).
-- [x] #n rename "add label" --> "label" in player menu, does not change when label is already added
-- [x] #n selected objects (players and balls) should be highlighted on court (e.g. circular sonar waves around object)
+- [ ] separate the annotation tools in two rows. One for the tools that create annotations (circle, lines, rectangles, circle sections) and one row for the tools that modify existing annotations (move, delete, duplicate, fore/background, line width, color).
+- [x] selected objects (players and balls) should be highlighted on court (e.g. circular sonar waves around object)
 - [ ] objects are only highlighted when their respective menu is open, not when dragged or long pressed. Tapping on an object opens its menu and highlights it, tapping elsewhere closes menu and removes highlight.
 - [ ] hit marker in animation playback should fade out smoothly instead of disappearing instantly
 - [ ] change the hit marker on the board screen to another icon (e.g. circle with bounce arrow inside)
-- [x] #n default color of ball should be white with black outline
-- [x] #n default color of players should be red and blue (as is) with black outline
+- [ ] default color of ball should be white with black outline
+- [x] default color of players should be red and blue (as is) with black outline
 - [ ] make path control points invisible by default, only show them when a path is edited (more subtle design than current big circles)
-- [x] #n the objects (players and balls) should have a slight shadow below them to indicate that they are above the court.
+- the objects (players and balls) should have a slight shadow below them to indicate that they are above the court.
 - [ ] adjust the hit and set marker on the boardscreen during editing:
   - [ ] set: instead of a circle, the current path is displayed as a line getting thicker in size from start towards the middle and thinner again from middle to end. #n Alternative: show multiple circles along the path, getting bigger towards the middle and smaller again towards the end, make them very subtle (same color as ball but 30% opacity, always aligned with current ball color)
   - [ ] hit: the star icon should be more transparent and only grey color, no outline and a little bigger. it should slowly fade out during the animation playback instead of disappearing instantly.
@@ -62,8 +61,7 @@ the menu bar is horizontally scrollable when screen width is too small to show a
 ### help / tutorial
 
 - [ ] POSTPONED: create a interactive tutorial that comes up upon the first opening of the app on a device.
-
-  - [ ] create a tutorial button inside the helper screen, that opens the home screen and starts the tutorial all over again.
+- [ ] create a tutorial button inside the helper screen, that opens the home screen and starts the tutorial all over again.
 
 - add a helper screen that can be accessed from the home screen and the board screen via a question mark icon in the top right corner.
   - helper screen should contain:
@@ -115,8 +113,8 @@ Quick tips to add to helper screen:
 - [x] add a line annotation tool, that also is editable in color, user can manually edit the end points of the line.
 - [x] annotations should be frame specific and also should be copyed along all other objects when a new frame is inserted.
 - [ ] temporary annotations can be added in animation playback mode, that are not frame specific and are deleted when the user stops playback. annotations should only be permament (saved per frame) when added in the annotation mode in the editing board screen.
-- [ ] #n add a text annotation tool, that allows to add text labels on the court. (fixed font color, size adjustable via pop-up menu, draggable position, editable text content (double tap to edit text))
-- [x] #n default width for circles when only tapping once should be 30cm radius.
+- [x] add a text annotation tool, that allows to add text labels on the court. (fixed font color, size adjustable via pop-up menu, draggable position, editable text content (double tap to edit text))
+- [x] default width for circles when only tapping once should be 30cm radius.
 - [x] right click or long tap on annotation tools should open a small menu to select default color and default size for this annotation tool (line width/stroke size in 3 steps, indicated by small preview icons, for circle and rectangles: filled or outline only, for text: font size in 3 steps)
 - [ ] add a pop-up menu for the line tool to select between straight line, arrowed line and dashed line.
 - [ ] annotations that are added in paused mode in the animation playback are only temporarely visible during this playback until the current playback is left (going back to the editing screen or back to project overview)
@@ -125,8 +123,11 @@ Quick tips to add to helper screen:
   - [ ] add a pop-up menu for the circle sector tool to select to which object or court element it should be attached (center point can be ball, player or zone court element)
   - [ ] for ball or player attachment, the sector is not moving with the object during animation playback, it is only attached to the object in the frame it is created in at the end position of the object in this frame. the sector radius is fixed to 260cm for ball or player attachment.
   - [ ] for zone attachment, the sector radius is equal to the zone radius.
-  - [ ]  the sector does not snap onto the zero coordinate point of the court, but to the center point of the respective zone court element or player or ball object at that frames end position.
+  - [ ] the sector does not snap onto the zero coordinate point of the court, but to the center point of the respective zone court element or player or ball object at that frames end position.
 - [ ] automatically snap annotation objects to court element corners and center points when being dragged within 20px of such a point.
+- [ ] Circle sectors should apply to one specific court zone element or ball object. Therefore, when the user taps on the circle sector tool, all possible zone court elements and the ball objects are highlighted with pulsing glow.
+      As soon as the user then taps on of the zone elements outline, this zone is selected to have a sector be drawn for, for all consecutive drag and drop actions as long as the circle sector tools stays active. For those circle sectors created after selecting the according court zone element, the court zone elements center point and radius is taken as the variables for the circle sector.
+      If the user instead selects a ball by tapping on its area, this ball is selected to have a sector be drawn for, for all consecutive drag and drop actions as long as the circle sector tools stays active. For those circle sectors created after selecting the according ball element, the balls center point is chosen as the variable for the circle sector with a standard radius of 260cm.
 
 ### statistics
 
@@ -168,6 +169,17 @@ timeline:
 
 ### HOTFIX
 
+- [ ] animation playback automatically closes any open menus on the board screen when playback starts
+- [ ] background color of the board screen should always match the court color in court editor and should be changeable via settings menu on board screen
+- [ ] court editor should show the same court frame as the board screen. Court size in court editor should match court size in board screen (same hieght and width of container showing the court). The middle point of the court should always be in the center of the court container.
+- [ ] standard zoom stage should be 1.0 times serve zone radius around center of court instead of 1.5 times
+- [ ] make zoom stages larger and frame specific (saved on frames) and changeable in the board screen as a snapping slider with 5 stages
+  - [ ] 1. zoom stage: show only 0.5 times serve zone radius around center of court
+  - [ ] 2. zoom stage: show 1.0 times serve zone radius around center of court
+  - [ ] 3. zoom stage: show 1.5 times serve zone radius around center of court (current default)
+  - [ ] 4. zoom stage: show whole court towards outer boundary at 850cm radius around center of court
+  - [ ] zoom is copied along when a new frame is created
+  - [ ] during animation playback, zoom changes dynamically to show all objects on court at once, unless user has manually changed zoom during playback, then the user zoom is kept until playback is stopped.
 - [x] account for virtual navigation bar on some android phones such as Redmi Note 13 Pro 5G by using a safe area
 - [ ] test if safe area implementation works on the problematic devices (Redmi Note 13 Pro 5G) and does not break anything on other devices (iOS devices with notch, etc)
 - [x] when playback is through, meaning the playback reached the end while playing, the timeline should only go back to the editing controls after the stop button is tapped, not automatically after playback reached the end

@@ -8,6 +8,7 @@ import '../models/animation_project.dart';
 import '../models/frame.dart';
 import '../models/player.dart';
 import '../models/ball.dart';
+import '../models/court_element.dart';
 import '../widgets/path_painter.dart';
 import '../widgets/board_background_painter.dart';
 import '../models/annotation.dart';
@@ -157,10 +158,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   final List<Annotation> _erasingAnnotations = []; // Annotations being erased (preview)
   Offset? _currentDragPos; // Current drag position for live preview
   Annotation? _draggingAnnotation; // Annotation being moved/dragged
+  Annotation? _selectedAnnotation; // Currently selected annotation for highlighting
   Offset? _annotationDragOffset; // Offset from touch point to annotation's start position for smooth dragging
-  String? _sectorZoneType; // Type of court zone for sector tool (innerCircle, outerCircle, outerBounds)
-  double? _sectorZoneRadius; // Radius of the selected zone for sector
-  Offset? _sectorStartPos; // Starting position for sector angle definition
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // SECTOR TOOL STATE (Two-stage: select target, then draw sectors)
+  // ──────────────────────────────────────────────────────────────────────────
+  bool _sectorToolNeedsTargetSelection = false; // True when sector tool active but no target selected yet
+  String? _selectedSectorTarget; // "innerCircle", "outerCircle", "outerBounds", or ball ID
+  Offset? _selectedSectorCenterCm; // Center point for sector reference (origin or ball position)
+  double? _selectedSectorRadiusCm; // Radius for sector's reference circle (zone radius or 260cm for balls)
+  bool _sectorTargetHighlightActive = false; // True when target selected and highlighting active
 
   // ──────────────────────────────────────────────────────────────────────────
   // DRAG STATE (for moving objects and control points)
@@ -315,13 +323,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   // Converts between cm-based court coordinates and screen pixel coordinates
   // Uses Settings.cmToLogical() for adaptive scaling based on screen size
 
-  /// Calculate the center point of the board (accounting for AppBar and Timeline)
+  /// Calculate the center point of the board within its own container.
   Offset _boardCenter(Size size) {
-    const double appBarHeight = kToolbarHeight;
-    const double timelineHeight = 140; // Match the timeline height in build()
-    final usableHeight = size.height - appBarHeight - timelineHeight;
     final cx = size.width / 2;
-    final cy = appBarHeight + usableHeight / 2;
+    final cy = size.height / 2;
     return Offset(cx, cy);
   }
 
@@ -545,6 +550,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   void _toggleCircleFillMenu({Offset? globalPos, bool forceOpen = false}) {
+    // Close rectangle menu if it's open
+    if (_rectangleFillMenuEntry != null) {
+      _removeRectangleFillMenu();
+    }
+    
     if (_circleFillMenuEntry != null) {
       _removeCircleFillMenu();
       if (!forceOpen) return;
@@ -572,45 +582,52 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _circleFillHoverNotifier.value = _circleFillHoverIndex;
 
     _circleFillMenuEntry = OverlayEntry(
-      builder: (_) => Stack(
-        children: [
-          IgnorePointer(),
-          Positioned(
-            left: left,
-            top: top,
-            child: HoverSelectionMenu(
-              options: options
-                  .map(
-                    (filled) => HoverMenuOption(
-                      builder: (isHover) => Center(
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: filled ? _annotationColor.withValues(alpha: 0.5) : Colors.transparent,
-                            border: Border.all(
-                              color: isHover ? AppTheme.primaryBlue : Colors.white,
-                              width: isHover ? 2 : 1.5,
+      builder: (_) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _removeCircleFillMenu,
+        child: Stack(
+          children: [
+            Positioned(
+              left: left,
+              top: top,
+              child: GestureDetector(
+                onTap: () {}, // Consume taps on menu itself
+                child: HoverSelectionMenu(
+                  options: options
+                      .map(
+                        (filled) => HoverMenuOption(
+                          builder: (isHover) => Center(
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: filled ? _annotationColor.withValues(alpha: 0.5) : Colors.transparent,
+                                border: Border.all(
+                                  color: isHover ? AppTheme.primaryBlue : Colors.white,
+                                  width: isHover ? 2 : 1.5,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-              initialHover: _circleFillHoverIndex,
-              hoverNotifier: _circleFillHoverNotifier,
-              onHover: (i) => setState(() => _circleFillHoverIndex = i),
-              onSelect: (i) {
-                setState(() => _circleFilled = options[i]);
-                _removeCircleFillMenu();
-              },
-              onDismiss: _removeCircleFillMenu,
-              menuKey: _circleFillMenuKey,
+                      )
+                      .toList(),
+                  initialHover: _circleFillHoverIndex,
+                  hoverNotifier: _circleFillHoverNotifier,
+                  onHover: (i) => setState(() => _circleFillHoverIndex = i),
+                  onSelect: (i) {
+                    setState(() => _circleFilled = options[i]);
+                    _activeAnnotationTool = AnnotationTool.circle;
+                    _removeCircleFillMenu();
+                  },
+                  onDismiss: _removeCircleFillMenu,
+                  menuKey: _circleFillMenuKey,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 
@@ -645,6 +662,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   void _toggleRectangleFillMenu({Offset? globalPos, bool forceOpen = false}) {
+    // Close circle menu if it's open
+    if (_circleFillMenuEntry != null) {
+      _removeCircleFillMenu();
+    }
+    
     if (_rectangleFillMenuEntry != null) {
       _removeRectangleFillMenu();
       if (!forceOpen) return;
@@ -672,45 +694,52 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _rectangleFillHoverNotifier.value = _rectangleFillHoverIndex;
 
     _rectangleFillMenuEntry = OverlayEntry(
-      builder: (_) => Stack(
-        children: [
-          IgnorePointer(),
-          Positioned(
-            left: left,
-            top: top,
-            child: HoverSelectionMenu(
-              options: options
-                  .map(
-                    (filled) => HoverMenuOption(
-                      builder: (isHover) => Center(
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: filled ? _annotationColor.withValues(alpha: 0.5) : Colors.transparent,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: isHover ? AppTheme.primaryBlue : Colors.white,
-                              width: isHover ? 2 : 1.5,
+      builder: (_) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _removeRectangleFillMenu,
+        child: Stack(
+          children: [
+            Positioned(
+              left: left,
+              top: top,
+              child: GestureDetector(
+                onTap: () {}, // Consume taps on menu itself
+                child: HoverSelectionMenu(
+                  options: options
+                      .map(
+                        (filled) => HoverMenuOption(
+                          builder: (isHover) => Center(
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: filled ? _annotationColor.withValues(alpha: 0.5) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: isHover ? AppTheme.primaryBlue : Colors.white,
+                                  width: isHover ? 2 : 1.5,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-              initialHover: _rectangleFillHoverIndex,
-              hoverNotifier: _rectangleFillHoverNotifier,
-              onHover: (i) => setState(() => _rectangleFillHoverIndex = i),
-              onSelect: (i) {
-                setState(() => _rectangleFilled = options[i]);
-                _removeRectangleFillMenu();
-              },
-              onDismiss: _removeRectangleFillMenu,
-              menuKey: _rectangleFillMenuKey,
+                      )
+                      .toList(),
+                  initialHover: _rectangleFillHoverIndex,
+                  hoverNotifier: _rectangleFillHoverNotifier,
+                  onHover: (i) => setState(() => _rectangleFillHoverIndex = i),
+                  onSelect: (i) {
+                    setState(() => _rectangleFilled = options[i]);
+                    _activeAnnotationTool = AnnotationTool.rectangle;
+                    _removeRectangleFillMenu();
+                  },
+                  onDismiss: _removeRectangleFillMenu,
+                  menuKey: _rectangleFillMenuKey,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 
@@ -1308,7 +1337,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               key: buttonKey,
               icon: icon,
               tooltip: tooltip,
-              color: isActive ? AppTheme.primaryBlue : _annotationColor,
+              color: isActive ? AppTheme.primaryBlue : AppTheme.darkGrey,
               onPressed: onPressed,
             ),
             if (cornerBadge != null) Positioned(right: 6, top: 6, child: cornerBadge),
@@ -1592,6 +1621,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       setState(() {
         _annotationMode = false;
         _activeAnnotationTool = AnnotationTool.none;
+        _sectorToolNeedsTargetSelection = false;
+        _selectedSectorTarget = null;
+        _selectedSectorCenterCm = null;
+        _selectedSectorRadiusCm = null;
+        _sectorTargetHighlightActive = false;
         _showModifierMenu = true;
       });
       return;
@@ -1919,21 +1953,80 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
     final localPos = box.globalToLocal(details.globalPosition);
     final cmPos = _screenToCm(localPos, size);
-
-    // Special handling for sector tool
-    if (_activeAnnotationTool == AnnotationTool.sector) {
-      // Detect which zone the touch is in
-      final zone = _getContainingZone(cmPos);
-      setState(() {
-        _sectorStartPos = cmPos;
-        _sectorZoneType = zone?['type'];
-        _sectorZoneRadius = zone?['radius'];
-        _pendingAnnotationPoints.clear();
-        _pendingAnnotationPoints.add(cmPos);
-        _currentDragPos = cmPos;
-        _stagedAnnotations.clear();
-      });
-      return;
+    
+    // Special handling for sector tool - detect zone and ball taps for target selection
+    if (_activeAnnotationTool == AnnotationTool.sector && _sectorToolNeedsTargetSelection) {
+      
+      // Check balls FIRST with priority
+      // When both ball and zone are within tapped location, always use ball as reference
+      for (final ball in currentFrame.balls) {
+        final distToBall = (cmPos - ball.position).distance;
+        if (distToBall <= 50) {
+          // Ball selected - balls take priority over zones
+          setState(() {
+            _selectedSectorTarget = 'ball_${ball.id}';
+            _selectedSectorCenterCm = ball.position;
+            _selectedSectorRadiusCm = 260.0; // Ball sectors always use 260cm radius
+            _sectorTargetHighlightActive = true;
+            _pendingAnnotationPoints.clear();
+            _currentDragPos = cmPos;
+            _stagedAnnotations.clear();
+            _sectorToolNeedsTargetSelection = false; // Exit selection phase, ready to draw
+          });
+          return;
+        }
+      }
+      
+      // Build list of available zones based on project type
+      List<Map<String, dynamic>> zones = [];
+      
+      if (widget.project.projectType == ProjectType.play) {
+        // Play scenario: Use standard court zones (center-based)
+        zones = [
+          {'type': 'innerCircle', 'center': Offset.zero, 'radius': _settings.innerCircleRadiusCm},
+          {'type': 'outerCircle', 'center': Offset.zero, 'radius': _settings.outerCircleRadiusCm},
+          {'type': 'outerBounds', 'center': Offset.zero, 'radius': _settings.outerBoundsRadiusCm},
+        ];
+      } else {
+        // Training scenario: Use custom court zone elements
+        if (widget.project.customCourtElements != null) {
+          for (final element in widget.project.customCourtElements!) {
+            if (element.type == CourtElementType.innerCircle ||
+                element.type == CourtElementType.outerCircle ||
+                element.type == CourtElementType.customCircle) {
+              zones.add({
+                'type': '${element.type.toString().split('.').last}_${element.position.dx.toStringAsFixed(0)}_${element.position.dy.toStringAsFixed(0)}',
+                'center': element.position,
+                'radius': element.radius ?? 0,
+              });
+            }
+          }
+        }
+      }
+      
+      // Check zones (±30cm tolerance) - only if no ball was selected
+      for (final zone in zones) {
+        final center = zone['center'] as Offset;
+        final radius = zone['radius'] as double;
+        final distFromZoneCenter = (cmPos - center).distance;
+        final distanceToOutline = (distFromZoneCenter - radius).abs();
+        
+        if (distanceToOutline <= 50.0) { // Tap is within ±30cm of zone outline
+          setState(() {
+            _selectedSectorTarget = zone['type'] as String;
+            _selectedSectorCenterCm = center;
+            _selectedSectorRadiusCm = radius;
+            _sectorTargetHighlightActive = true;
+            _pendingAnnotationPoints.clear();
+            _currentDragPos = cmPos;
+            _stagedAnnotations.clear();
+            _sectorToolNeedsTargetSelection = false; // Exit selection phase, ready to draw
+          });
+          return;
+        }
+      }
+      
+      return; // If not on a ball or zone outline, don't do anything
     }
 
     setState(() {
@@ -2018,16 +2111,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             ),
           );
         } else if (_activeAnnotationTool == AnnotationTool.sector &&
-            _sectorZoneRadius != null &&
-            _sectorStartPos != null) {
-          // Preview sector annotation based on court zone
-          final center = Offset.zero; // Court center
-          final radius = _sectorZoneRadius!;
-          final radiusPoint = Offset(radius, 0); // Point at radius distance
+            _selectedSectorCenterCm != null &&
+            _selectedSectorRadiusCm != null) {
+          // Preview sector annotation based on selected zone
+          final center = _selectedSectorCenterCm!;
+          final radius = _selectedSectorRadiusCm!;
+          final radiusPoint = center + Offset(radius, 0);
 
-          // Calculate angles
-          final startVec = _sectorStartPos!;
-          final endVec = cmPos;
+          // Calculate angles from center to current drag position
+          final startVec = _selectedSectorCenterCm! - center;
+          final endVec = cmPos - center;
           double startAngle = math.atan2(startVec.dy, startVec.dx);
           double endAngle = math.atan2(endVec.dy, endVec.dx);
 
@@ -2047,7 +2140,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               points: [center, radiusPoint],
               filled: true,
               strokeWidthCm: _annotationStrokeCm,
-              circleAnnotationId: _sectorZoneType,
+              circleAnnotationId: _selectedSectorTarget,
               startAngle: startAngle,
               endAngle: endAngle,
             ),
@@ -2245,7 +2338,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (_isPlaying || _endedAtLastFrame) return;
 
     if (_activeAnnotationTool == AnnotationTool.move) {
-      // Finish moving annotation
+      // Finish moving annotation (keep selected for highlighting)
       setState(() {
         _draggingAnnotation = null;
         _annotationDragOffset = null;
@@ -2276,17 +2369,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final dist = (end - start).distance;
       Annotation? ann;
 
-      // Special handling for sector tool - create regardless of distance
+      // Special handling for sector tool - create if zone was selected
       if (_activeAnnotationTool == AnnotationTool.sector) {
-        // Create sector from court zone
-        if (_sectorZoneRadius != null && _sectorStartPos != null) {
-          final center = Offset.zero; // Court center
-          final radius = _sectorZoneRadius!;
-          final radiusPoint = Offset(radius, 0);
+        // Create sector from selected zone
+        if (_selectedSectorCenterCm != null && _selectedSectorRadiusCm != null) {
+          final center = _selectedSectorCenterCm!;
+          final radius = _selectedSectorRadiusCm!;
+          final radiusPoint = center + Offset(radius, 0);
 
-          // Calculate angles
-          final startVec = _sectorStartPos!;
-          final endVec = end;
+          // Calculate angles from center
+          final startVec = _selectedSectorCenterCm! - center;
+          final endVec = end - center;
           double startAngle = math.atan2(startVec.dy, startVec.dx);
           double endAngle = math.atan2(endVec.dy, endVec.dx);
 
@@ -2305,7 +2398,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             points: [center, radiusPoint],
             filled: true, // Sectors are always filled
             strokeWidthCm: _annotationStrokeCm,
-            circleAnnotationId: _sectorZoneType,
+            circleAnnotationId: _selectedSectorTarget,
             startAngle: startAngle,
             endAngle: endAngle,
           );
@@ -2354,9 +2447,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           _pendingAnnotationPoints.clear();
           _currentDragPos = null;
           _stagedAnnotations.clear();
-          _sectorStartPos = null;
-          _sectorZoneType = null;
-          _sectorZoneRadius = null;
+          // Don't reset sector selection - allow multiple sectors from same zone
+          // _sectorToolNeedsTargetSelection remains false
+          // _selectedSectorTarget, _selectedSectorCenterCm, _selectedSectorRadiusCm stay selected
         });
         _saveProject();
       } else {
@@ -2364,9 +2457,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           _pendingAnnotationPoints.clear();
           _currentDragPos = null;
           _stagedAnnotations.clear();
-          _sectorStartPos = null;
-          _sectorZoneType = null;
-          _sectorZoneRadius = null;
+          // Don't reset sector selection here either
         });
       }
     }
@@ -3461,7 +3552,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                   setState(() {
                     _annotationMode = false;
                     _activeAnnotationTool = AnnotationTool.none;
+                    _sectorToolNeedsTargetSelection = false;
+                    _selectedSectorTarget = null;
+                    _selectedSectorCenterCm = null;
+                    _selectedSectorRadiusCm = null;
+                    _sectorTargetHighlightActive = false;
                     _pendingAnnotationPoints.clear();
+                    _selectedAnnotation = null;
+                    _draggingAnnotation = null;
                   });
                 }
                 setState(() {
@@ -3601,6 +3699,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _activePlayerId = newPlayer.id;
       _showPlayerMenu = true;
       _showModifierMenu = false;
+      _annotationMode = false;
+      _selectedAnnotation = null;
+      _draggingAnnotation = null;
       _addingObjectType = null;
       _saveProject();
     });
@@ -3706,15 +3807,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     final screenSize = _effectiveScreenSize(context);
-    Settings.setScreenSize(screenSize);
     final isPlayback = _isPlaying && _animatedFrame != null;
     final prev = _getPreviousFrame();
     final inPlaybackView = _isPlaying || _endedAtLastFrame;
     // During playback or when scrubbing in ended state, show interpolated frame
     final frameToShow = (inPlaybackView && _animatedFrame != null) ? _animatedFrame! : currentFrame;
     // Timeline maintains consistent height during state transitions to avoid layout shifts
-    // Playback: 160px (more space for timeline), End-state: 120px (with stop button), Editing: 120px (full controls)
-    final double timelineHeight = 140.0;
+    const double timelineHeight = 140.0;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (bool didPop, dynamic result) {
@@ -3769,13 +3868,24 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 onPressed: () {
                   setState(() {
                     _annotationMode = !_annotationMode;
-                    // Close ball modifier menu if annotation mode is opened
-                    if (_annotationMode && _showModifierMenu) {
+                    // When opening annotation mode, close other menus and deselect objects
+                    if (_annotationMode) {
                       _showModifierMenu = false;
+                      _showPlayerMenu = false;
+                      _activePlayerId = null;
+                      _activeBallId = null;
                     }
+                    // When closing annotation mode, deselect annotation and clean up
                     if (!_annotationMode) {
                       _activeAnnotationTool = AnnotationTool.none;
+                      _sectorToolNeedsTargetSelection = false;
+                      _selectedSectorTarget = null;
+                      _selectedSectorCenterCm = null;
+                      _selectedSectorRadiusCm = null;
+                      _sectorTargetHighlightActive = false;
                       _pendingAnnotationPoints.clear();
+                      _selectedAnnotation = null;
+                      _draggingAnnotation = null;
                       _removeAnnotationEraserMenu();
                       _removeAnnotationStrokeMenu();
                       _removeAnnotationTextSizeMenu();
@@ -3807,14 +3917,18 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             children: [
               // Layer 1 (bottom): Board - stays fixed
               Positioned.fill(
-                bottom: 120, // Leave room for timeline (no grey strip)
-                child: AbsorbPointer(
-                  absorbing: inPlaybackView && !_isPaused, // Allow taps during paused playback for path tracking
-                  child: Container(
-                    key: _boardKey,
-                    color: const Color.fromARGB(255, 55, 49, 120),
-                    child: Stack(
-                      children: [
+                bottom: timelineHeight, // Leave room for timeline (no grey strip)
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final Size screenSize = constraints.biggest;
+                    Settings.setScreenSize(screenSize);
+                    return AbsorbPointer(
+                      absorbing: inPlaybackView && !_isPaused, // Allow taps during paused playback for path tracking
+                      child: Container(
+                        key: _boardKey,
+                        color: const Color.fromARGB(255, 55, 49, 120),
+                        child: Stack(
+                          children: [
                         // ┌─────────────────────────────────────────────────────┐
                         // │ BOARD BACKGROUND (Expensive - wrapped in RepaintBoundary)
                         // │ Only repaints when settings change (rare)
@@ -3887,6 +4001,37 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             painter: _CenterCrossPainter(screenSize: screenSize, settings: _settings),
                           ),
                         ),
+                        // Draw sector zone outlines with pulsing glow during target selection
+                        if (_sectorToolNeedsTargetSelection)
+                          IgnorePointer(
+                            ignoring: true,
+                            child: CustomPaint(
+                              size: screenSize,
+                              painter: _SectorZoneOutlinePainter(
+                                settings: _settings,
+                                boardSize: screenSize,
+                                pulseAnimation: _selectionPulseController.value,
+                                highlightedZone: _selectedSectorTarget,
+                                projectType: widget.project.projectType,
+                                customCourtElements: widget.project.customCourtElements,
+                                balls: frameToShow.balls,
+                              ),
+                            ),
+                          ),
+                        // Draw subtle highlight on selected target zone during drawing phase
+                        if (_sectorTargetHighlightActive && _selectedSectorCenterCm != null && _selectedSectorRadiusCm != null)
+                          IgnorePointer(
+                            ignoring: true,
+                            child: CustomPaint(
+                              size: screenSize,
+                              painter: _SectorTargetHighlightPainter(
+                                centerCm: _selectedSectorCenterCm!,
+                                radiusCm: _selectedSectorRadiusCm!,
+                                screenSize: screenSize,
+                                settings: _settings,
+                              ),
+                            ),
+                          ),
                         // Full-board tap & drag handler
                         Positioned.fill(
                           child: GestureDetector(
@@ -4007,6 +4152,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   _annotationMode && _pendingAnnotationPoints.isNotEmpty && _currentDragPos != null
                                   ? [_pendingAnnotationPoints.first, _currentDragPos!]
                                   : null,
+                              selectedAnnotation: _selectedAnnotation,
                               settings: _settings,
                               screenSize: screenSize,
                               strokeWidthCm: _annotationStrokeCm,
@@ -4089,9 +4235,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         ],
                         // Show hit markers for all balls
                         if (!(_isPlaying || _endedAtLastFrame)) ..._buildAllHitMarkersForEditing(screenSize),
-                      ],
-                    ),
-                  ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
               // Layer 2: Timeline - fixed at bottom
@@ -4099,9 +4247,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height: 120,
+                height: timelineHeight,
                 child: AnimatedContainer(
-                  height: 120,
+                  height: timelineHeight,
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeInOut,
                   color: AppTheme.timelineBackground,
@@ -4930,206 +5078,236 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                   top: 0,
                   left: 0,
                   right: 0,
-                  height: 56,
+                  height: 108,
                   child: Container(
                     color: AppTheme.lightGrey,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildAnnotationCreationButton(
-                            icon: const Icon(Symbols.diagonal_line),
-                            tooltip: 'Line Tool',
-                            isActive: _activeAnnotationTool == AnnotationTool.line,
-                            onPressed: () => setState(() {
-                              _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.line
-                                  ? AnnotationTool.none
-                                  : AnnotationTool.line;
-                              _eraserMode = false;
-                            }),
-                          ),
-                          GestureDetector(
-                            key: _circleFillButtonKey,
-                            onDoubleTap: () => _toggleCircleFillMenu(forceOpen: true),
-                            child: _buildAnnotationCreationButton(
-                              icon: Icon(_circleFilled ? Icons.circle : Icons.circle_outlined),
-                              tooltip: 'Circle Tool (double-tap to set fill)',
-                              isActive: _activeAnnotationTool == AnnotationTool.circle,
-                              buttonKey: null,
-                              cornerBadge: _circleFilled
-                                  ? Container(
-                                      width: 10,
-                                      height: 10,
-                                      decoration: BoxDecoration(
-                                        color: _annotationColor,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(color: Colors.white, width: 1),
-                                      ),
-                                    )
-                                  : null,
-                              onPressed: () {
-                                setState(() {
-                                  if (_activeAnnotationTool != AnnotationTool.circle) {
-                                    _activeAnnotationTool = AnnotationTool.circle;
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildAnnotationCreationButton(
+                                icon: const Icon(Symbols.diagonal_line),
+                                tooltip: 'Line Tool',
+                                isActive: _activeAnnotationTool == AnnotationTool.line,
+                                onPressed: () => setState(() {
+                                  _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.line
+                                      ? AnnotationTool.none
+                                      : AnnotationTool.line;
+                                  _eraserMode = false;
+                                }),
+                              ),
+                              GestureDetector(
+                                key: _circleFillButtonKey,
+                                onDoubleTap: () => _toggleCircleFillMenu(forceOpen: true),
+                                child: _buildAnnotationCreationButton(
+                                  icon: Icon(_circleFilled ? Icons.circle : Icons.circle_outlined),
+                                  tooltip: 'Circle Tool (double-tap to set fill)',
+                                  isActive: _activeAnnotationTool == AnnotationTool.circle,
+                                  buttonKey: null,
+                                  cornerBadge: _circleFilled
+                                      ? Container(
+                                          width: 10,
+                                          height: 10,
+                                          decoration: BoxDecoration(
+                                            color: _annotationColor,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: Colors.white, width: 1),
+                                          ),
+                                        )
+                                      : null,
+                                  onPressed: () {
+                                    setState(() {
+                                      if (_activeAnnotationTool != AnnotationTool.circle) {
+                                        _activeAnnotationTool = AnnotationTool.circle;
+                                      }
+                                      _eraserMode = false;
+                                    });
+                                  },
+                                ),
+                              ),
+                              GestureDetector(
+                                key: _rectangleFillButtonKey,
+                                onDoubleTap: () => _toggleRectangleFillMenu(forceOpen: true),
+                                child: _buildAnnotationCreationButton(
+                                  icon: Icon(_rectangleFilled ? Icons.stop : Icons.crop_square),
+                                  tooltip: 'Rectangle Tool (double-tap to set fill)',
+                                  isActive: _activeAnnotationTool == AnnotationTool.rectangle,
+                                  buttonKey: null,
+                                  cornerBadge: _rectangleFilled
+                                      ? Container(
+                                          width: 10,
+                                          height: 10,
+                                          decoration: BoxDecoration(
+                                            color: _annotationColor,
+                                            borderRadius: BorderRadius.circular(3),
+                                            border: Border.all(color: Colors.white, width: 1),
+                                          ),
+                                        ) 
+                                      : null,
+                                  onPressed: () {
+                                    setState(() {
+                                      if (_activeAnnotationTool != AnnotationTool.rectangle) {
+                                        _activeAnnotationTool = AnnotationTool.rectangle;
+                                      }
+                                      _eraserMode = false;
+                                    });
+                                  },
+                                ),
+                              ),
+                              GestureDetector(
+                                key: _annotationTextButtonKey,
+                                onDoubleTap: () => _toggleAnnotationTextSizeMenu(forceOpen: true),
+                                child: _buildAnnotationCreationButton(
+                                  icon: const Icon(Icons.text_fields),
+                                  tooltip: 'Text Tool (double-tap to set size)',
+                                  isActive: _activeAnnotationTool == AnnotationTool.text,
+                                  buttonKey: _annotationTextButtonKey,
+                                  cornerBadge: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.darkGrey,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: Colors.white, width: 0.5),
+                                    ),
+                                    child: Text(
+                                      _annotationTextSize.toStringAsFixed(0),
+                                      style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.text
+                                          ? AnnotationTool.none
+                                          : AnnotationTool.text;
+                                      _eraserMode = false;
+                                    });
+                                  },
+                                ),
+                              ),
+                              _buildAnnotationCreationButton(
+                                icon: const Icon(Symbols.pie_chart),
+                                tooltip: 'Circle Sector Tool (tap in a court zone)',
+                                isActive: _activeAnnotationTool == AnnotationTool.sector,
+                                onPressed: () => setState(() {
+                                  _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.sector
+                                      ? AnnotationTool.none
+                                      : AnnotationTool.sector;
+                                  if (_activeAnnotationTool == AnnotationTool.sector) {
+                                    // Activate sector target selection phase
+                                    _sectorToolNeedsTargetSelection = true;
+                                    _selectedSectorTarget = null;
+                                    _selectedSectorCenterCm = null;
+                                    _selectedSectorRadiusCm = null;
+                                    _sectorTargetHighlightActive = false;
+                                  } else {
+                                    // Deactivate sector tool and reset state
+                                    _sectorToolNeedsTargetSelection = false;
+                                    _selectedSectorTarget = null;
+                                    _selectedSectorCenterCm = null;
+                                    _selectedSectorRadiusCm = null;
+                                    _sectorTargetHighlightActive = false;
                                   }
                                   _eraserMode = false;
-                                });
-                              },
-                            ),
+                                }),
+                              ),
+                            ],
                           ),
-                          GestureDetector(
-                            key: _rectangleFillButtonKey,
-                            onDoubleTap: () => _toggleRectangleFillMenu(forceOpen: true),
-                            child: _buildAnnotationCreationButton(
-                              icon: Icon(_rectangleFilled ? Icons.stop : Icons.crop_square),
-                              tooltip: 'Rectangle Tool (double-tap to set fill)',
-                              isActive: _activeAnnotationTool == AnnotationTool.rectangle,
-                              buttonKey: null,
-                              cornerBadge: _rectangleFilled
-                                  ? Container(
-                                      width: 10,
-                                      height: 10,
-                                      decoration: BoxDecoration(
-                                        color: _annotationColor,
-                                        borderRadius: BorderRadius.circular(3),
-                                        border: Border.all(color: Colors.white, width: 1),
-                                      ),
-                                    )
-                                  : null,
-                              onPressed: () {
-                                setState(() {
-                                  if (_activeAnnotationTool != AnnotationTool.rectangle) {
-                                    _activeAnnotationTool = AnnotationTool.rectangle;
-                                  }
+                        ),
+                        const SizedBox(height: 4),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.pan_tool_alt),
+                                tooltip: 'Move Tool',
+                                color:
+                                    _activeAnnotationTool == AnnotationTool.move ? AppTheme.primaryBlue : AppTheme.darkGrey,
+                                onPressed: () => setState(() {
+                                  _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.move
+                                      ? AnnotationTool.none
+                                      : AnnotationTool.move;
                                   _eraserMode = false;
-                                });
-                              },
-                            ),
-                          ),
-                          GestureDetector(
-                            key: _annotationTextButtonKey,
-                            onDoubleTap: () => _toggleAnnotationTextSizeMenu(forceOpen: true),
-                            child: _buildAnnotationCreationButton(
-                              icon: const Icon(Icons.text_fields),
-                              tooltip: 'Text Tool (double-tap to set size)',
-                              isActive: _activeAnnotationTool == AnnotationTool.text,
-                              buttonKey: _annotationTextButtonKey,
-                              cornerBadge: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                                decoration: BoxDecoration(
+                                }),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.content_copy),
+                                tooltip: 'Duplicate last annotation',
+                                color: currentFrame.annotations.isNotEmpty ? AppTheme.darkGrey : AppTheme.lightGrey,
+                                onPressed: currentFrame.annotations.isNotEmpty ? _duplicateLastAnnotation : null,
+                              ),
+                              GestureDetector(
+                                key: _annotationEraserButtonKey,
+                                onDoubleTap: () => _toggleAnnotationEraserMenu(forceOpen: true),
+                                child: IconButton(
+                                  icon: const Icon(Symbols.ink_eraser),
+                                  tooltip: 'Eraser (double-tap for size)',
+                                  color: _eraserMode ? AppTheme.errorRed : AppTheme.darkGrey,
+                                  onPressed: () {
+                                    setState(() {
+                                      if (!_eraserMode) {
+                                        _eraserMode = true;
+                                        _activeAnnotationTool = AnnotationTool.none;
+                                        _sectorToolNeedsTargetSelection = false;
+                                        _selectedSectorTarget = null;
+                                        _selectedSectorCenterCm = null;
+                                        _selectedSectorRadiusCm = null;
+                                        _sectorTargetHighlightActive = false;
+                                      }
+                                    });
+                                  },
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Symbols.delete),
+                                tooltip: 'Delete All Annotations',
+                                color: AppTheme.darkGrey,
+                                onPressed: _clearCurrentFrameAnnotations,
+                              ),
+                              IconButton(
+                                icon: Icon(_annotationsAboveObjects ? Symbols.flip_to_front : Symbols.flip_to_back),
+                                tooltip:
+                                    _annotationsAboveObjects ? 'Annotations Above Objects' : 'Annotations Below Objects',
+                                color: AppTheme.darkGrey,
+                                onPressed: () => setState(() {
+                                  _annotationsAboveObjects = !_annotationsAboveObjects;
+                                }),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onDoubleTap: () => _toggleAnnotationStrokeMenu(forceOpen: true),
+                                child: IconButton(
+                                  key: _annotationStrokeButtonKey,
+                                  icon: const Icon(Symbols.line_weight),
+                                  tooltip: 'Annotation stroke width (double-tap to adjust)',
                                   color: AppTheme.darkGrey,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: Colors.white, width: 0.5),
-                                ),
-                                child: Text(
-                                  _annotationTextSize.toStringAsFixed(0),
-                                  style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.w600),
+                                  onPressed: () {
+                                    // Stroke width button - only selects the stroke tool, menu opens on double-tap
+                                  },
                                 ),
                               ),
-                              onPressed: () {
-                                setState(() {
-                                  _activeAnnotationTool =
-                                      _activeAnnotationTool == AnnotationTool.text ? AnnotationTool.none : AnnotationTool.text;
-                                  _eraserMode = false;
-                                });
-                              },
-                            ),
-                          ),
-                          _buildAnnotationCreationButton(
-                            icon: const Icon(Symbols.pie_chart),
-                            tooltip: 'Circle Sector Tool (tap in a court zone)',
-                            isActive: _activeAnnotationTool == AnnotationTool.sector,
-                            onPressed: () => setState(() {
-                              _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.sector
-                                  ? AnnotationTool.none
-                                  : AnnotationTool.sector;
-                              _eraserMode = false;
-                            }),
-                          ),
-                          const SizedBox(width: 12),
-                          IconButton(
-                            icon: const Icon(Icons.pan_tool_alt),
-                            tooltip: 'Move Tool',
-                            color: _activeAnnotationTool == AnnotationTool.move
-                                ? AppTheme.primaryBlue
-                                : AppTheme.mediumGrey,
-                            onPressed: () => setState(() {
-                              _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.move
-                                  ? AnnotationTool.none
-                                  : AnnotationTool.move;
-                              _eraserMode = false;
-                            }),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.content_copy),
-                            tooltip: 'Duplicate last annotation',
-                            color: currentFrame.annotations.isNotEmpty ? AppTheme.mediumGrey : AppTheme.lightGrey,
-                            onPressed: currentFrame.annotations.isNotEmpty ? _duplicateLastAnnotation : null,
-                          ),
-                          GestureDetector(
-                            key: _annotationEraserButtonKey,
-                            onDoubleTap: () => _toggleAnnotationEraserMenu(forceOpen: true),
-                            child: IconButton(
-                              icon: const Icon(Symbols.ink_eraser),
-                              tooltip: 'Eraser (double-tap for size)',
-                              color: _eraserMode ? AppTheme.errorRed : AppTheme.mediumGrey,
-                              onPressed: () {
-                                setState(() {
-                                  if (!_eraserMode) {
-                                    _eraserMode = true;
-                                    _activeAnnotationTool = AnnotationTool.none;
-                                  }
-                                });
-                              },
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Symbols.delete),
-                            tooltip: 'Delete All Annotations',
-                            color: AppTheme.mediumGrey,
-                            onPressed: _clearCurrentFrameAnnotations,
-                          ),
-                          IconButton(
-                            icon: Icon(_annotationsAboveObjects ? Symbols.flip_to_front : Symbols.flip_to_back),
-                            tooltip: _annotationsAboveObjects
-                                ? 'Annotations Above Objects'
-                                : 'Annotations Below Objects',
-                            color: _annotationsAboveObjects ? AppTheme.mediumGrey : AppTheme.mediumGrey,
-                            onPressed: () => setState(() {
-                              _annotationsAboveObjects = !_annotationsAboveObjects;
-                            }),
-                          ),
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onDoubleTap: () => _toggleAnnotationStrokeMenu(forceOpen: true),
-                            child: IconButton(
-                              key: _annotationStrokeButtonKey,
-                              icon: const Icon(Symbols.line_weight),
-                              tooltip: 'Annotation stroke width (double-tap to adjust)',
-                              color: AppTheme.mediumGrey,
-                              onPressed: () {
-                                // Stroke width button - only selects the stroke tool, menu opens on double-tap
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: _showColorPicker,
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: _annotationColor,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppTheme.darkGrey, width: 2),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: _showColorPicker,
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: _annotationColor,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: AppTheme.darkGrey, width: 2),
+                                  ),
+                                  child: const Icon(Icons.palette, size: 16, color: Colors.white),
+                                ),
                               ),
-                              child: const Icon(Icons.palette, size: 16, color: Colors.white),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -5260,14 +5438,11 @@ class _EraserCirclePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // Convert cm center to screen coordinates
-    const double appBarHeight = kToolbarHeight;
-    const double timelineHeight = 140;
-    final usableHeight = screenSize.height - appBarHeight - timelineHeight;
-    final boardCenter = Offset(screenSize.width / 2, appBarHeight + usableHeight / 2);
+    final boardCenter = Offset(screenSize.width / 2, screenSize.height / 2);
 
     final screenCenter =
-        boardCenter +
-        Offset(settings.cmToLogical(centerCm.dx, screenSize), settings.cmToLogical(centerCm.dy, screenSize));
+      boardCenter +
+      Offset(settings.cmToLogical(centerCm.dx, screenSize), settings.cmToLogical(centerCm.dy, screenSize));
 
     // Convert radius from cm to screen pixels
     final screenRadiusPx = settings.cmToLogical(radiusCm, screenSize).abs();
@@ -5301,10 +5476,7 @@ class _CenterCrossPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // Board center in screen coordinates
-    const double appBarHeight = kToolbarHeight;
-    const double timelineHeight = 140;
-    final usableHeight = screenSize.height - appBarHeight - timelineHeight;
-    final boardCenter = Offset(screenSize.width / 2, appBarHeight + usableHeight / 2);
+    final boardCenter = Offset(screenSize.width / 2, screenSize.height / 2);
 
     // Cross dimensions: 20cm x 20cm (10cm in each direction from center)
     final halfLengthPx = settings.cmToLogical(10, screenSize).abs();
@@ -5399,4 +5571,165 @@ class _TrackedPathPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _TrackedPathPainter oldDelegate) =>
       oldDelegate.points != points || oldDelegate.color != color || oldDelegate.isDashed != isDashed;
+}
+
+/// Painter for sector tool zone outlines with blue transparent overlay
+/// Draws zone circle boundaries and ball overlays for sector tool selection
+class _SectorZoneOutlinePainter extends CustomPainter {
+  final Settings settings;
+  final Size boardSize;
+  final double pulseAnimation; // 0.0 to 1.0, controlled by AnimationController (not used anymore but kept for compatibility)
+  final String? highlightedZone; // Zone to highlight
+  final ProjectType projectType;
+  final List<CourtElement>? customCourtElements;
+  final List<Ball> balls;
+
+  _SectorZoneOutlinePainter({
+    required this.settings,
+    required this.boardSize,
+    required this.pulseAnimation,
+    this.highlightedZone,
+    required this.projectType,
+    this.customCourtElements,
+    required this.balls,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final overlayWidthPx = settings.cmToLogical(30.0, boardSize).abs(); // 30cm width for zones
+    
+    // Draw zone overlays based on project type
+    if (projectType == ProjectType.play) {
+      // Play scenario: Draw standard court zones
+      final innerRadiusPx = settings.cmToLogical(settings.innerCircleRadiusCm, boardSize).abs();
+      final outerRadiusPx = settings.cmToLogical(settings.outerCircleRadiusCm, boardSize).abs();
+      final boundsRadiusPx = settings.cmToLogical(settings.outerBoundsRadiusCm, boardSize).abs();
+
+      final zones = [
+        ('innerCircle', center, innerRadiusPx),
+        ('outerCircle', center, outerRadiusPx),
+        ('outerBounds', center, boundsRadiusPx),
+      ];
+
+      for (final (zoneType, zoneCenter, radiusPx) in zones) {
+        _drawZoneOverlay(canvas, zoneCenter, radiusPx, overlayWidthPx, zoneType == highlightedZone);
+      }
+    } else {
+      // Training scenario: Draw custom court zone elements
+      if (customCourtElements != null) {
+        for (final element in customCourtElements!) {
+          if (element.type == CourtElementType.innerCircle ||
+              element.type == CourtElementType.outerCircle ||
+              element.type == CourtElementType.customCircle) {
+            final elementCenter = center + Offset(
+              settings.cmToLogical(element.position.dx, boardSize),
+              settings.cmToLogical(element.position.dy, boardSize),
+            );
+            final radiusPx = settings.cmToLogical(element.radius ?? 0, boardSize).abs();
+            final zoneId = '${element.type.toString().split('.').last}_${element.position.dx.toStringAsFixed(0)}_${element.position.dy.toStringAsFixed(0)}';
+            _drawZoneOverlay(canvas, elementCenter, radiusPx, overlayWidthPx, zoneId == highlightedZone);
+          }
+        }
+      }
+    }
+    
+    // Draw ball overlays (1.5x ball size)
+    for (final ball in balls) {
+      final ballCenter = center + Offset(
+        settings.cmToLogical(ball.position.dx, boardSize),
+        settings.cmToLogical(ball.position.dy, boardSize),
+      );
+      final ballRadiusPx = settings.cmToLogical(9 * 2, boardSize).abs(); // 1.5x ball size radius
+      final ballId = 'ball_${ball.id}';
+      final isHighlighted = ballId == highlightedZone;
+      
+      // Blue transparent overlay for ball
+      final overlayPaint = Paint()
+        ..color = const Color.fromARGB(80, 100, 150, 255) // Blue transparent overlay
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(ballCenter, ballRadiusPx, overlayPaint);
+      
+      // If highlighted, add a brighter accent
+      if (isHighlighted) {
+        final accentPaint = Paint()
+          ..color = const Color.fromARGB(120, 150, 200, 255) // Brighter blue
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(ballCenter, ballRadiusPx, accentPaint);
+      }
+    }
+  }
+  
+  void _drawZoneOverlay(Canvas canvas, Offset center, double radiusPx, double overlayWidthPx, bool isHighlighted) {
+    // Blue transparent overlay (10cm width)
+    final overlayPaint = Paint()
+      ..color = const Color.fromARGB(80, 100, 150, 255) // Blue transparent overlay
+      ..strokeWidth = overlayWidthPx
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radiusPx, overlayPaint);
+
+    // If highlighted, add a brighter accent
+    if (isHighlighted) {
+      final accentPaint = Paint()
+        ..color = const Color.fromARGB(120, 150, 200, 255) // Brighter blue
+        ..strokeWidth = overlayWidthPx
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+      canvas.drawCircle(center, radiusPx, accentPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SectorZoneOutlinePainter oldDelegate) =>
+      oldDelegate.pulseAnimation != pulseAnimation ||
+      oldDelegate.highlightedZone != highlightedZone ||
+      oldDelegate.settings != settings ||
+      oldDelegate.boardSize != boardSize ||
+      oldDelegate.projectType != projectType ||
+      oldDelegate.customCourtElements != customCourtElements ||
+      oldDelegate.balls != balls;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Sector Target Highlight Painter
+// ══════════════════════════════════════════════════════════════════════════
+class _SectorTargetHighlightPainter extends CustomPainter {
+  final Offset centerCm;
+  final double radiusCm;
+  final Size screenSize;
+  final Settings settings;
+
+  _SectorTargetHighlightPainter({
+    required this.centerCm,
+    required this.radiusCm,
+    required this.screenSize,
+    required this.settings,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Draw semi-transparent fill on selected zone
+    final centerPx = Offset(size.width / 2, size.height / 2) + (centerCm * settings.cmToLogical(1, size));
+    final radiusPx = settings.cmToLogical(radiusCm, size).abs();
+
+    final fillPaint = Paint()
+      ..color = const Color.fromARGB(20, 100, 200, 255) // Light cyan, very transparent
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(centerPx, radiusPx, fillPaint);
+
+    // Draw accent ring around selected zone
+    final accentPaint = Paint()
+      ..color = const Color.fromARGB(60, 100, 200, 255) // Slightly more visible cyan ring
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawCircle(centerPx, radiusPx, accentPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SectorTargetHighlightPainter oldDelegate) =>
+      oldDelegate.centerCm != centerCm ||
+      oldDelegate.radiusCm != radiusCm ||
+      oldDelegate.settings != settings ||
+      oldDelegate.screenSize != screenSize;
 }

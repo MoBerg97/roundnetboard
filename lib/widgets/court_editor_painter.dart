@@ -177,11 +177,7 @@ class CourtEditorPainter extends CustomPainter {
 }
 
 Offset _boardCenter(Size screenSize) {
-  const double appBarHeight = kToolbarHeight;
-  const double timelineHeight = 140;
-  final usableHeight = screenSize.height - appBarHeight - timelineHeight;
-  final offsetTop = appBarHeight;
   final cx = screenSize.width / 2;
-  final cy = offsetTop + usableHeight / 2;
+  final cy = screenSize.height / 2;
   return Offset(cx, cy);
 }

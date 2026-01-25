@@ -9,6 +9,7 @@ class AnnotationPainter extends StatelessWidget {
   final List<Annotation> annotations;
   final List<Annotation>? tempAnnotations;
   final List<Annotation>? erasingAnnotations; // Annotations being erased (for preview)
+  final Annotation? selectedAnnotation; // Selected annotation for highlighting
   final Settings settings;
   final Size screenSize;
   final List<Offset>? dragPreviewLine; // Live preview line during drag [start, end]
@@ -19,6 +20,7 @@ class AnnotationPainter extends StatelessWidget {
     required this.annotations,
     this.tempAnnotations,
     this.erasingAnnotations,
+    this.selectedAnnotation,
     this.dragPreviewLine,
     required this.settings,
     required this.screenSize,
@@ -27,11 +29,8 @@ class AnnotationPainter extends StatelessWidget {
 
   /// Calculate board center offset (must match _BoardScreenState._boardCenter)
   Offset _boardCenter() {
-    const double appBarHeight = kToolbarHeight;
-    const double timelineHeight = 140; // Match timeline height in board_screen.dart
-    final usableHeight = screenSize.height - appBarHeight - timelineHeight;
     final cx = screenSize.width / 2;
-    final cy = appBarHeight + usableHeight / 2;
+    final cy = screenSize.height / 2;
     return Offset(cx, cy);
   }
 
@@ -43,6 +42,7 @@ class AnnotationPainter extends StatelessWidget {
         annotations: annotations,
         tempAnnotations: tempAnnotations,
         erasingAnnotations: erasingAnnotations,
+        selectedAnnotation: selectedAnnotation,
         dragPreviewLine: dragPreviewLine,
         settings: settings,
         screenSize: screenSize,
@@ -58,6 +58,7 @@ class _AnnotationCustomPainter extends CustomPainter {
   final List<Annotation> annotations;
   final List<Annotation>? tempAnnotations;
   final List<Annotation>? erasingAnnotations;
+  final Annotation? selectedAnnotation;
   final List<Offset>? dragPreviewLine;
   final Settings settings;
   final Size screenSize;
@@ -68,6 +69,7 @@ class _AnnotationCustomPainter extends CustomPainter {
     required this.annotations,
     this.tempAnnotations,
     this.erasingAnnotations,
+    this.selectedAnnotation,
     this.dragPreviewLine,
     required this.settings,
     required this.screenSize,
@@ -107,6 +109,12 @@ class _AnnotationCustomPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     for (final annotation in annotations) {
+      // Draw highlight if this is the selected annotation
+      final isSelected = selectedAnnotation != null && identical(annotation, selectedAnnotation);
+      if (isSelected) {
+        _paintAnnotationHighlight(canvas, annotation);
+      }
+      
       switch (annotation.type) {
         case AnnotationType.line:
           _paintLine(canvas, annotation);
@@ -264,6 +272,61 @@ class _AnnotationCustomPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
     canvas.drawCircle(startScreen, 5, endpointPaint);
     canvas.drawCircle(endScreen, 5, endpointPaint);
+  }
+
+  /// Draw highlight for selected annotation (cyan glow)
+  void _paintAnnotationHighlight(Canvas canvas, Annotation annotation) {
+    final highlightPaint = Paint()
+      ..color = Colors.cyanAccent.withValues(alpha: 0.4)
+      ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm, 2.5)
+      ..style = PaintingStyle.stroke
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
+
+    switch (annotation.type) {
+      case AnnotationType.line:
+        if (annotation.points.length >= 2) {
+          final start = _cmToScreen(annotation.points[0]);
+          final end = _cmToScreen(annotation.points[1]);
+          canvas.drawLine(start, end, highlightPaint);
+        }
+      case AnnotationType.circle:
+        if (annotation.points.length >= 2) {
+          final center = _cmToScreen(annotation.points[0]);
+          final radiusPoint = annotation.points[1];
+          final radius = (radiusPoint - annotation.points[0]).distance;
+          final scalePerCm = settings.cmToLogical(1.0, screenSize);
+          final radiusScreen = radius * scalePerCm;
+          canvas.drawCircle(center, radiusScreen, highlightPaint);
+        }
+      case AnnotationType.rectangle:
+        if (annotation.points.length >= 2) {
+          final a = annotation.points[0];
+          final b = annotation.points[1];
+          final topLeft = Offset(math.min(a.dx, b.dx), math.min(a.dy, b.dy));
+          final bottomRight = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
+          final tl = _cmToScreen(topLeft);
+          final br = _cmToScreen(bottomRight);
+          final rect = Rect.fromPoints(tl, br);
+          canvas.drawRect(rect, highlightPaint);
+        }
+      case AnnotationType.sector:
+        if (annotation.points.length >= 2 && annotation.startAngle != null && annotation.endAngle != null) {
+          final center = _cmToScreen(annotation.points[0]);
+          final radiusPoint = annotation.points[1];
+          final radius = (radiusPoint - annotation.points[0]).distance;
+          final scalePerCm = settings.cmToLogical(1.0, screenSize);
+          final radiusScreen = radius * scalePerCm;
+          final rect = Rect.fromCircle(center: center, radius: radiusScreen);
+          canvas.drawArc(rect, annotation.startAngle!, annotation.endAngle! - annotation.startAngle!, false, highlightPaint);
+        }
+      case AnnotationType.text:
+        if (annotation.points.isNotEmpty) {
+          final center = _cmToScreen(annotation.points.first);
+          final painter = _textPainterFor(annotation);
+          final rect = Rect.fromCenter(center: center, width: painter.width + 16, height: painter.height + 8);
+          canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(4)), highlightPaint);
+        }
+    }
   }
 
   void _paintTempCircle(Canvas canvas, Annotation annotation) {
@@ -548,6 +611,7 @@ class _AnnotationCustomPainter extends CustomPainter {
           ? _annotationListsDiffer(erasingAnnotations!, oldDelegate.erasingAnnotations!)
           : erasingAnnotations != oldDelegate.erasingAnnotations) ||
       !listEquals(dragPreviewLine, oldDelegate.dragPreviewLine) ||
+      selectedAnnotation != oldDelegate.selectedAnnotation ||
       boardCenter != oldDelegate.boardCenter ||
       strokeWidthCm != oldDelegate.strokeWidthCm;
 }

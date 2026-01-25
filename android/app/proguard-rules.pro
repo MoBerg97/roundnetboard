@@ -12,6 +12,10 @@
 -keep class com.google.firebase.** { *; }
 -keep class com.google.android.gms.** { *; }
 
+# Play Store split install classes (for dynamic features)
+-keep class com.google.android.play.core.** { *; }
+-keepclasseswithmembernames class com.google.android.play.core.** { *; }
+
 # Hive
 -keep class * extends com.hive.** { *; }
 -keepclassmembers class * extends com.hive.** { *; }

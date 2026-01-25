@@ -105,7 +105,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   CourtElement? _previewElement;
   // Incremented whenever elements change to force background repaint
   int _elementsRevision = 0;
-  Size _screenSize = Size.zero;
+  Size _boardSize = Size.zero;
 
   // History stacks for undo/redo
   final List<_EditorSnapshot> _undoStack = [];
@@ -115,14 +115,9 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   // COORDINATE CONVERSION HELPERS
   // ══════════════════════════════════════════════════════════════════════════
 
-  /// Calculate the center point of the board (accounting for AppBar and Timeline)
+  /// Calculate the center point of the board within its own container.
   Offset _boardCenter(Size size) {
-    const double appBarHeight = kToolbarHeight;
-    const double timelineHeight = 140; // Match the timeline height in build()
-    final usableHeight = size.height - appBarHeight - timelineHeight;
-    final cx = size.width / 2;
-    final cy = appBarHeight + usableHeight / 2;
-    return Offset(cx, cy);
+    return Offset(size.width / 2, size.height / 2);
   }
 
   /// Convert cm logical position to screen pixel position
@@ -160,12 +155,6 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    _screenSize = screenSize;
-    // Mirror BoardScreen canvas proportions so custom elements align 1:1 with playback view.
-    const timelineHeight = 140.0;
-    final boardHeight = math.max(320.0, screenSize.height - kToolbarHeight - timelineHeight);
-    final boardSize = Size(screenSize.width, boardHeight);
-    Settings.setScreenSize(screenSize);
 
     return Scaffold(
       appBar: AppBar(
@@ -179,59 +168,66 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
             child: Container(
               color: AppTheme.darkGrey,
               padding: const EdgeInsets.all(12),
-              child: Center(
-                child: GestureDetector(
-                  key: _canvasKey,
-                  onDoubleTapDown: _onDoubleTapDown,
-                  onPanDown: _onPanDown,
-                  onPanUpdate: _onPanUpdate,
-                  onPanEnd: _onPanEnd,
-                  child: SizedBox(
-                    width: boardSize.width,
-                    height: boardSize.height,
-                    child: Stack(
-                      children: [
-                        // Match BoardScreen look and coordinate system.
-                        RepaintBoundary(
-                          child: CustomPaint(
-                            size: boardSize,
-                            painter: BoardBackgroundPainter(
-                              screenSize: screenSize, // Use full screenSize for proper center calculation
-                              settings: _settings,
-                              customElements:
-                                  null, // CourtEditorPainter handles all element rendering to avoid duplicates
-                              projectType: widget.project.projectType,
-                              elementsRevision: _elementsRevision,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final boardSize = constraints.biggest;
+                  _boardSize = boardSize;
+                  Settings.setScreenSize(boardSize);
+                  return Center(
+                    child: GestureDetector(
+                      key: _canvasKey,
+                      onDoubleTapDown: _onDoubleTapDown,
+                      onPanDown: _onPanDown,
+                      onPanUpdate: _onPanUpdate,
+                      onPanEnd: _onPanEnd,
+                      child: SizedBox(
+                        width: boardSize.width,
+                        height: boardSize.height,
+                        child: Stack(
+                          children: [
+                            // Match BoardScreen look and coordinate system.
+                            RepaintBoundary(
+                              child: CustomPaint(
+                                size: boardSize,
+                                painter: BoardBackgroundPainter(
+                                  screenSize: boardSize,
+                                  settings: _settings,
+                                  customElements:
+                                      null, // CourtEditorPainter handles all element rendering to avoid duplicates
+                                  projectType: widget.project.projectType,
+                                  elementsRevision: _elementsRevision,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        RepaintBoundary(
-                          child: CustomPaint(
-                            size: boardSize,
-                            painter: CourtEditorPainter(
-                              elements: _elements,
-                              eraserPos: _currentTool == CourtEditorTool.eraser && _currentPos != null
-                                  ? _toScreenPosition(_currentPos!, screenSize)
-                                  : null,
-                              eraserRadius: _eraserRadius,
-                              screenSize: screenSize, // Use full screenSize for proper center calculation
-                              previewElement: _previewElement,
-                              settings: _settings,
+                            RepaintBoundary(
+                              child: CustomPaint(
+                                size: boardSize,
+                                painter: CourtEditorPainter(
+                                  elements: _elements,
+                                  eraserPos: _currentTool == CourtEditorTool.eraser && _currentPos != null
+                                      ? _toScreenPosition(_currentPos!, boardSize)
+                                      : null,
+                                  eraserRadius: _eraserRadius,
+                                  screenSize: boardSize,
+                                  previewElement: _previewElement,
+                                  settings: _settings,
+                                ),
+                              ),
                             ),
-                          ),
+                            // Draw transparent center cross (20cm x 20cm)
+                            IgnorePointer(
+                              ignoring: true,
+                              child: CustomPaint(
+                                size: boardSize,
+                                painter: _CenterCrossPainter(boardSize: boardSize, settings: _settings),
+                              ),
+                            ),
+                          ],
                         ),
-                        // Draw transparent center cross (20cm x 20cm)
-                        IgnorePointer(
-                          ignoring: true,
-                          child: CustomPaint(
-                            size: boardSize,
-                            painter: _CenterCrossPainter(boardSize: boardSize, settings: _settings),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ),
@@ -313,7 +309,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
 
   Widget _buildToolButton(CourtEditorTool tool, dynamic icon, String label) {
     final isActive = _currentTool == tool;
-    final iconWidget = icon is IconData ? Icon(icon, color: isActive ? _currentColor : Colors.white) : icon;
+    final iconWidget = icon is IconData ? Icon(icon, color: Colors.white) : icon;
 
     return Tooltip(
       message: label,
@@ -337,7 +333,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
           heroTag: 'tool-text',
           backgroundColor: isActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
           onPressed: () => setState(() => _currentTool = CourtEditorTool.text),
-          child: Icon(Icons.text_fields, color: isActive ? _currentColor : Colors.white),
+          child: const Icon(Icons.text_fields, color: Colors.white),
         ),
       ),
     );
@@ -851,7 +847,8 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
 
   void _onPanDown(DragDownDetails details) {
     final localPos = details.localPosition;
-    final localPosCm = _screenToCm(localPos, _screenSize);
+    if (_boardSize == Size.zero) return;
+    final localPosCm = _screenToCm(localPos, _boardSize);
     _startPos = localPosCm;
     _currentPos = localPosCm;
     _previewElement = null;
@@ -887,7 +884,8 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     final box = _canvasKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
     final localPos = box.globalToLocal(details.globalPosition);
-    final localPosCm = _screenToCm(localPos, _screenSize);
+    if (_boardSize == Size.zero) return;
+    final localPosCm = _screenToCm(localPos, _boardSize);
 
     setState(() {
       _currentPos = localPosCm;
@@ -963,7 +961,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
 
   void _onDoubleTapDown(TapDownDetails details) {
     final localPos = details.localPosition;
-    final localPosCm = _screenToCm(localPos, _screenSize);
+    final localPosCm = _screenToCm(localPos, _boardSize);
     final textElement = _findTextElementAt(localPosCm);
     if (textElement != null) {
       unawaited(_editTextElement(textElement));
@@ -1083,12 +1081,12 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
 
   void _eraseAtPosition(Offset pos) {
     final eraserRadiusCm = _eraserRadius;
-    final eraserRadiusPx = _settings.cmToLogical(eraserRadiusCm, _screenSize);
+    final eraserRadiusPx = _settings.cmToLogical(eraserRadiusCm, _boardSize);
     bool intersects(CourtElement e) {
       if (e.type == CourtElementType.text) {
         final rect = _textBoundsPx(e);
         if (rect == null) return false;
-        final pointPx = _toScreenPosition(pos, _screenSize);
+        final pointPx = _toScreenPosition(pos, _boardSize);
         return rect.inflate(eraserRadiusPx).contains(pointPx);
       }
       if (e.type == CourtElementType.customLine && e.endPosition != null) {
@@ -1153,7 +1151,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       textDirection: TextDirection.ltr,
     )..layout();
 
-    final centerPx = _toScreenPosition(element.position, _screenSize);
+    final centerPx = _toScreenPosition(element.position, _boardSize);
     return Rect.fromCenter(center: centerPx, width: textPainter.width, height: textPainter.height);
   }
 
@@ -1305,7 +1303,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     if (element.type == CourtElementType.text) {
       final rect = _textBoundsPx(element);
       if (rect == null) return false;
-      final pointPx = _toScreenPosition(point, _screenSize);
+      final pointPx = _toScreenPosition(point, _boardSize);
       return rect.inflate(12).contains(pointPx);
     }
 

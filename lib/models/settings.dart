@@ -95,11 +95,7 @@ class Settings extends HiveObject {
   // This makes the court larger on mobile phones by default, with zoom level adjustable in future updates
   double cmToLogical(double cm, Size screenSize) {
     const double padding = 50;
-    const double appBarHeight = kToolbarHeight;
-    const double timelineHeight = 120;
-    final usableHeight = screenSize.height - appBarHeight - timelineHeight;
-    final usableWidth = screenSize.width;
-    final halfMinScreen = (usableHeight < usableWidth ? usableHeight : usableWidth) / 2 - padding;
+    final halfMinScreen = (screenSize.shortestSide / 2) - padding;
 
     // Use the user-configured serve zone factor for scaling
     final double serveZoneRadius = outerCircleRadiusCm;
