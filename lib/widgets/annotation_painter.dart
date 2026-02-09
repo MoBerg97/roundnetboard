@@ -38,7 +38,7 @@ class AnnotationPainter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _AnnotationCustomPainter(
+      painter: AnnotationCanvasPainter(
         annotations: annotations,
         tempAnnotations: tempAnnotations,
         erasingAnnotations: erasingAnnotations,
@@ -54,7 +54,7 @@ class AnnotationPainter extends StatelessWidget {
   }
 }
 
-class _AnnotationCustomPainter extends CustomPainter {
+class AnnotationCanvasPainter extends CustomPainter {
   final List<Annotation> annotations;
   final List<Annotation>? tempAnnotations;
   final List<Annotation>? erasingAnnotations;
@@ -65,7 +65,7 @@ class _AnnotationCustomPainter extends CustomPainter {
   final Offset boardCenter;
   final double strokeWidthCm;
 
-  _AnnotationCustomPainter({
+  AnnotationCanvasPainter({
     required this.annotations,
     this.tempAnnotations,
     this.erasingAnnotations,
@@ -602,7 +602,7 @@ class _AnnotationCustomPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_AnnotationCustomPainter oldDelegate) =>
+  bool shouldRepaint(covariant AnnotationCanvasPainter oldDelegate) =>
       _annotationListsDiffer(annotations, oldDelegate.annotations) ||
       (tempAnnotations != null && oldDelegate.tempAnnotations != null
           ? _annotationListsDiffer(tempAnnotations!, oldDelegate.tempAnnotations!)

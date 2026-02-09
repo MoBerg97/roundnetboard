@@ -4,7 +4,7 @@ publish_to: "none"
 
 # ⚠️ IMPORTANT: Update version in lib/utils/version_check.dart too!
 # Run check-version.ps1 to verify before deploying
-version: 0.1.0+8
+version: 1.0.0+10
 
 environment:
   sdk: ^3.9.0
@@ -29,6 +29,8 @@ dependencies:
   feature_discovery: ^0.14.2
   uuid: ^4.5.1
   web: ^1.1.1
+  image: ^4.2.0
+  archive: ^3.6.1
 
 dev_dependencies:
   flutter_test:
@@ -49,4 +51,5 @@ flutter:
     - assets/icon/
     - assets/icons/
     - assets/presetprojects/
+    - assets/icons/
   uses-material-design: true
