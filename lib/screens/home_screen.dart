@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(4),
         color: Colors.grey[850],
         child: Text(
-          'Version 0.1.0+7',
+          'Version 0.1.0+8',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 10, color: Colors.grey[400]),
         ),
