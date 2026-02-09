@@ -15,3 +15,8 @@
 # Hive
 -keep class * extends com.hive.** { *; }
 -keepclassmembers class * extends com.hive.** { *; }
+
+# Google Play Core
+-dontwarn com.google.android.play.core.**
+-keep class com.google.android.play.core.** { *; }
+-keep interface com.google.android.play.core.** { *; }

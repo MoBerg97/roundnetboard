@@ -19,7 +19,7 @@ class PathPainter extends CustomPainter {
     required this.currentFrame,
     required this.screenSize,
     required this.settings,
-    required this.pathRevision,
+    this.pathRevision = 0,
   });
 
   Offset _boardCenter(Size size) {
