@@ -39,6 +39,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _settings.netCircleRadiusCm = 46.0;
       _settings.referenceRadiusCm = 260.0;
       _settings.objectScaleMultiplier = 1.5;
+      _settings.annotationsAboveObjects = false;
       _settings.serveZoneFactor = 1.3;
       _saveSettings();
     });
@@ -128,6 +129,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: _settings.showPathControlPoints,
             onChanged: (v) {
               setState(() => _settings.showPathControlPoints = v);
+              _saveSettings();
+            },
+          ),
+          SwitchListTile(
+            title: const Text('Annotations Above Objects'),
+            subtitle: const Text('When off, annotations render below players and balls'),
+            value: _settings.annotationsAboveObjects,
+            onChanged: (v) {
+              setState(() => _settings.annotationsAboveObjects = v);
               _saveSettings();
             },
           ),

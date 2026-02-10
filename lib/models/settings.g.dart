@@ -26,6 +26,7 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       showPreviousFrameLines: fields[6] as bool,
       showPathControlPoints: fields[7] as bool,
       objectScaleMultiplier: fields[8] as double,
+      annotationsAboveObjects: fields[10] == null ? false : fields[10] as bool,
       serveZoneFactor: fields[9] == null ? 1.3 : fields[9] as double,
     );
   }
@@ -33,7 +34,7 @@ class SettingsAdapter extends TypeAdapter<Settings> {
   @override
   void write(BinaryWriter writer, Settings obj) {
     writer
-      ..writeByte(10)
+        ..writeByte(11)
       ..writeByte(0)
       ..write(obj.playbackSpeed)
       ..writeByte(1)
@@ -52,6 +53,8 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       ..write(obj.showPathControlPoints)
       ..writeByte(8)
       ..write(obj.objectScaleMultiplier)
+        ..writeByte(10)
+        ..write(obj.annotationsAboveObjects)
       ..writeByte(9)
       ..write(obj.serveZoneFactor);
   }

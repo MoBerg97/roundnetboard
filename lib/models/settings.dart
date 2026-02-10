@@ -71,6 +71,11 @@ class Settings extends HiveObject {
   @HiveField(8)
   double objectScaleMultiplier;
 
+  /// Draw annotations above objects instead of below
+  /// Default: false (annotations below objects)
+  @HiveField(10, defaultValue: false)
+  bool annotationsAboveObjects;
+
   /// Court serve zone scaling factor for coordinate conversion
   /// Options: 1.0 (tight), 1.3 (balanced), 1.6 (wide)
   /// Default: 1.3 for most use cases
@@ -87,6 +92,7 @@ class Settings extends HiveObject {
     this.showPreviousFrameLines = true,
     this.showPathControlPoints = false,
     this.objectScaleMultiplier = 1.5,
+    this.annotationsAboveObjects = false,
     this.serveZoneFactor = 1.3,
   });
 
@@ -125,6 +131,7 @@ class Settings extends HiveObject {
     showPreviousFrameLines: showPreviousFrameLines,
     showPathControlPoints: showPathControlPoints,
     objectScaleMultiplier: objectScaleMultiplier,
+    annotationsAboveObjects: annotationsAboveObjects,
     serveZoneFactor: serveZoneFactor,
   );
 
@@ -142,6 +149,7 @@ class Settings extends HiveObject {
           showPreviousFrameLines == other.showPreviousFrameLines &&
           showPathControlPoints == other.showPathControlPoints &&
           objectScaleMultiplier == other.objectScaleMultiplier &&
+          annotationsAboveObjects == other.annotationsAboveObjects &&
           serveZoneFactor == other.serveZoneFactor;
 
   @override
@@ -155,6 +163,7 @@ class Settings extends HiveObject {
       showPreviousFrameLines.hashCode ^
       showPathControlPoints.hashCode ^
       objectScaleMultiplier.hashCode ^
+      annotationsAboveObjects.hashCode ^
       serveZoneFactor.hashCode;
 }
 
@@ -169,6 +178,7 @@ extension SettingsMap on Settings {
     'showPreviousFrameLines': showPreviousFrameLines,
     'showPathControlPoints': showPathControlPoints,
     'objectScaleMultiplier': objectScaleMultiplier,
+    'annotationsAboveObjects': annotationsAboveObjects,
     'serveZoneFactor': serveZoneFactor,
   };
 
@@ -182,6 +192,7 @@ extension SettingsMap on Settings {
     showPreviousFrameLines: (m['showPreviousFrameLines'] ?? true) as bool,
     showPathControlPoints: (m['showPathControlPoints'] ?? false) as bool,
     objectScaleMultiplier: (m['objectScaleMultiplier'] ?? 1.5).toDouble(),
+    annotationsAboveObjects: (m['annotationsAboveObjects'] ?? false) as bool,
     serveZoneFactor: (m['serveZoneFactor'] ?? 1.3).toDouble(),
   );
 }

@@ -81,6 +81,7 @@ Quick tips to add to helper screen:
 - [ ] "Want to emphasize a certain position? Copy the specific frame and increase the duration of the new frame for an obersevational pause in the animation" in quick tips
 - [ ] "Use the annotation tools to highlight specific tactics or movements on the court"
 - [ ] "Delete unwanted frames by double tapping the frame thumbnail in the timeline and tapping the trash can icon"
+- [ ] "You can start a circle sector annotation outside of a circle element. This allows for a more precise placement of the sector start angle."
 
 ## Features
 
@@ -88,6 +89,7 @@ Quick tips to add to helper screen:
 
 - [x] users are not able to share or export projects in web version currently.
 - [x] add two exemplary projects that are preloaded when the app is first installed, showcasing all features of the app (one play scenario, one training scenario)
+- [ ] add missing project settings/features of the exemplary projects (e.g. annotation visibility)
 
 ### intuitive actions
 
@@ -120,14 +122,16 @@ Quick tips to add to helper screen:
 - [ ] annotations that are added in paused mode in the animation playback are only temporarely visible during this playback until the current playback is left (going back to the editing screen or back to project overview)
 - [x] add a trash can icon to erase all annotations of the current frame
 - [x] circle sector annotation tool (like a pie chart slice) to highlight certain areas on the court. the sector is defined for the last selected circle element. first touch position defines the start of the sector angle and dragging the finger around the circle defines the end angle of the sector. the sector is filled with the selected color. Circle sector annotation are filled shapes only, no outline only option.
+  - [x] sector start angle follows the initial touch (no rightward offset)
   - [ ] add a pop-up menu for the circle sector tool to select to which object or court element it should be attached (center point can be ball, player or zone court element)
   - [ ] for ball or player attachment, the sector is not moving with the object during animation playback, it is only attached to the object in the frame it is created in at the end position of the object in this frame. the sector radius is fixed to 260cm for ball or player attachment.
   - [ ] for zone attachment, the sector radius is equal to the zone radius.
   - [ ] the sector does not snap onto the zero coordinate point of the court, but to the center point of the respective zone court element or player or ball object at that frames end position.
 - [ ] automatically snap annotation objects to court element corners and center points when being dragged within 20px of such a point.
-- [ ] Circle sectors should apply to one specific court zone element or ball object. Therefore, when the user taps on the circle sector tool, all possible zone court elements and the ball objects are highlighted with pulsing glow.
+- [x] Circle sectors should apply to one specific court zone element or ball object. Therefore, when the user taps on the circle sector tool, all possible zone court elements and the ball objects are highlighted with pulsing glow.
       As soon as the user then taps on of the zone elements outline, this zone is selected to have a sector be drawn for, for all consecutive drag and drop actions as long as the circle sector tools stays active. For those circle sectors created after selecting the according court zone element, the court zone elements center point and radius is taken as the variables for the circle sector.
       If the user instead selects a ball by tapping on its area, this ball is selected to have a sector be drawn for, for all consecutive drag and drop actions as long as the circle sector tools stays active. For those circle sectors created after selecting the according ball element, the balls center point is chosen as the variable for the circle sector with a standard radius of 260cm.
+- [ ] move the foreground/background button for annotations into the project settings menu under "advanced settings" to reduce clutter on the main board screen.
 
 ### statistics
 

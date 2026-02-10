@@ -244,7 +244,12 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                   const SizedBox(width: 4),
                   _buildToolButton(
                     CourtEditorTool.net,
-                    _buildNetIcon(_currentTool == CourtEditorTool.net ? _currentColor : Colors.white),
+                    _buildNetIcon(
+                      _contrastIconColor(
+                        _currentTool == CourtEditorTool.net ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+                        _currentColor,
+                      ),
+                    ),
                     'Net',
                   ),
                   const SizedBox(width: 4),
@@ -252,7 +257,12 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                   const SizedBox(width: 4),
                   _buildToolButton(
                     CourtEditorTool.customCircle,
-                    _buildMediumCircleIcon(_currentTool == CourtEditorTool.customCircle ? _currentColor : Colors.white),
+                    _buildMediumCircleIcon(
+                      _contrastIconColor(
+                        _currentTool == CourtEditorTool.customCircle ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+                        _currentColor,
+                      ),
+                    ),
                     'Circle',
                   ),
                   const SizedBox(width: 4),
@@ -309,17 +319,29 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
 
   Widget _buildToolButton(CourtEditorTool tool, dynamic icon, String label) {
     final isActive = _currentTool == tool;
-    final iconWidget = icon is IconData ? Icon(icon, color: Colors.white) : icon;
+    final backgroundColor = isActive ? AppTheme.primaryBlue : AppTheme.mediumGrey;
+    final iconColor = _contrastIconColor(backgroundColor, Colors.white);
+    final iconWidget = icon is IconData
+        ? Icon(icon, color: iconColor)
+        : IconTheme(data: IconThemeData(color: iconColor), child: icon as Widget);
 
     return Tooltip(
       message: label,
       child: FloatingActionButton.small(
         heroTag: 'tool-${tool.name}',
-        backgroundColor: isActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+        backgroundColor: backgroundColor,
         onPressed: () => setState(() => _currentTool = tool),
         child: iconWidget,
       ),
     );
+  }
+
+  Color _contrastIconColor(Color background, Color preferred) {
+    final bgLum = background.computeLuminance();
+    final prefLum = preferred.computeLuminance();
+    if (bgLum < 0.5 && prefLum < 0.5) return Colors.white;
+    if (bgLum >= 0.5 && prefLum >= 0.5) return Colors.black;
+    return preferred;
   }
 
   Widget _buildTextToolButton() {
@@ -765,13 +787,14 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   }
 
   Widget _buildColorPickerButton() {
+    final iconColor = _contrastIconColor(_currentColor, Colors.black);
     return Tooltip(
       message: 'Tool Color',
       child: FloatingActionButton.small(
         heroTag: 'tool-color-picker',
         backgroundColor: _currentColor,
         onPressed: _showColorPicker,
-        child: const Icon(Icons.palette, color: Colors.black),
+        child: Icon(Icons.palette, color: iconColor),
       ),
     );
   }
@@ -798,18 +821,20 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     String label;
     Widget icon;
     final zoneActive = _currentTool == CourtEditorTool.zone;
+    final backgroundColor = zoneActive ? AppTheme.primaryBlue : AppTheme.mediumGrey;
+    final zoneColor = _contrastIconColor(backgroundColor, _currentColor);
     switch (_zoneMode) {
       case ZoneMode.inner:
         label = 'Inner';
-        icon = _buildSmallCircleIcon(_currentColor);
+        icon = _buildSmallCircleIcon(zoneColor);
         break;
       case ZoneMode.serve:
         label = 'Serve';
-        icon = _buildLargeCircleIcon(_currentColor);
+        icon = _buildLargeCircleIcon(zoneColor);
         break;
       case ZoneMode.outer:
         label = 'Outer';
-        icon = _buildLargeCircleIcon(_currentColor);
+        icon = _buildLargeCircleIcon(zoneColor);
         break;
     }
     return Tooltip(
@@ -819,7 +844,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
         child: FloatingActionButton.small(
           key: _zoneButtonKey,
           heroTag: 'tool-zone',
-          backgroundColor: zoneActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+          backgroundColor: backgroundColor,
           onPressed: () {
             _currentTool = CourtEditorTool.zone;
           },
@@ -827,10 +852,10 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconTheme(
-                data: IconThemeData(color: zoneActive ? _currentColor : Colors.white),
+                data: IconThemeData(color: zoneColor),
                 child: icon,
               ),
-              Text(label, style: TextStyle(fontSize: 9, color: zoneActive ? _currentColor : Colors.white)),
+              Text(label, style: TextStyle(fontSize: 9, color: zoneColor)),
             ],
           ),
         ),
