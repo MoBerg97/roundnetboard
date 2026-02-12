@@ -127,8 +127,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   final GlobalKey _annotationEraserMenuKey = GlobalKey(debugLabel: 'annotation_eraser_menu');
   final ValueNotifier<int> _annotationEraserHoverNotifier = ValueNotifier<int>(-1);
   final List<Offset> _pendingAnnotationPoints = []; // Points being drawn (not committed)
-  Color _annotationColor = Colors.red; // Current annotation color
-  final List<double> _annotationStrokeOptionsCm = const [2.0, 4.0, 6.0];
+  Color _annotationColor = AppTheme.editorColors[7]; // Current annotation color
+  final List<double> _annotationStrokeOptionsCm = const [5.0, 10.0, 15.0];
   double _annotationStrokeCm = AppConstants.annotationStrokeWidthCm;
   OverlayEntry? _annotationStrokeMenuEntry;
   int _annotationStrokeHoverIndex = -1;
@@ -150,7 +150,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   final ValueNotifier<int> _rectangleFillHoverNotifier = ValueNotifier<int>(-1);
   static const String _annotationTextFontFamily = 'Roboto';
   static const double _defaultAnnotationTextSize = 20.0;
-  final List<double> _annotationTextSizeOptions = const [16.0, 20.0, 26.0];
+  final List<double> _annotationTextSizeOptions = const [16.0, 24.0, 34.0];
   double _annotationTextSize = _defaultAnnotationTextSize;
   OverlayEntry? _annotationTextSizeMenuEntry;
   int _annotationTextSizeHoverIndex = -1;
@@ -251,21 +251,21 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final defaultFrame = widget.project.projectType == ProjectType.play
           ? Frame(
               players: [
-                Player(position: Offset(0, -r), color: Colors.blue, id: 'P1'),
-                Player(position: Offset(r, 0), color: Colors.blue, id: 'P2'),
-                Player(position: Offset(0, r), color: Colors.red, id: 'P3'),
-                Player(position: Offset(-r, 0), color: Colors.red, id: 'P4'),
+                Player(position: Offset(0, -r), color: AppTheme.playerColors[0], id: 'P1'),
+                Player(position: Offset(r, 0), color: AppTheme.playerColors[0], id: 'P2'),
+                Player(position: Offset(0, r), color: AppTheme.playerColors[1], id: 'P3'),
+                Player(position: Offset(-r, 0), color: AppTheme.playerColors[1], id: 'P4'),
               ],
-              balls: [Ball(position: Offset.zero, color: Colors.white, id: 'B1')],
+              balls: [Ball(position: Offset.zero, color: AppTheme.ballColor, id: 'B1')],
             )
           : Frame(
               players: [
-                Player(position: Offset(0, -r), color: Colors.blue),
-                Player(position: Offset(r, 0), color: Colors.blue),
-                Player(position: Offset(0, r), color: Colors.red),
-                Player(position: Offset(-r, 0), color: Colors.red),
+                Player(position: Offset(0, -r), color: AppTheme.playerColors[0]),
+                Player(position: Offset(r, 0), color: AppTheme.playerColors[0]),
+                Player(position: Offset(0, r), color: AppTheme.playerColors[1]),
+                Player(position: Offset(-r, 0), color: AppTheme.playerColors[1]),
               ],
-              balls: [Ball(position: Offset.zero, color: Colors.white)],
+              balls: [Ball(position: Offset.zero, color: AppTheme.ballColor)],
             );
       widget.project.frames.add(defaultFrame);
       currentFrame = defaultFrame;
@@ -275,8 +275,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     }
 
     _ticker = createTicker(_onTick);
-    _selectionPulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
-      ..repeat();
+    _selectionPulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat();
     _history = HistoryManager(widget.project);
     _timelineController = ScrollController();
 
@@ -583,7 +582,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (_rectangleFillMenuEntry != null) {
       _removeRectangleFillMenu();
     }
-    
+
     if (_circleFillMenuEntry != null) {
       _removeCircleFillMenu();
       if (!forceOpen) return;
@@ -695,7 +694,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (_circleFillMenuEntry != null) {
       _removeCircleFillMenu();
     }
-    
+
     if (_rectangleFillMenuEntry != null) {
       _removeRectangleFillMenu();
       if (!forceOpen) return;
@@ -882,9 +881,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       setState(() => _annotationTextSizeHoverIndex = -1);
       return;
     }
-    final idx = (local.dy / HoverSelectionMenu.itemExtent)
-        .floor()
-        .clamp(0, _annotationTextSizeOptions.length - 1);
+    final idx = (local.dy / HoverSelectionMenu.itemExtent).floor().clamp(0, _annotationTextSizeOptions.length - 1);
     if (idx != _annotationTextSizeHoverIndex) {
       _annotationTextSizeHoverNotifier.value = idx;
       setState(() => _annotationTextSizeHoverIndex = idx);
@@ -1316,21 +1313,21 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           final defaultFrame = widget.project.projectType == ProjectType.play
               ? Frame(
                   players: [
-                    Player(position: Offset(0, -r), color: Colors.blue, id: 'P1'),
-                    Player(position: Offset(r, 0), color: Colors.blue, id: 'P2'),
-                    Player(position: Offset(0, r), color: Colors.red, id: 'P3'),
-                    Player(position: Offset(-r, 0), color: Colors.red, id: 'P4'),
+                    Player(position: Offset(0, -r), color: AppTheme.playerColors[0], id: 'P1'),
+                    Player(position: Offset(r, 0), color: AppTheme.playerColors[0], id: 'P2'),
+                    Player(position: Offset(0, r), color: AppTheme.playerColors[1], id: 'P3'),
+                    Player(position: Offset(-r, 0), color: AppTheme.playerColors[1], id: 'P4'),
                   ],
-                  balls: [Ball(position: Offset.zero, color: Colors.white, id: 'B1')],
+                  balls: [Ball(position: Offset.zero, color: AppTheme.ballColor, id: 'B1')],
                 )
               : Frame(
                   players: [
-                    Player(position: Offset(0, -r), color: Colors.blue),
-                    Player(position: Offset(r, 0), color: Colors.blue),
-                    Player(position: Offset(0, r), color: Colors.red),
-                    Player(position: Offset(-r, 0), color: Colors.red),
+                    Player(position: Offset(0, -r), color: AppTheme.playerColors[0]),
+                    Player(position: Offset(r, 0), color: AppTheme.playerColors[0]),
+                    Player(position: Offset(0, r), color: AppTheme.playerColors[1]),
+                    Player(position: Offset(-r, 0), color: AppTheme.playerColors[1]),
                   ],
-                  balls: [Ball(position: Offset.zero, color: Colors.white)],
+                  balls: [Ball(position: Offset.zero, color: AppTheme.ballColor)],
                 );
           widget.project.frames.add(defaultFrame);
           currentFrame = defaultFrame;
@@ -1406,14 +1403,15 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           heroTag: null,
           backgroundColor: bg,
           onPressed: enabled ? onPressed : null,
-          child: IconTheme(data: IconThemeData(color: iconColor), child: child),
+          child: IconTheme(
+            data: IconThemeData(color: iconColor),
+            child: child,
+          ),
         ),
       ),
     );
 
-    final wrapped = onDoubleTap == null
-        ? content
-        : GestureDetector(onDoubleTap: onDoubleTap, child: content);
+    final wrapped = onDoubleTap == null ? content : GestureDetector(onDoubleTap: onDoubleTap, child: content);
 
     return Tooltip(message: tooltip, child: wrapped);
   }
@@ -1469,39 +1467,24 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           color: AppTheme.lightGrey,
           child: GridView.count(
             crossAxisCount: 4,
-            children:
-                // change the colors to hex color codes based on design template
-                [
-                      Color(0xFFF4F1DE),
-                      Color(0xFF99999d),
-                      Color(0xFF3D405B),
-                      Color(0xFF5F797B),
-                      Color(0xFF81B29A),
-                      Color(0xFF5D987B),
-                      Color(0xFFE07A5F),
-                      Color(0xFFF2CC8F),
-                      Color(0xFFE59B24),
-                      Color(0xFFcddc39),
-                      Color(0xFF3f51b5),
-                      Color(0xFF795548),
-                    ]
-                    .map(
-                      (color) => GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                          setState(() => _annotationColor = color);
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: _annotationColor == color ? Border.all(color: AppTheme.lightGrey, width: 2) : null,
-                          ),
-                        ),
+            children: AppTheme.editorColors
+                .map(
+                  (color) => GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() => _annotationColor = color);
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: _annotationColor == color ? Border.all(color: AppTheme.lightGrey, width: 2) : null,
                       ),
-                    )
-                    .toList(),
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ),
       ),
@@ -1514,58 +1497,44 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Select Player Color'),
-        content: SizedBox(
+        content: Container(
           width: 280,
           height: 200,
+          color: AppTheme.lightGrey,
           child: GridView.count(
             crossAxisCount: 4,
-            children:
-                [
-                      Colors.red,
-                      Colors.blue,
-                      Colors.green,
-                      Colors.yellow,
-                      Colors.orange,
-                      Colors.purple,
-                      Colors.pink,
-                      Colors.cyan,
-                      Colors.teal,
-                      Colors.lime,
-                      Colors.indigo,
-                      Colors.brown,
-                    ]
-                    .map(
-                      (color) => GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                          if (_activePlayerId != null) {
-                            final player = currentFrame.getPlayerById(_activePlayerId!);
-                            if (player != null) {
-                              final oldColor = player.color;
-                              // Apply color change to all frames using history action
-                              _history.push(
-                                ChangePlayerColorAllFramesAction(id: _activePlayerId!, from: oldColor, to: color),
-                              );
-                              setState(() {
-                                _lastTappedPlayerColor = color;
-                              });
-                            }
-                          }
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border:
-                                _activePlayerId != null && currentFrame.getPlayerById(_activePlayerId!)?.color == color
-                                ? Border.all(color: AppTheme.darkGrey, width: 2)
-                                : null,
-                          ),
-                        ),
+            children: AppTheme.editorColors
+                .map(
+                  (color) => GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      if (_activePlayerId != null) {
+                        final player = currentFrame.getPlayerById(_activePlayerId!);
+                        if (player != null) {
+                          final oldColor = player.color;
+                          // Apply color change to all frames using history action
+                          _history.push(
+                            ChangePlayerColorAllFramesAction(id: _activePlayerId!, from: oldColor, to: color),
+                          );
+                          setState(() {
+                            _lastTappedPlayerColor = color;
+                          });
+                        }
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: _activePlayerId != null && currentFrame.getPlayerById(_activePlayerId!)?.color == color
+                            ? Border.all(color: AppTheme.lightGrey, width: 2)
+                            : null,
                       ),
-                    )
-                    .toList(),
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ),
       ),
@@ -1625,55 +1594,40 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Select Ball Color'),
-        content: SizedBox(
+        content: Container(
           width: 280,
           height: 200,
+          color: AppTheme.lightGrey,
           child: GridView.count(
             crossAxisCount: 4,
-            children:
-                [
-                      Colors.red,
-                      Colors.blue,
-                      Colors.green,
-                      Colors.yellow,
-                      Colors.orange,
-                      Colors.purple,
-                      Colors.pink,
-                      Colors.cyan,
-                      Colors.teal,
-                      Colors.lime,
-                      Colors.indigo,
-                      Colors.brown,
-                    ]
-                    .map(
-                      (color) => GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                          if (_activeBallId != null) {
-                            final ball = currentFrame.getBallById(_activeBallId!);
-                            if (ball != null) {
-                              final oldColor = ball.color;
-                              // Apply color change to all frames using history action
-                              _history.push(
-                                ChangeBallColorAllFramesAction(id: _activeBallId!, from: oldColor, to: color),
-                              );
-                              setState(() {});
-                            }
-                          }
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: _activeBallId != null && currentFrame.getBallById(_activeBallId!)?.color == color
-                                ? Border.all(color: AppTheme.darkGrey, width: 2)
-                                : null,
-                          ),
-                        ),
+            children: AppTheme.editorColors
+                .map(
+                  (color) => GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      if (_activeBallId != null) {
+                        final ball = currentFrame.getBallById(_activeBallId!);
+                        if (ball != null) {
+                          final oldColor = ball.color;
+                          // Apply color change to all frames using history action
+                          _history.push(ChangeBallColorAllFramesAction(id: _activeBallId!, from: oldColor, to: color));
+                          setState(() {});
+                        }
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: _activeBallId != null && currentFrame.getBallById(_activeBallId!)?.color == color
+                            ? Border.all(color: AppTheme.lightGrey, width: 2)
+                            : null,
                       ),
-                    )
-                    .toList(),
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ),
       ),
@@ -1799,7 +1753,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         setState(() {
           _selectedSectorTarget = 'ball_${ball.id}';
           _selectedSectorCenterCm = ball.position;
-          _selectedSectorRadiusCm = 260.0; // Ball sectors always use 260cm radius
+          _selectedSectorRadiusCm = _settings.ballSectorRadiusCm; // Use configurable ball sector radius
           _sectorTargetHighlightActive = true;
           _pendingAnnotationPoints.clear();
           _currentDragPos = cmPos;
@@ -1828,7 +1782,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               element.type == CourtElementType.outerCircle ||
               element.type == CourtElementType.customCircle) {
             zones.add({
-              'type': '${element.type.toString().split('.').last}_${element.position.dx.toStringAsFixed(0)}_${element.position.dy.toStringAsFixed(0)}',
+              'type':
+                  '${element.type.toString().split('.').last}_${element.position.dx.toStringAsFixed(0)}_${element.position.dy.toStringAsFixed(0)}',
               'center': element.position,
               'radius': element.radius ?? 0,
             });
@@ -2024,7 +1979,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (textValue == null || textValue.isEmpty) return;
 
     final chosenSize = result!.size;
-    final hasChanges = textValue != (annotation.text ?? '') || chosenSize != (annotation.fontSize ?? _annotationTextSize);
+    final hasChanges =
+        textValue != (annotation.text ?? '') || chosenSize != (annotation.fontSize ?? _annotationTextSize);
     if (!hasChanges) return;
 
     setState(() {
@@ -2168,7 +2124,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final localPos = box.globalToLocal(details.globalPosition);
     final clampedPos = _clampToInteractionBounds(localPos, size);
     final cmPos = _screenToCm(clampedPos, size);
-    
+
     // Special handling for sector tool - detect zone and ball taps for target selection
     if (_activeAnnotationTool == AnnotationTool.sector && _sectorToolNeedsTargetSelection) {
       if (_trySelectSectorTarget(cmPos, size)) return;
@@ -2342,7 +2298,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final distToCenter = (eraserCenterCm - center).distance;
       // Check if annotation circle overlaps with eraser circle
       final circleWidthCm = ann.strokeWidthCm;
-      return distToCenter <= (eraserRadiusCm + radius + circleWidthCm / 2);
+      return (distToCenter - radius).abs() <= (eraserRadiusCm + circleWidthCm / 2);
     } else if (ann.type == AnnotationType.rectangle && ann.points.length >= 2) {
       final a = ann.points[0];
       final b = ann.points[1];
@@ -2524,6 +2480,40 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   List<Offset> _snapPointsFromCourtAndObjects() {
     final points = <Offset>[Offset.zero];
+
+    final customElements = widget.project.customCourtElements ?? const <CourtElement>[];
+    for (final element in customElements) {
+      if (!element.isVisible) continue;
+      points.add(element.position);
+
+      if (element.endPosition != null) {
+        final end = element.endPosition!;
+        points
+          ..add(end)
+          ..add((element.position + end) / 2);
+
+        if (element.type == CourtElementType.customRectangle) {
+          final tl = Offset(math.min(element.position.dx, end.dx), math.min(element.position.dy, end.dy));
+          final tr = Offset(math.max(element.position.dx, end.dx), math.min(element.position.dy, end.dy));
+          final bl = Offset(math.min(element.position.dx, end.dx), math.max(element.position.dy, end.dy));
+          final br = Offset(math.max(element.position.dx, end.dx), math.max(element.position.dy, end.dy));
+          points.addAll([tl, tr, bl, br]);
+          points.addAll([(tl + tr) / 2, (tr + br) / 2, (br + bl) / 2, (bl + tl) / 2]);
+        }
+      }
+
+      final radius = element.radius ?? 0.0;
+      if (radius > 0 &&
+          (element.type == CourtElementType.net ||
+              element.type == CourtElementType.innerCircle ||
+              element.type == CourtElementType.outerCircle ||
+              element.type == CourtElementType.customCircle)) {
+        for (int i = 0; i < 8; i++) {
+          final angle = (-math.pi / 2) + (math.pi / 4) * i;
+          points.add(element.position + Offset(math.cos(angle) * radius, math.sin(angle) * radius));
+        }
+      }
+    }
 
     for (final player in currentFrame.players) {
       points.add(player.position);
@@ -3881,7 +3871,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (_addingObjectType != 'player') return;
 
     // Use the last tapped player color, or alternate between blue/red based on count
-    final Color color = _lastTappedPlayerColor ?? ((currentFrame.players.length % 2 == 0) ? Colors.blue : Colors.red);
+    final fallbackIndex = currentFrame.players.length % AppTheme.playerColors.length;
+    final Color color = _lastTappedPlayerColor ?? AppTheme.playerColors[fallbackIndex];
     final newPlayer = Player(position: cmPos, color: color);
 
     // Track in history and update UI (push inside setState for instant visibility)
@@ -3906,7 +3897,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (_addingObjectType != 'ball') return;
 
     // Use the color of the last tapped ball, or default to light grey
-    Color ballColor = Colors.white;
+    Color ballColor = AppTheme.ballColor;
     if (_activeBallId != null) {
       final lastBall = currentFrame.getBallById(_activeBallId!);
       if (lastBall != null) {
@@ -4027,9 +4018,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           actions: [
             if (!_isPlaying && !_endedAtLastFrame)
               IconButton(
-                icon: Icon(
-                  Icons.widgets,
-                  color: _objectsMenuOpen ? Colors.white : AppTheme.lightGrey,
+                icon: SvgPicture.asset(
+                  'assets/icons/object_menu.svg',
+                  colorFilter: ColorFilter.mode(_objectsMenuOpen ? Colors.white : AppTheme.lightGrey, BlendMode.srcIn),
+                  width: 24,
+                  height: 24,
                 ),
                 tooltip: _objectsMenuOpen ? 'Close Objects Menu' : 'Open Objects Menu',
                 onPressed: () => _setActiveMenu(BoardMenu.objects),
@@ -4038,9 +4031,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             if (!_isPlaying && !_endedAtLastFrame)
               IconButton(
                 key: _annotationModeButtonKey,
-                icon: Icon(
-                  Icons.draw,
-                  color: _annotationsMenuOpen ? Colors.white : AppTheme.lightGrey,
+                icon: SvgPicture.asset(
+                  'assets/icons/annotations_menu.svg',
+                  colorFilter: ColorFilter.mode(
+                    _annotationsMenuOpen ? Colors.white : AppTheme.lightGrey,
+                    BlendMode.srcIn,
+                  ),
+                  width: 24,
+                  height: 24,
                 ),
                 tooltip: _annotationsMenuOpen ? 'Close Annotations Menu' : 'Open Annotations Menu',
                 onPressed: () => _setActiveMenu(BoardMenu.annotations),
@@ -4049,7 +4047,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             // Edit Court button - only show for training projects
             if (widget.project.projectType == ProjectType.training && !_isPlaying && !_endedAtLastFrame)
               IconButton(
-                icon: const Icon(Icons.border_outer),
+                icon: SvgPicture.asset(
+                  'assets/icons/court_editor.svg',
+                  width: 20,
+                  height: 20,
+                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                ),
                 tooltip: 'Edit Court',
                 onPressed: () async {
                   await Navigator.push(
@@ -4093,317 +4096,325 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       absorbing: inPlaybackView && !_isPaused, // Allow taps during paused playback for path tracking
                       child: Container(
                         key: _boardKey,
-                        color: AppTheme.courtBackground,
+                        color: _settings.courtBackgroundColor,
                         child: Stack(
                           children: [
-                        // ┌─────────────────────────────────────────────────────┐
-                        // │ BOARD BACKGROUND (Expensive - wrapped in RepaintBoundary)
-                        // │ Only repaints when settings change (rare)
-                        // └─────────────────────────────────────────────────────┘
-                        RepaintBoundary(
-                          child: CustomPaint(
-                            size: screenSize,
-                            painter: BoardBackgroundPainter(
-                              screenSize: screenSize,
-                              settings: _settings,
-                              customElements: widget.project.customCourtElements,
-                              projectType: widget.project.projectType,
-                              settingsRevision: _settingsRevision,
-                            ),
-                          ),
-                        ),
-                        if (!(_isPlaying || _endedAtLastFrame))
-                          // ┌─────────────────────────────────────────────────────┐
-                          // │ PATH PAINTER (Repaints on every build for live update)
-                          // │ Only drawn in edit mode, repaints continuously during
-                          // │ drag for real-time path feedback
-                          // └─────────────────────────────────────────────────────┘
-                          CustomPaint(
-                            size: screenSize,
-                            painter: PathPainter(
-                              currentFrame: frameToShow,
-                              previousFrame: _getPreviousFrame(),
-                              twoFramesAgo: _getTwoFramesAgo(),
-                              screenSize: screenSize,
-                              settings: _settings,
-                              pathRevision: _pathRevision,
-                            ),
-                          ),
-                        // Draw annotations below objects when toggled off
-                        if (!_settings.annotationsAboveObjects)
-                          IgnorePointer(
-                            ignoring: true,
-                            child: AnnotationPainter(
-                              annotations: frameToShow.annotations,
-                              tempAnnotations: _stagedAnnotations.isNotEmpty ? _stagedAnnotations : null,
-                              erasingAnnotations: _erasingAnnotations.isNotEmpty ? _erasingAnnotations : null,
-                                dragPreviewLine:
-                                  _annotationsMenuOpen && _pendingAnnotationPoints.isNotEmpty && _currentDragPos != null
-                                  ? [_pendingAnnotationPoints.first, _currentDragPos!]
-                                  : null,
-                              settings: _settings,
-                              screenSize: screenSize,
-                              strokeWidthCm: _annotationStrokeCm,
-                            ),
-                          ),
-                        // Draw eraser circle when eraser is active (desktop/non-phone web only)
-                        if (_shouldShowEraserOverlay(context))
-                          IgnorePointer(
-                            ignoring: true,
-                            child: CustomPaint(
-                              size: screenSize,
-                              painter: _EraserCirclePainter(
-                                centerCm: _eraserPosCm!,
-                                radiusCm: _annotationEraserRadiusCm,
-                                screenSize: screenSize,
-                                settings: _settings,
+                            // ┌─────────────────────────────────────────────────────┐
+                            // │ BOARD BACKGROUND (Expensive - wrapped in RepaintBoundary)
+                            // │ Only repaints when settings change (rare)
+                            // └─────────────────────────────────────────────────────┘
+                            RepaintBoundary(
+                              child: CustomPaint(
+                                size: screenSize,
+                                painter: BoardBackgroundPainter(
+                                  screenSize: screenSize,
+                                  settings: _settings,
+                                  customElements: widget.project.customCourtElements,
+                                  projectType: widget.project.projectType,
+                                  settingsRevision: _settingsRevision,
+                                ),
                               ),
                             ),
-                          ),
-                        // Draw transparent center cross (20cm x 20cm)
-                        IgnorePointer(
-                          ignoring: true,
-                          child: CustomPaint(
-                            size: screenSize,
-                            painter: _CenterCrossPainter(screenSize: screenSize, settings: _settings),
-                          ),
-                        ),
-                        // Draw sector zone outlines with pulsing glow during target selection
-                        if (_sectorToolNeedsTargetSelection)
-                          IgnorePointer(
-                            ignoring: true,
-                            child: CustomPaint(
-                              size: screenSize,
-                              painter: _SectorZoneOutlinePainter(
-                                settings: _settings,
-                                boardSize: screenSize,
-                                pulseAnimation: _selectionPulseController,
-                                highlightedZone: _selectedSectorTarget,
-                                projectType: widget.project.projectType,
-                                customCourtElements: widget.project.customCourtElements,
-                                balls: frameToShow.balls,
+                            if (!(_isPlaying || _endedAtLastFrame))
+                              // ┌─────────────────────────────────────────────────────┐
+                              // │ PATH PAINTER (Repaints on every build for live update)
+                              // │ Only drawn in edit mode, repaints continuously during
+                              // │ drag for real-time path feedback
+                              // └─────────────────────────────────────────────────────┘
+                              CustomPaint(
+                                size: screenSize,
+                                painter: PathPainter(
+                                  currentFrame: frameToShow,
+                                  previousFrame: _getPreviousFrame(),
+                                  twoFramesAgo: _getTwoFramesAgo(),
+                                  screenSize: screenSize,
+                                  settings: _settings,
+                                  pathRevision: _pathRevision,
+                                ),
                               ),
-                            ),
-                          ),
-                        // Draw subtle highlight on selected target zone during drawing phase
-                        if (_sectorTargetHighlightActive && _selectedSectorCenterCm != null && _selectedSectorRadiusCm != null)
-                          IgnorePointer(
-                            ignoring: true,
-                            child: CustomPaint(
-                              size: screenSize,
-                              painter: _SectorTargetHighlightPainter(
-                                centerCm: _selectedSectorCenterCm!,
-                                radiusCm: _selectedSectorRadiusCm!,
-                                screenSize: screenSize,
-                                settings: _settings,
+                            // Draw annotations below objects when toggled off
+                            if (!_settings.annotationsAboveObjects)
+                              IgnorePointer(
+                                ignoring: true,
+                                child: AnnotationPainter(
+                                  annotations: frameToShow.annotations,
+                                  tempAnnotations: _stagedAnnotations.isNotEmpty ? _stagedAnnotations : null,
+                                  erasingAnnotations: _erasingAnnotations.isNotEmpty ? _erasingAnnotations : null,
+                                  dragPreviewLine:
+                                      _annotationsMenuOpen &&
+                                          _pendingAnnotationPoints.isNotEmpty &&
+                                          _currentDragPos != null
+                                      ? [_pendingAnnotationPoints.first, _currentDragPos!]
+                                      : null,
+                                  settings: _settings,
+                                  screenSize: screenSize,
+                                  strokeWidthCm: _annotationStrokeCm,
+                                ),
                               ),
-                            ),
-                          ),
-                        // Full-board tap & drag handler
-                        Positioned.fill(
-                          child: GestureDetector(
-                            onTapUp: (details) {
-                              // Handle path tracking toggle during paused playback
-                              if (_isPlaying && _isPaused) {
-                                _togglePathTracking(details.localPosition, screenSize);
-                                return;
-                              }
-                              if (!(_isPlaying || _endedAtLastFrame)) {
-                                if (_pendingBallMark == 'hit') {
-                                  _placeBallHitAt(details.localPosition, screenSize);
-                                } else {
-                                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                                    _handleBoardTap(details.localPosition, screenSize);
-                                  });
-                                }
-                              }
-                            },
-                            onDoubleTapDown: (details) {
-                              if (_isPlaying || _endedAtLastFrame) return;
-                              if (_annotationsMenuOpen) {
-                                final clampedTap = _clampToInteractionBounds(details.localPosition, screenSize);
-                                final tapCm = _screenToCm(clampedTap, screenSize);
-                                final target = _findTextAnnotationAt(tapCm, screenSize);
-                                if (target != null) {
-                                  _editTextAnnotation(target, screenSize);
-                                }
-                              }
-                            },
-                            onDoubleTap: () {
-                              // Close annotation menu on double-tap when no tool is selected
-                              // Helps teach users that objects can't be moved while in annotation mode
-                              if (_annotationsMenuOpen && _activeAnnotationTool == AnnotationTool.none && !_eraserMode) {
-                                setState(() {
-                                  _activeMenu = BoardMenu.none;
-                                  _pendingAnnotationPoints.clear();
-                                  _deactivateAnnotationTools();
-                                });
-                              }
-                            },
-                            onPanStart: (details) {
-                              if (_isPlaying || _endedAtLastFrame) return;
-                              if (_annotationsMenuOpen) {
-                                _handleAnnotationDragStart(details, screenSize);
-                              } else {
-                                _maybeStartPathDrag(details.localPosition, screenSize);
-                              }
-                            },
-                            onPanUpdate: (details) {
-                              if (_isPlaying || _endedAtLastFrame) return;
-                              if (_annotationsMenuOpen) {
-                                _handleAnnotationDragUpdate(details, screenSize);
-                              } else if (_activePathDragId != null) {
-                                _updatePathDrag(details.localPosition, screenSize);
-                              }
-                            },
-                            onPanEnd: (details) {
-                              if (_isPlaying || _endedAtLastFrame) return;
-                              if (_annotationsMenuOpen) {
-                                _handleAnnotationDragEnd(details, screenSize);
-                              } else if (_activePathDragId != null) {
-                                _endPathDrag();
-                              }
-                            },
-                            behavior: HitTestBehavior.translucent,
-                            child: Container(),
-                          ),
-                        ),
-                        // Tracked paths (behind objects)
-                        ..._buildTrackedPaths(screenSize),
-                        if (widget.project.projectType == ProjectType.training) ...[
-                          for (final player in frameToShow.players)
-                            _buildPlayer(
-                              player.position,
-                              player.rotation,
-                              player.color,
-                              player.id,
-                              screenSize,
-                              label: player.label,
-                            ),
-                          for (final ball in frameToShow.balls)
-                            _buildBall(
-                              ball.position,
-                              screenSize,
-                              scale: isPlayback ? _ballScaleAt(_playbackT, ballId: ball.id) : 1.0,
-                              starOpacity: 0.0,
-                              ballId: ball.id,
-                              color: ball.color,
-                            ),
-                        ] else ...[
-                          for (final player in frameToShow.players)
-                            _buildPlayer(
-                              player.position,
-                              player.rotation,
-                              player.color,
-                              player.id,
-                              screenSize,
-                              label: player.label,
-                            ),
-                          for (final ball in frameToShow.balls)
-                            _buildBall(
-                              ball.position,
-                              screenSize,
-                              scale: isPlayback ? _ballScaleAt(_playbackT, ballId: ball.id) : 1.0,
-                              starOpacity: 0.0,
-                              ballId: ball.id,
-                              color: ball.color,
-                            ),
-                        ],
-                        // Draw annotations above objects when toggled on
-                        if (_settings.annotationsAboveObjects)
-                          IgnorePointer(
-                            ignoring: true,
-                            child: AnnotationPainter(
-                              annotations: frameToShow.annotations,
-                              tempAnnotations: _stagedAnnotations.isNotEmpty ? _stagedAnnotations : null,
-                              erasingAnnotations: _erasingAnnotations.isNotEmpty ? _erasingAnnotations : null,
-                                dragPreviewLine:
-                                  _annotationsMenuOpen && _pendingAnnotationPoints.isNotEmpty && _currentDragPos != null
-                                  ? [_pendingAnnotationPoints.first, _currentDragPos!]
-                                  : null,
-                              selectedAnnotation: _selectedAnnotation,
-                              settings: _settings,
-                              screenSize: screenSize,
-                              strokeWidthCm: _annotationStrokeCm,
-                            ),
-                          ),
-                        if (isPlayback) ...[
-                          // Render hit star for each ball that has hitT set
-                          for (final ball in frameToShow.balls)
-                            (() {
-                              final info = _playbackHitStarInfo(screenSize, ballId: ball.id);
-                              if (info.isNotEmpty) {
-                                final pos = info['pos'] as Offset;
-                                final opacity = (info['opacity'] as double?) ?? 1.0;
-                                return Positioned(
-                                  left: pos.dx - 12,
-                                  top: pos.dy - 12,
-                                  child: Opacity(
-                                    opacity: opacity,
-                                    child: CustomPaint(size: const Size(24, 24), painter: _StarPainter()),
+                            // Draw eraser circle when eraser is active (desktop/non-phone web only)
+                            if (_shouldShowEraserOverlay(context))
+                              IgnorePointer(
+                                ignoring: true,
+                                child: CustomPaint(
+                                  size: screenSize,
+                                  painter: _EraserCirclePainter(
+                                    centerCm: _eraserPosCm!,
+                                    radiusCm: _annotationEraserRadiusCm,
+                                    screenSize: screenSize,
+                                    settings: _settings,
                                   ),
-                                );
-                              }
-                              return const SizedBox.shrink();
-                            })(),
-                        ],
-                        if (!isPlayback) ..._buildAllSetPreviewsForEditing(screenSize),
-                        if (!(_isPlaying || _endedAtLastFrame)) ...[
-                          // Show control points for all players by ID
-                          ...(() {
-                            final showControls = _settings.showPathControlPoints || _activePathDragId != null;
-                            if (!showControls) return <Widget>[];
-                            final widgets = <Widget>[];
-                            for (final player in currentFrame.players) {
-                              if (player.pathPoints.isNotEmpty) {
-                                final prevPlayer = prev?.getPlayerById(player.id);
-                                final prevPos = prevPlayer?.position ?? player.position;
-                                // If actively editing a specific path, only show its control points
-                                if (_activePathDragId == null || _activePathDragId == player.id) {
-                                  widgets.addAll(
-                                    _buildPathControlPoints(
-                                      player.pathPoints,
-                                      prevPos,
-                                      player.position,
-                                      screenSize,
-                                      player.id,
-                                    ),
-                                  );
+                                ),
+                              ),
+                            // Draw transparent center cross (20cm x 20cm)
+                            IgnorePointer(
+                              ignoring: true,
+                              child: CustomPaint(
+                                size: screenSize,
+                                painter: _CenterCrossPainter(screenSize: screenSize, settings: _settings),
+                              ),
+                            ),
+                            // Draw sector zone outlines with pulsing glow during target selection
+                            if (_sectorToolNeedsTargetSelection)
+                              IgnorePointer(
+                                ignoring: true,
+                                child: CustomPaint(
+                                  size: screenSize,
+                                  painter: _SectorZoneOutlinePainter(
+                                    settings: _settings,
+                                    boardSize: screenSize,
+                                    pulseAnimation: _selectionPulseController,
+                                    highlightedZone: _selectedSectorTarget,
+                                    projectType: widget.project.projectType,
+                                    customCourtElements: widget.project.customCourtElements,
+                                    balls: frameToShow.balls,
+                                  ),
+                                ),
+                              ),
+                            // Draw subtle highlight on selected target zone during drawing phase
+                            if (_sectorTargetHighlightActive &&
+                                _selectedSectorCenterCm != null &&
+                                _selectedSectorRadiusCm != null)
+                              IgnorePointer(
+                                ignoring: true,
+                                child: CustomPaint(
+                                  size: screenSize,
+                                  painter: _SectorTargetHighlightPainter(
+                                    centerCm: _selectedSectorCenterCm!,
+                                    radiusCm: _selectedSectorRadiusCm!,
+                                    screenSize: screenSize,
+                                    settings: _settings,
+                                  ),
+                                ),
+                              ),
+                            // Full-board tap & drag handler
+                            Positioned.fill(
+                              child: GestureDetector(
+                                onTapUp: (details) {
+                                  // Handle path tracking toggle during paused playback
+                                  if (_isPlaying && _isPaused) {
+                                    _togglePathTracking(details.localPosition, screenSize);
+                                    return;
+                                  }
+                                  if (!(_isPlaying || _endedAtLastFrame)) {
+                                    if (_pendingBallMark == 'hit') {
+                                      _placeBallHitAt(details.localPosition, screenSize);
+                                    } else {
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        _handleBoardTap(details.localPosition, screenSize);
+                                      });
+                                    }
+                                  }
+                                },
+                                onDoubleTapDown: (details) {
+                                  if (_isPlaying || _endedAtLastFrame) return;
+                                  if (_annotationsMenuOpen) {
+                                    final clampedTap = _clampToInteractionBounds(details.localPosition, screenSize);
+                                    final tapCm = _screenToCm(clampedTap, screenSize);
+                                    final target = _findTextAnnotationAt(tapCm, screenSize);
+                                    if (target != null) {
+                                      _editTextAnnotation(target, screenSize);
+                                    }
+                                  }
+                                },
+                                onDoubleTap: () {
+                                  // Close annotation menu on double-tap when no tool is selected
+                                  // Helps teach users that objects can't be moved while in annotation mode
+                                  if (_annotationsMenuOpen &&
+                                      _activeAnnotationTool == AnnotationTool.none &&
+                                      !_eraserMode) {
+                                    setState(() {
+                                      _activeMenu = BoardMenu.none;
+                                      _pendingAnnotationPoints.clear();
+                                      _deactivateAnnotationTools();
+                                    });
+                                  }
+                                },
+                                onPanStart: (details) {
+                                  if (_isPlaying || _endedAtLastFrame) return;
+                                  if (_annotationsMenuOpen) {
+                                    _handleAnnotationDragStart(details, screenSize);
+                                  } else {
+                                    _maybeStartPathDrag(details.localPosition, screenSize);
+                                  }
+                                },
+                                onPanUpdate: (details) {
+                                  if (_isPlaying || _endedAtLastFrame) return;
+                                  if (_annotationsMenuOpen) {
+                                    _handleAnnotationDragUpdate(details, screenSize);
+                                  } else if (_activePathDragId != null) {
+                                    _updatePathDrag(details.localPosition, screenSize);
+                                  }
+                                },
+                                onPanEnd: (details) {
+                                  if (_isPlaying || _endedAtLastFrame) return;
+                                  if (_annotationsMenuOpen) {
+                                    _handleAnnotationDragEnd(details, screenSize);
+                                  } else if (_activePathDragId != null) {
+                                    _endPathDrag();
+                                  }
+                                },
+                                behavior: HitTestBehavior.translucent,
+                                child: Container(),
+                              ),
+                            ),
+                            // Tracked paths (behind objects)
+                            ..._buildTrackedPaths(screenSize),
+                            if (widget.project.projectType == ProjectType.training) ...[
+                              for (final player in frameToShow.players)
+                                _buildPlayer(
+                                  player.position,
+                                  player.rotation,
+                                  player.color,
+                                  player.id,
+                                  screenSize,
+                                  label: player.label,
+                                ),
+                              for (final ball in frameToShow.balls)
+                                _buildBall(
+                                  ball.position,
+                                  screenSize,
+                                  scale: isPlayback ? _ballScaleAt(_playbackT, ballId: ball.id) : 1.0,
+                                  starOpacity: 0.0,
+                                  ballId: ball.id,
+                                  color: ball.color,
+                                ),
+                            ] else ...[
+                              for (final player in frameToShow.players)
+                                _buildPlayer(
+                                  player.position,
+                                  player.rotation,
+                                  player.color,
+                                  player.id,
+                                  screenSize,
+                                  label: player.label,
+                                ),
+                              for (final ball in frameToShow.balls)
+                                _buildBall(
+                                  ball.position,
+                                  screenSize,
+                                  scale: isPlayback ? _ballScaleAt(_playbackT, ballId: ball.id) : 1.0,
+                                  starOpacity: 0.0,
+                                  ballId: ball.id,
+                                  color: ball.color,
+                                ),
+                            ],
+                            // Draw annotations above objects when toggled on
+                            if (_settings.annotationsAboveObjects)
+                              IgnorePointer(
+                                ignoring: true,
+                                child: AnnotationPainter(
+                                  annotations: frameToShow.annotations,
+                                  tempAnnotations: _stagedAnnotations.isNotEmpty ? _stagedAnnotations : null,
+                                  erasingAnnotations: _erasingAnnotations.isNotEmpty ? _erasingAnnotations : null,
+                                  dragPreviewLine:
+                                      _annotationsMenuOpen &&
+                                          _pendingAnnotationPoints.isNotEmpty &&
+                                          _currentDragPos != null
+                                      ? [_pendingAnnotationPoints.first, _currentDragPos!]
+                                      : null,
+                                  selectedAnnotation: _selectedAnnotation,
+                                  settings: _settings,
+                                  screenSize: screenSize,
+                                  strokeWidthCm: _annotationStrokeCm,
+                                ),
+                              ),
+                            if (isPlayback) ...[
+                              // Render hit star for each ball that has hitT set
+                              for (final ball in frameToShow.balls)
+                                (() {
+                                  final info = _playbackHitStarInfo(screenSize, ballId: ball.id);
+                                  if (info.isNotEmpty) {
+                                    final pos = info['pos'] as Offset;
+                                    final opacity = (info['opacity'] as double?) ?? 1.0;
+                                    return Positioned(
+                                      left: pos.dx - 12,
+                                      top: pos.dy - 12,
+                                      child: Opacity(
+                                        opacity: opacity,
+                                        child: CustomPaint(size: const Size(24, 24), painter: _StarPainter()),
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox.shrink();
+                                })(),
+                            ],
+                            if (!isPlayback) ..._buildAllSetPreviewsForEditing(screenSize),
+                            if (!(_isPlaying || _endedAtLastFrame)) ...[
+                              // Show control points for all players by ID
+                              ...(() {
+                                final showControls = _settings.showPathControlPoints || _activePathDragId != null;
+                                if (!showControls) return <Widget>[];
+                                final widgets = <Widget>[];
+                                for (final player in currentFrame.players) {
+                                  if (player.pathPoints.isNotEmpty) {
+                                    final prevPlayer = prev?.getPlayerById(player.id);
+                                    final prevPos = prevPlayer?.position ?? player.position;
+                                    // If actively editing a specific path, only show its control points
+                                    if (_activePathDragId == null || _activePathDragId == player.id) {
+                                      widgets.addAll(
+                                        _buildPathControlPoints(
+                                          player.pathPoints,
+                                          prevPos,
+                                          player.position,
+                                          screenSize,
+                                          player.id,
+                                        ),
+                                      );
+                                    }
+                                  }
                                 }
-                              }
-                            }
-                            return widgets;
-                          })(),
-                          // For balls, show control points for all balls
-                          ...(() {
-                            final showControls = _settings.showPathControlPoints || _activePathDragId != null;
-                            if (!showControls) return <Widget>[];
-                            final widgets = <Widget>[];
-                            for (final ball in currentFrame.balls) {
-                              if (ball.pathPoints.isNotEmpty) {
-                                final prevBall = prev?.getBallById(ball.id);
-                                final prevPos = prevBall?.position ?? ball.position;
-                                // Show during active drag regardless of whether the internal label is "BALL" or the ball's ID
-                                if (_activePathDragId == null ||
-                                    _activePathDragId == "BALL" ||
-                                    _activePathDragId == ball.id) {
-                                  widgets.addAll(
-                                    _buildPathControlPoints(
-                                      ball.pathPoints,
-                                      prevPos,
-                                      ball.position,
-                                      screenSize,
-                                      ball.id,
-                                    ),
-                                  );
+                                return widgets;
+                              })(),
+                              // For balls, show control points for all balls
+                              ...(() {
+                                final showControls = _settings.showPathControlPoints || _activePathDragId != null;
+                                if (!showControls) return <Widget>[];
+                                final widgets = <Widget>[];
+                                for (final ball in currentFrame.balls) {
+                                  if (ball.pathPoints.isNotEmpty) {
+                                    final prevBall = prev?.getBallById(ball.id);
+                                    final prevPos = prevBall?.position ?? ball.position;
+                                    // Show during active drag regardless of whether the internal label is "BALL" or the ball's ID
+                                    if (_activePathDragId == null ||
+                                        _activePathDragId == "BALL" ||
+                                        _activePathDragId == ball.id) {
+                                      widgets.addAll(
+                                        _buildPathControlPoints(
+                                          ball.pathPoints,
+                                          prevPos,
+                                          ball.position,
+                                          screenSize,
+                                          ball.id,
+                                        ),
+                                      );
+                                    }
+                                  }
                                 }
-                              }
-                            }
-                            return widgets;
-                          })(),
-                        ],
-                        // Show hit markers for all balls
-                        if (!(_isPlaying || _endedAtLastFrame)) ..._buildAllHitMarkersForEditing(screenSize),
+                                return widgets;
+                              })(),
+                            ],
+                            // Show hit markers for all balls
+                            if (!(_isPlaying || _endedAtLastFrame)) ..._buildAllHitMarkersForEditing(screenSize),
                           ],
                         ),
                       ),
@@ -4906,16 +4917,45 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   tooltip: 'Add Player',
                                   onPressed: _startAddPlayer,
                                   enabled: canEditObjects,
-                                  backgroundColor:
-                                      isAddPlayerActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
-                                  child: const Icon(Icons.person_add, size: 20),
+                                  backgroundColor: isAddPlayerActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+                                  iconColorOverride: _contrastIconColor(
+                                    isAddPlayerActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+                                    Colors.white,
+                                  ),
+                                  child: SvgPicture.asset(
+                                    'assets/icons/add_player.svg',
+                                    width: 20,
+                                    height: 20,
+                                    colorFilter: ColorFilter.mode(
+                                      _contrastIconColor(
+                                        isAddPlayerActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+                                        Colors.white,
+                                      ),
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
                                 ),
                                 _buildMenuButton(
                                   tooltip: 'Add Ball',
                                   onPressed: _startAddBall,
                                   enabled: canEditObjects,
                                   backgroundColor: isAddBallActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
-                                  child: const Icon(Icons.control_point_duplicate, size: 20),
+                                  iconColorOverride: _contrastIconColor(
+                                    isAddBallActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+                                    Colors.white,
+                                  ),
+                                  child: SvgPicture.asset(
+                                    'assets/icons/add_ball.svg',
+                                    width: 20,
+                                    height: 20,
+                                    colorFilter: ColorFilter.mode(
+                                      _contrastIconColor(
+                                        isAddBallActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+                                        Colors.white,
+                                      ),
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
                                 ),
                               ],
                               if (_showModifierMenu)
@@ -4948,7 +4988,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   backgroundColor:
                                       (widget.project.projectType == ProjectType.training && _activeBallId != null
                                           ? (currentFrame.getBallById(_activeBallId!)?.isSet ?? false)
-                                          : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.isSet ?? false)))
+                                          : (currentFrame.balls.isNotEmpty &&
+                                                (currentFrame.balls.first.isSet ?? false)))
                                       ? AppTheme.accentOrange
                                       : AppTheme.mediumGrey,
                                   child: CustomPaint(
@@ -4970,7 +5011,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     if (prev != null) {
                                       const tStart = 0.0;
                                       setState(() {
-                                        if (widget.project.projectType == ProjectType.training && _activeBallId != null) {
+                                        if (widget.project.projectType == ProjectType.training &&
+                                            _activeBallId != null) {
                                           final ball = currentFrame.getBallById(_activeBallId!);
                                           if (ball != null) {
                                             if (ball.hitT != null) {
@@ -5011,7 +5053,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 ),
                               if (_showModifierMenu &&
                                   ((widget.project.projectType == ProjectType.training && _activeBallId != null) ||
-                                      (widget.project.projectType == ProjectType.play && currentFrame.balls.isNotEmpty)))
+                                      (widget.project.projectType == ProjectType.play &&
+                                          currentFrame.balls.isNotEmpty)))
                                 _buildMenuButton(
                                   tooltip: 'Ball Color',
                                   onPressed: _showBallColorPicker,
@@ -5019,8 +5062,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   child: Icon(
                                     Icons.palette,
                                     size: 22,
-                                    color:
-                                        (widget.project.projectType == ProjectType.training && _activeBallId != null)
+                                    color: (widget.project.projectType == ProjectType.training && _activeBallId != null)
                                         ? (currentFrame.getBallById(_activeBallId!)?.color ?? AppTheme.lightGrey)
                                         : (currentFrame.balls.isNotEmpty
                                               ? (currentFrame.balls.first.color ?? AppTheme.lightGrey)
@@ -5057,7 +5099,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                           tooltip: 'Player Label',
                                           onPressed: _showPlayerLabelDialog,
                                           backgroundColor: AppTheme.mediumGrey,
-                                          child: const Icon(Icons.tag, size: 22),
+                                          child: const Icon(Icons.text_fields, size: 22),
                                         ),
                                         if (widget.project.projectType == ProjectType.training &&
                                             currentFrame.players.length > 1)
@@ -5110,10 +5152,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 backgroundColor: _activeAnnotationTool == AnnotationTool.line
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
-                                child: Icon(
-                                  Symbols.diagonal_line,
-                                  size: 20,
-                                ),
+                                child: Icon(Symbols.diagonal_line, size: 20),
                               ),
                               _buildMenuButton(
                                 tooltip: 'Circle Tool (double-tap to set fill)',
@@ -5130,10 +5169,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 backgroundColor: _activeAnnotationTool == AnnotationTool.circle
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
-                                child: Icon(
-                                  _circleFilled ? Icons.circle : Icons.circle_outlined,
-                                  size: 20,
-                                ),
+                                child: Icon(_circleFilled ? Icons.circle : Icons.circle_outlined, size: 20),
                               ),
                               _buildMenuButton(
                                 tooltip: 'Rectangle Tool (double-tap to set fill)',
@@ -5150,10 +5186,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 backgroundColor: _activeAnnotationTool == AnnotationTool.rectangle
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
-                                child: Icon(
-                                  _rectangleFilled ? Icons.stop : Icons.crop_square,
-                                  size: 20,
-                                ),
+                                child: Icon(_rectangleFilled ? Icons.stop : Icons.crop_square, size: 20),
                               ),
                               _buildMenuButton(
                                 tooltip: 'Text Tool (double-tap to set size)',
@@ -5170,10 +5203,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 backgroundColor: _activeAnnotationTool == AnnotationTool.text
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
-                                child: Icon(
-                                  Icons.text_fields,
-                                  size: 20,
-                                ),
+                                child: Icon(Icons.text_fields, size: 20),
                               ),
                               _buildMenuButton(
                                 tooltip: 'Circle Sector Tool (tap in a court zone)',
@@ -5201,9 +5231,25 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 backgroundColor: _activeAnnotationTool == AnnotationTool.sector
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
-                                child: Icon(
-                                  Symbols.pie_chart,
-                                  size: 20,
+                                iconColorOverride: _contrastIconColor(
+                                  _activeAnnotationTool == AnnotationTool.sector
+                                      ? AppTheme.primaryBlue
+                                      : AppTheme.mediumGrey,
+                                  Colors.white,
+                                ),
+                                child: SvgPicture.asset(
+                                  'assets/icons/circle_sector.svg',
+                                  width: 20,
+                                  height: 20,
+                                  colorFilter: ColorFilter.mode(
+                                    _contrastIconColor(
+                                      _activeAnnotationTool == AnnotationTool.sector
+                                          ? AppTheme.primaryBlue
+                                          : AppTheme.mediumGrey,
+                                      Colors.white,
+                                    ),
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
                               ),
                             ],
@@ -5225,20 +5271,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 backgroundColor: _activeAnnotationTool == AnnotationTool.move
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
-                                child: Icon(
-                                  Icons.pan_tool_alt,
-                                  size: 20,
-                                ),
+                                child: Icon(Icons.pan_tool_alt, size: 20),
                               ),
                               _buildMenuButton(
                                 tooltip: 'Duplicate last annotation',
                                 onPressed: currentFrame.annotations.isNotEmpty ? _duplicateLastAnnotation : null,
                                 enabled: currentFrame.annotations.isNotEmpty,
                                 backgroundColor: AppTheme.mediumGrey,
-                                child: Icon(
-                                  Icons.content_copy,
-                                  size: 20,
-                                ),
+                                child: Icon(Icons.content_copy, size: 20),
                               ),
                               _buildMenuButton(
                                 tooltip: 'Eraser (double-tap for size)',
@@ -5258,10 +5298,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 onDoubleTap: () => _toggleAnnotationEraserMenu(forceOpen: true),
                                 buttonKey: _annotationEraserButtonKey,
                                 backgroundColor: _eraserMode ? AppTheme.errorRed : AppTheme.mediumGrey,
-                                child: Icon(
-                                  Symbols.ink_eraser,
-                                  size: 20,
-                                ),
+                                child: Icon(Symbols.ink_eraser, size: 20),
                               ),
                               _buildMenuButton(
                                 tooltip: 'Delete All Annotations',
@@ -5450,8 +5487,8 @@ class _EraserCirclePainter extends CustomPainter {
     final boardCenter = Offset(screenSize.width / 2, screenSize.height / 2);
 
     final screenCenter =
-      boardCenter +
-      Offset(settings.cmToLogical(centerCm.dx, screenSize), settings.cmToLogical(centerCm.dy, screenSize));
+        boardCenter +
+        Offset(settings.cmToLogical(centerCm.dx, screenSize), settings.cmToLogical(centerCm.dy, screenSize));
 
     // Convert radius from cm to screen pixels
     final screenRadiusPx = settings.cmToLogical(radiusCm, screenSize).abs();
@@ -5610,7 +5647,7 @@ class _SectorZoneOutlinePainter extends CustomPainter {
     final t = pulseAnimation.value;
     final pulseRadiusBoost = 6.0 + 10.0 * t;
     final pulseOpacity = (0.35 + 0.55 * (1.0 - t)).clamp(0.0, 1.0);
-    
+
     // Draw zone overlays based on project type
     if (projectType == ProjectType.play) {
       // Play scenario: Draw standard court zones
@@ -5642,12 +5679,15 @@ class _SectorZoneOutlinePainter extends CustomPainter {
           if (element.type == CourtElementType.innerCircle ||
               element.type == CourtElementType.outerCircle ||
               element.type == CourtElementType.customCircle) {
-            final elementCenter = center + Offset(
-              settings.cmToLogical(element.position.dx, boardSize),
-              settings.cmToLogical(element.position.dy, boardSize),
-            );
+            final elementCenter =
+                center +
+                Offset(
+                  settings.cmToLogical(element.position.dx, boardSize),
+                  settings.cmToLogical(element.position.dy, boardSize),
+                );
             final radiusPx = settings.cmToLogical(element.radius ?? 0, boardSize).abs();
-            final zoneId = '${element.type.toString().split('.').last}_${element.position.dx.toStringAsFixed(0)}_${element.position.dy.toStringAsFixed(0)}';
+            final zoneId =
+                '${element.type.toString().split('.').last}_${element.position.dx.toStringAsFixed(0)}_${element.position.dy.toStringAsFixed(0)}';
             _drawZoneOverlay(
               canvas,
               elementCenter,
@@ -5661,20 +5701,20 @@ class _SectorZoneOutlinePainter extends CustomPainter {
         }
       }
     }
-    
+
     // Draw ball overlays (1.5x ball size)
     for (final ball in balls) {
-      final ballCenter = center + Offset(
-        settings.cmToLogical(ball.position.dx, boardSize),
-        settings.cmToLogical(ball.position.dy, boardSize),
-      );
+      final ballCenter =
+          center +
+          Offset(settings.cmToLogical(ball.position.dx, boardSize), settings.cmToLogical(ball.position.dy, boardSize));
       final ballRadiusPx = settings.cmToLogical(9 * 2, boardSize).abs(); // 1.5x ball size radius
       final ballId = 'ball_${ball.id}';
       final isHighlighted = ballId == highlightedZone;
-      
+
       // Blue transparent overlay for ball
       final overlayPaint = Paint()
-        ..color = const Color.fromARGB(80, 100, 150, 255) // Blue transparent overlay
+        ..color =
+            const Color.fromARGB(80, 100, 150, 255) // Blue transparent overlay
         ..style = PaintingStyle.fill;
       canvas.drawCircle(ballCenter, ballRadiusPx, overlayPaint);
 
@@ -5684,17 +5724,18 @@ class _SectorZoneOutlinePainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3.0;
       canvas.drawCircle(ballCenter, ballRadiusPx + pulseRadiusBoost, pulseRingPaint);
-      
+
       // If highlighted, add a brighter accent
       if (isHighlighted) {
         final accentPaint = Paint()
-          ..color = const Color.fromARGB(120, 150, 200, 255) // Brighter blue
+          ..color =
+              const Color.fromARGB(120, 150, 200, 255) // Brighter blue
           ..style = PaintingStyle.fill;
         canvas.drawCircle(ballCenter, ballRadiusPx, accentPaint);
       }
     }
   }
-  
+
   void _drawZoneOverlay(
     Canvas canvas,
     Offset center,
@@ -5706,7 +5747,8 @@ class _SectorZoneOutlinePainter extends CustomPainter {
   ) {
     // Blue transparent overlay (10cm width)
     final overlayPaint = Paint()
-      ..color = const Color.fromARGB(80, 100, 150, 255) // Blue transparent overlay
+      ..color =
+          const Color.fromARGB(80, 100, 150, 255) // Blue transparent overlay
       ..strokeWidth = overlayWidthPx
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -5723,7 +5765,8 @@ class _SectorZoneOutlinePainter extends CustomPainter {
     // If highlighted, add a brighter accent
     if (isHighlighted) {
       final accentPaint = Paint()
-        ..color = const Color.fromARGB(120, 150, 200, 255) // Brighter blue
+        ..color =
+            const Color.fromARGB(120, 150, 200, 255) // Brighter blue
         ..strokeWidth = overlayWidthPx
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round;
@@ -5764,13 +5807,15 @@ class _SectorTargetHighlightPainter extends CustomPainter {
     final radiusPx = settings.cmToLogical(radiusCm, size).abs();
 
     final fillPaint = Paint()
-      ..color = const Color.fromARGB(20, 100, 200, 255) // Light cyan, very transparent
+      ..color =
+          const Color.fromARGB(20, 100, 200, 255) // Light cyan, very transparent
       ..style = PaintingStyle.fill;
     canvas.drawCircle(centerPx, radiusPx, fillPaint);
 
     // Draw accent ring around selected zone
     final accentPaint = Paint()
-      ..color = const Color.fromARGB(60, 100, 200, 255) // Slightly more visible cyan ring
+      ..color =
+          const Color.fromARGB(60, 100, 200, 255) // Slightly more visible cyan ring
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
     canvas.drawCircle(centerPx, radiusPx, accentPaint);

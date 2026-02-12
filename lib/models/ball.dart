@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
+import '../config/app_theme.dart';
 
 part 'ball.g.dart';
 
@@ -27,7 +28,7 @@ class Ball extends HiveObject {
 
   Ball({required this.position, List<Offset>? pathPoints, this.hitT, this.isSet, Color? color, String? id})
     : pathPoints = pathPoints ?? [],
-      colorValue = (color ?? Colors.white).toARGB32(),
+      colorValue = (color ?? AppTheme.ballColor).toARGB32(),
       id = id ?? const Uuid().v4();
 
   Color get color => Color(colorValue);

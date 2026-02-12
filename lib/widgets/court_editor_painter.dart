@@ -101,6 +101,9 @@ class CourtEditorPainter extends CustomPainter {
       case CourtElementType.outerCircle:
       case CourtElementType.customCircle:
         canvas.drawCircle(scaledPos, settings.cmToLogical(element.radius!, screenSize), paint);
+        if (_isOuterBoundaryZone(element)) {
+          _drawCenterCrosshair(canvas, scaledPos);
+        }
         break;
       case CourtElementType.customLine:
         if (element.endPosition != null) {
@@ -113,6 +116,19 @@ class CourtEditorPainter extends CustomPainter {
           final scaledEnd = _toScreenPosition(element.endPosition!, center);
           final rect = Rect.fromPoints(scaledPos, scaledEnd);
           canvas.drawRect(rect, paint);
+        }
+        break;
+      case CourtElementType.sector:
+        if (element.radius != null && element.startAngle != null && element.endAngle != null) {
+          final radiusPx = settings.cmToLogical(element.radius!, screenSize);
+          final rect = Rect.fromCircle(center: scaledPos, radius: radiusPx);
+          final start = element.startAngle!;
+          final sweep = element.endAngle! - start;
+          final fillPaint = Paint()
+            ..color = element.color.withValues(alpha: isPreview ? 0.3 : 0.4)
+            ..style = PaintingStyle.fill;
+          canvas.drawArc(rect, start, sweep, true, fillPaint);
+          canvas.drawArc(rect, start, sweep, true, paint);
         }
         break;
       case CourtElementType.text:
@@ -137,10 +153,27 @@ class CourtEditorPainter extends CustomPainter {
     }
   }
 
+  bool _isOuterBoundaryZone(CourtElement element) {
+    if (element.type != CourtElementType.outerCircle) return false;
+    if (element.radius == null) return false;
+    return (element.radius! - settings.outerBoundsRadiusCm).abs() < 0.5;
+  }
+
+  void _drawCenterCrosshair(Canvas canvas, Offset center) {
+    final size = settings.cmToLogical(10.0, screenSize).abs();
+    final half = size / 2;
+    final paint = Paint()
+      ..color = AppTheme.courtLine.withValues(alpha: 0.7)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(center + Offset(-half, 0), center + Offset(half, 0), paint);
+    canvas.drawLine(center + Offset(0, -half), center + Offset(0, half), paint);
+  }
+
   void _drawNet(Canvas canvas, Offset center, double radius, Paint strokePaint, bool isPreview) {
     // Outer filled donut to mimic board background net
     final bgPaint = Paint()
-      ..color = AppTheme.courtGreen
+      ..color = settings.courtBackgroundColor
       ..style = PaintingStyle.fill;
     final rimPaint = Paint()
       ..color = AppTheme.lightGrey.withValues(alpha: isPreview ? 0.5 : 1.0)

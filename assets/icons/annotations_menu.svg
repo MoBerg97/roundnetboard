@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="512"
+   height="512"
+   viewBox="0 0 135.46667 135.46667"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   sodipodi:docname="annotations_menu.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.98142811"
+     inkscape:cx="222.63475"
+     inkscape:cy="275.61876"
+     inkscape:window-width="1920"
+     inkscape:window-height="991"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1">
+    <rect
+       x="145.5385"
+       y="360.2438"
+       width="200.29555"
+       height="112.39607"
+       id="rect2" />
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:7.9375;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none;stroke-dashoffset:36;paint-order:stroke markers fill"
+       id="rect1"
+       width="88.833115"
+       height="54.138641"
+       x="42.664803"
+       y="3.96875"
+       ry="10.904874" />
+    <g
+       id="text1"
+       style="font-weight:500;font-family:elusiveicons;-inkscape-font-specification:'elusiveicons Medium';white-space:pre;fill:none;stroke:#000000;stroke-width:0.914818;stroke-linecap:round;stroke-linejoin:round;stroke-dashoffset:36;paint-order:stroke markers fill"
+       transform="matrix(4.5351085,0,0,4.1500212,-591.00898,-1412.3947)"
+       aria-label="T T">
+      <path
+         style="font-weight:normal;font-family:Bahnschrift;-inkscape-font-specification:Bahnschrift;stroke-width:1.82964;stroke-dasharray:none"
+         d="m 151.48824,363.46652 v 8.60825 z m -3.29072,-0.14185 h 6.58142 z"
+         id="path4"
+         sodipodi:nodetypes="cccccc" />
+      <path
+         style="font-weight:normal;font-size:7.70927px;font-family:Bahnschrift;-inkscape-font-specification:Bahnschrift;stroke-width:1.82964;stroke-dasharray:none"
+         d="m 157.17321,366.54449 v 5.53028 z m -2.11408,-0.0911 h 4.22815 z"
+         id="path5"
+         sodipodi:nodetypes="cccccc" />
+    </g>
+    <circle
+       style="fill:none;stroke:#000000;stroke-width:7.9375;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:36;paint-order:stroke markers fill"
+       id="path3"
+       cx="38.496151"
+       cy="73.765434"
+       r="34.527401" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:7.9375;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:36;paint-order:stroke markers fill"
+       d="M 50.017653,106.3138 38.49615,73.765433 l 34.527402,10e-7"
+       id="path6" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:7.9375;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:36;paint-order:stroke markers fill"
+       d="M 8.7609673,131.4704 73.023552,114.2513"
+       id="path7" />
+  </g>
+</svg>

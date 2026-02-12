@@ -35,9 +35,10 @@ class BoardBackgroundPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = _boardCenter();
+    final courtBackground = settings.courtBackgroundColor;
 
     // --- Background ---
-    final bgPaint = Paint()..color = AppTheme.courtGreen;
+    final bgPaint = Paint()..color = courtBackground;
     canvas.drawRect(Offset.zero & size, bgPaint);
 
     // In training mode, skip drawing net and zones - only show background
@@ -165,6 +166,29 @@ class BoardBackgroundPainter extends CustomPainter {
           final paintOffset = scaledPos - Offset(textPainter.width / 2, textPainter.height / 2);
           textPainter.paint(canvas, paintOffset);
           break;
+        case CourtElementType.sector:
+          if (element.radius == null || element.startAngle == null || element.endAngle == null) break;
+          final radius = settings.cmToLogical(element.radius!, screenSize);
+          final startAngle = element.startAngle!;
+          final sweepAngle = element.endAngle! - startAngle;
+          final fillPaint = Paint()
+            ..color = element.color.withValues(alpha: 0.4)
+            ..style = PaintingStyle.fill;
+          canvas.drawArc(
+            Rect.fromCircle(center: scaledPos, radius: radius),
+            startAngle,
+            sweepAngle,
+            true,
+            fillPaint,
+          );
+          canvas.drawArc(
+            Rect.fromCircle(center: scaledPos, radius: radius),
+            startAngle,
+            sweepAngle,
+            false,
+            paint..style = PaintingStyle.stroke,
+          );
+          break;
       }
     }
   }
@@ -177,7 +201,7 @@ class BoardBackgroundPainter extends CustomPainter {
   void _drawNet(Canvas canvas, Offset center, double radius, Paint strokePaint) {
     // Outer filled donut to mimic board background net (same as CourtEditorPainter)
     final bgPaint = Paint()
-      ..color = AppTheme.courtGreen
+      ..color = settings.courtBackgroundColor
       ..style = PaintingStyle.fill;
     final rimPaint = Paint()
       ..color = AppTheme.lightGrey

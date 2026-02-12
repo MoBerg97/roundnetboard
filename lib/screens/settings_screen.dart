@@ -41,8 +41,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _settings.objectScaleMultiplier = 1.5;
       _settings.annotationsAboveObjects = false;
       _settings.serveZoneFactor = 1.3;
+      _settings.courtBackgroundColorValue = AppTheme.courtGreen.toARGB32();
+      _settings.ballSectorRadiusCm = 1000.0;
       _saveSettings();
     });
+  }
+
+  void _showCourtBackgroundColorPicker() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Court Background Color'),
+        content: Container(
+          width: 280,
+          height: 200,
+          color: AppTheme.lightGrey,
+          child: GridView.count(
+            crossAxisCount: 4,
+            children: AppTheme.editorColors
+                .map(
+                  (color) => GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() => _settings.courtBackgroundColorValue = color.toARGB32());
+                      _saveSettings();
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: _settings.courtBackgroundColorValue == color.toARGB32()
+                            ? Border.all(color: AppTheme.lightGrey, width: 2)
+                            : null,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -75,6 +115,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const Divider(),
           ListTile(
+            title: const Text('Court Background Color'),
+            subtitle: const Text('Tap to change or reset to default'),
+            onTap: _showCourtBackgroundColorPicker,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: _settings.courtBackgroundColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppTheme.darkGrey, width: 1),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () {
+                    setState(() => _settings.courtBackgroundColorValue = AppTheme.courtGreen.toARGB32());
+                    _saveSettings();
+                  },
+                  child: const Text('Default'),
+                ),
+              ],
+            ),
+          ),
+          const Divider(),
+          ListTile(
             title: const Text("Court Serve Zone Scaling"),
             subtitle: Text("${_settings.serveZoneFactor.toStringAsFixed(1)}x zoom factor"),
           ),
@@ -97,18 +165,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const Divider(),
           ListTile(
-            title: const Text("Default Playback Speed"),
-            subtitle: Text("${_settings.playbackSpeed.toStringAsFixed(1)}x"),
+            title: const Text("Default Ball Sector Radius"),
+            subtitle: Text("${_settings.ballSectorRadiusCm.toStringAsFixed(0)} cm"),
             trailing: SizedBox(
               width: 150,
               child: Slider(
-                value: _settings.playbackSpeed,
-                min: 0.5,
-                max: 3.0,
-                divisions: 25,
-                label: "${_settings.playbackSpeed.toStringAsFixed(1)}x",
+                value: _settings.ballSectorRadiusCm,
+                min: 500,
+                max: 2000,
+                divisions: 30,
+                label: _settings.ballSectorRadiusCm.toStringAsFixed(0),
                 onChanged: (value) {
-                  setState(() => _settings.playbackSpeed = value);
+                  setState(() => _settings.ballSectorRadiusCm = value);
                   _saveSettings();
                 },
               ),

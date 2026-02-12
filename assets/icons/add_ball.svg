@@ -7,8 +7,8 @@
    viewBox="0 0 135.46667 135.46667"
    version="1.1"
    id="svg1"
-   inkscape:version="1.3.2 (091e20e, 2023-11-25, custom)"
-   sodipodi:docname="addBall.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   sodipodi:docname="add_ball.svg"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -24,12 +24,12 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      inkscape:zoom="0.69397447"
-     inkscape:cx="396.26818"
-     inkscape:cy="215.42579"
+     inkscape:cx="395.54769"
+     inkscape:cy="213.98482"
      inkscape:window-width="1920"
-     inkscape:window-height="1017"
-     inkscape:window-x="-8"
-     inkscape:window-y="-8"
+     inkscape:window-height="991"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
      inkscape:window-maximized="1"
      inkscape:current-layer="layer1" />
   <defs
@@ -40,11 +40,11 @@
      id="layer1">
     <path
        id="path1"
-       style="fill:none;fill-opacity:0;fill-rule:evenodd;stroke:#000000;stroke-width:5.29168;stroke-linecap:round;stroke-linejoin:miter;stroke-dasharray:none;paint-order:normal"
+       style="fill:none;fill-opacity:0;fill-rule:evenodd;stroke:#000000;stroke-width:7.9375;stroke-linecap:round;stroke-linejoin:miter;stroke-dasharray:none;paint-order:normal"
        d="m 83.362354,51.935331 a 22.836662,22.83666 0 0 0 -2.143022,9.63197 22.836662,22.83666 0 0 0 22.836848,22.836849 22.836662,22.83666 0 0 0 9.63197,-2.143021 35.456998,35.456998 0 0 0 -30.325796,-30.325798 z m -4.788855,-0.342615 a 35.456998,35.456998 0 0 0 -35.456751,35.457268 35.456998,35.456998 0 0 0 0.342098,4.788855 22.83666,22.83666 0 0 1 9.63197,-2.143022 22.83666,22.83666 0 0 1 22.836849,22.836333 22.83666,22.83666 0 0 1 -2.143021,9.63249 35.456998,35.456998 0 0 0 4.788855,0.34209 35.456998,35.456998 0 0 0 35.457271,-35.456746 35.456998,35.456998 0 0 0 -0.34262,-4.788855 22.836662,22.83666 0 0 1 -9.63197,2.143021 22.836662,22.83666 0 0 1 -22.836848,-22.836849 22.836662,22.83666 0 0 1 2.143022,-9.63197 35.456998,35.456998 0 0 0 -4.788855,-0.342615 z m -4.788855,70.571924 a 22.83666,22.83666 0 0 0 2.143021,-9.63249 22.83666,22.83666 0 0 0 -22.836849,-22.836333 22.83666,22.83666 0 0 0 -9.63197,2.143022 35.456998,35.456998 0 0 0 30.325798,30.325801 z" />
     <path
        sodipodi:type="star"
-       style="fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:6.82481;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
+       style="fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:10.23722202;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
        id="path3"
        inkscape:flatsided="false"
        sodipodi:sides="4"

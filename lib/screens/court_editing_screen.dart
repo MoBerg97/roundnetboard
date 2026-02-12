@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../config/app_theme.dart';
 import '../models/animation_project.dart';
@@ -12,7 +13,7 @@ import '../widgets/board_background_painter.dart';
 import '../widgets/court_editor_painter.dart';
 import '../widgets/hover_selection_menu.dart';
 
-enum CourtEditorTool { select, net, zone, customCircle, customLine, customRectangle, text, eraser }
+enum CourtEditorTool { select, net, zone, customCircle, customLine, customRectangle, text, eraser, sector }
 
 /// Represents a snapshot of the editor state for undo/redo functionality
 class _EditorSnapshot {
@@ -55,7 +56,7 @@ class CourtEditingScreen extends StatefulWidget {
   State<CourtEditingScreen> createState() => _CourtEditingScreenState();
 }
 
-class _CourtEditingScreenState extends State<CourtEditingScreen> {
+class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTickerProviderStateMixin {
   static const String _textFontFamily = 'Roboto';
   static const double _defaultTextSize = 20.0;
   late CourtEditorTool _currentTool;
@@ -74,14 +75,14 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   final GlobalKey _eraserButtonKey = GlobalKey(debugLabel: 'court_editor_eraser_button');
   final GlobalKey _eraserMenuKey = GlobalKey(debugLabel: 'court_editor_eraser_menu');
   final ValueNotifier<int> _eraserHoverNotifier = ValueNotifier<int>(-1);
-  final List<double> _elementStrokeOptions = const [2.0, 3.5, 5.0];
+  final List<double> _elementStrokeOptions = const [2.0, 5.0, 10.0];
   double _elementStrokeWidth = 2.0;
   OverlayEntry? _strokeWidthMenuEntry;
   int _hoverStrokeIndex = -1;
   final GlobalKey _strokeWidthButtonKey = GlobalKey(debugLabel: 'court_editor_stroke_button');
   final GlobalKey _strokeWidthMenuKey = GlobalKey(debugLabel: 'court_editor_stroke_menu');
   final ValueNotifier<int> _strokeHoverNotifier = ValueNotifier<int>(-1);
-  final List<double> _textSizeOptions = const [16.0, 20.0, 26.0];
+  final List<double> _textSizeOptions = const [16.0, 24.0, 34.0];
   double _textFontSize = _defaultTextSize;
   OverlayEntry? _textSizeMenuEntry;
   int _hoverTextSizeIndex = -1;
@@ -98,6 +99,18 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     _ZoneOption('SZ', ZoneMode.serve),
     _ZoneOption('OB', ZoneMode.outer),
   ];
+
+  bool _snapEnabled = true;
+  bool _sectorToolNeedsTargetSelection = false;
+  bool _sectorTargetHighlightActive = false;
+  String? _selectedSectorTargetId;
+  Offset? _selectedSectorCenterCm;
+  double? _selectedSectorRadiusCm;
+  double? _sectorDragStartAngle;
+  double? _sectorDragPrevAngle;
+  double _sectorDragSweepAngle = 0.0;
+  double? _sectorDragEndAngle;
+  late AnimationController _selectionPulseController;
 
   final GlobalKey _canvasKey = GlobalKey(debugLabel: 'court_editor_canvas');
   Color _currentColor = Colors.white;
@@ -138,6 +151,8 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
   @override
   void initState() {
     super.initState();
+    _selectionPulseController =
+        AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat();
     _currentTool = CourtEditorTool.select;
     _elements = List.from(widget.project.customCourtElements ?? []);
     _settings = widget.project.settings ?? Settings();
@@ -149,6 +164,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     _removeStrokeWidthMenu();
     _removeTextSizeMenu();
     _removeZoneMenu();
+    _selectionPulseController.dispose();
     super.dispose();
   }
 
@@ -166,7 +182,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
           // Court Display
           Expanded(
             child: Container(
-              color: AppTheme.courtBackground,
+              color: _settings.courtBackgroundColor,
               padding: const EdgeInsets.all(12),
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -222,6 +238,35 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                                 painter: _CenterCrossPainter(boardSize: boardSize, settings: _settings),
                               ),
                             ),
+                              if (_sectorToolNeedsTargetSelection)
+                                IgnorePointer(
+                                  ignoring: true,
+                                  child: CustomPaint(
+                                    size: boardSize,
+                                    painter: _SectorZoneOutlinePainter(
+                                      settings: _settings,
+                                      boardSize: boardSize,
+                                      pulseAnimation: _selectionPulseController,
+                                      highlightedZone: _selectedSectorTargetId,
+                                      elements: _elements,
+                                    ),
+                                  ),
+                                ),
+                              if (_sectorTargetHighlightActive &&
+                                  _selectedSectorCenterCm != null &&
+                                  _selectedSectorRadiusCm != null)
+                                IgnorePointer(
+                                  ignoring: true,
+                                  child: CustomPaint(
+                                    size: boardSize,
+                                    painter: _SectorTargetHighlightPainter(
+                                      centerCm: _selectedSectorCenterCm!,
+                                      radiusCm: _selectedSectorRadiusCm!,
+                                      screenSize: boardSize,
+                                      settings: _settings,
+                                    ),
+                                  ),
+                                ),
                           ],
                         ),
                       ),
@@ -270,6 +315,8 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                   const SizedBox(width: 4),
                   _buildToolButton(CourtEditorTool.customRectangle, Icons.crop_square, 'Rect'),
                   const SizedBox(width: 4),
+                  _buildSectorToolButton(),
+                  const SizedBox(width: 4),
                   _buildTextToolButton(),
                   const SizedBox(width: 4),
                   _buildEraserButton(),
@@ -277,6 +324,8 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                   _buildStrokeWidthButton(),
                   const SizedBox(width: 8),
                   _buildColorPickerButton(),
+                  const SizedBox(width: 8),
+                  _buildSnapToggleButton(),
                   const SizedBox(width: 8),
                   // Undo button
                   _buildToolbarActionButton(
@@ -332,7 +381,16 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       child: FloatingActionButton.small(
         heroTag: 'tool-${tool.name}',
         backgroundColor: backgroundColor,
-        onPressed: () => setState(() => _currentTool = tool),
+        onPressed: () => setState(() {
+          _currentTool = tool;
+          if (tool != CourtEditorTool.sector) {
+            _sectorToolNeedsTargetSelection = false;
+            _sectorTargetHighlightActive = false;
+            _selectedSectorTargetId = null;
+            _selectedSectorCenterCm = null;
+            _selectedSectorRadiusCm = null;
+          }
+        }),
         child: iconWidget,
       ),
     );
@@ -825,6 +883,58 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     );
   }
 
+  Widget _buildSectorToolButton() {
+    final isActive = _currentTool == CourtEditorTool.sector;
+    final backgroundColor = isActive ? AppTheme.primaryBlue : AppTheme.mediumGrey;
+    final iconColor = _contrastIconColor(backgroundColor, Colors.white);
+    return Tooltip(
+      message: 'Sector Tool (tap a circle/zone, then drag)',
+      child: FloatingActionButton.small(
+        heroTag: 'tool-sector',
+        backgroundColor: backgroundColor,
+        onPressed: () {
+          setState(() {
+            _currentTool = CourtEditorTool.sector;
+            _sectorToolNeedsTargetSelection = true;
+            _sectorTargetHighlightActive = false;
+            _selectedSectorTargetId = null;
+            _selectedSectorCenterCm = null;
+            _selectedSectorRadiusCm = null;
+            _sectorDragStartAngle = null;
+            _sectorDragPrevAngle = null;
+            _sectorDragSweepAngle = 0.0;
+            _sectorDragEndAngle = null;
+          });
+        },
+        child: SvgPicture.asset(
+          'assets/icons/circle_sector.svg',
+          width: 20,
+          height: 20,
+          colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSnapToggleButton() {
+    final backgroundColor = _snapEnabled ? AppTheme.primaryBlue : AppTheme.mediumGrey;
+    final iconColor = _contrastIconColor(backgroundColor, Colors.white);
+    return Tooltip(
+      message: _snapEnabled ? 'Snapping On' : 'Snapping Off',
+      child: FloatingActionButton.small(
+        heroTag: 'tool-snap',
+        backgroundColor: backgroundColor,
+        onPressed: () => setState(() => _snapEnabled = !_snapEnabled),
+        child: SvgPicture.asset(
+          'assets/icons/snap_nodes.svg',
+          width: 20,
+          height: 20,
+          colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+        ),
+      ),
+    );
+  }
+
   Widget _buildNetIcon(Color color) {
     return CustomPaint(painter: _NetIconPainter(color), size: const Size(24, 24));
   }
@@ -925,6 +1035,11 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       // Save pre-change snapshot once at erase start
       _saveToHistory();
       _eraseAtPosition(localPosCm);
+    } else if (_currentTool == CourtEditorTool.sector && _sectorToolNeedsTargetSelection) {
+      if (_trySelectSectorTarget(localPosCm, _boardSize)) {
+        _startPos = localPosCm;
+      }
+      return;
     } else {
       // Show live preview for all creation tools (circle, zone, line, rectangle, net)
       _previewElement = _createElementFromTool(_currentTool, localPosCm, localPosCm, preview: true);
@@ -948,16 +1063,49 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
             ? localPosCm + _dragEndOffset!
             : _draggingElement!.endPosition;
 
-        final snapped = _applySnap(newPos, newEnd, _draggingElement!);
-        _draggingElement!
-          ..position = snapped.key
-          ..endPosition = snapped.value;
+        if (_snapEnabled) {
+          final snapped = _applySnap(newPos, newEnd, _draggingElement!);
+          _draggingElement!
+            ..position = snapped.key
+            ..endPosition = snapped.value;
+        } else {
+          _draggingElement!
+            ..position = newPos
+            ..endPosition = newEnd;
+        }
         // Bump revision so background repaints while dragging
         _elementsRevision++;
       } else if (_currentTool == CourtEditorTool.eraser) {
         _eraseAtPosition(localPosCm);
         // Bump revision so background repaints while erasing
         _elementsRevision++;
+      } else if (_currentTool == CourtEditorTool.sector &&
+          _selectedSectorCenterCm != null &&
+          _selectedSectorRadiusCm != null) {
+        final center = _selectedSectorCenterCm!;
+        final startVec = (_startPos ?? localPosCm) - center;
+        final startAngle = _sectorDragStartAngle ?? math.atan2(startVec.dy, startVec.dx);
+        final currentVec = localPosCm - center;
+        final currentAngle = math.atan2(currentVec.dy, currentVec.dx);
+
+        if (_sectorDragPrevAngle != null) {
+          final delta = _normalizeAngleDelta(currentAngle - _sectorDragPrevAngle!);
+          _sectorDragSweepAngle += delta;
+          _sectorDragSweepAngle = _sectorDragSweepAngle.clamp(-2 * math.pi, 2 * math.pi);
+        }
+        _sectorDragPrevAngle = currentAngle;
+        _sectorDragStartAngle = startAngle;
+        _sectorDragEndAngle = startAngle + _sectorDragSweepAngle;
+
+        _previewElement = CourtElement(
+          type: CourtElementType.sector,
+          position: center,
+          radius: _selectedSectorRadiusCm,
+          color: _currentColor,
+          strokeWidth: _elementStrokeWidth,
+          startAngle: startAngle,
+          endAngle: _sectorDragEndAngle,
+        );
       } else {
         // Show live preview for all creation tools while dragging
         _previewElement = _createElementFromTool(_currentTool, _startPos ?? localPosCm, localPosCm, preview: true);
@@ -990,6 +1138,46 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
 
     if (tool == CourtEditorTool.text) {
       unawaited(_handleTextPlacement(end));
+      _startPos = null;
+      _currentPos = null;
+      _previewElement = null;
+      return;
+    }
+
+    if (tool == CourtEditorTool.sector) {
+      if (_sectorToolNeedsTargetSelection) {
+        _startPos = null;
+        _currentPos = null;
+        _previewElement = null;
+        return;
+      }
+
+      if (_selectedSectorCenterCm != null &&
+          _selectedSectorRadiusCm != null &&
+          _sectorDragStartAngle != null &&
+          _sectorDragEndAngle != null) {
+        _saveToHistory();
+        setState(() {
+          _elements.add(
+            CourtElement(
+              type: CourtElementType.sector,
+              position: _selectedSectorCenterCm!,
+              radius: _selectedSectorRadiusCm,
+              color: _currentColor,
+              strokeWidth: _elementStrokeWidth,
+              startAngle: _sectorDragStartAngle,
+              endAngle: _sectorDragEndAngle,
+            ),
+          );
+          _elementsRevision++;
+          _previewElement = null;
+          _sectorDragStartAngle = null;
+          _sectorDragPrevAngle = null;
+          _sectorDragSweepAngle = 0.0;
+          _sectorDragEndAngle = null;
+        });
+      }
+
       _startPos = null;
       _currentPos = null;
       _previewElement = null;
@@ -1158,11 +1346,11 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
         // Only delete if hitting outline, not interior
         return minD <= eraserRadiusCm;
       }
-      // For circles/zones: remove when the eraser circle overlaps the element area
+      // For circles/zones: remove only when eraser hits the outline
       final radius = e.radius ?? 0;
       if (radius > 0) {
         final dist = (e.position - pos).distance;
-        return dist <= radius + eraserRadiusCm;
+        return (dist - radius).abs() <= eraserRadiusCm;
       }
       // Fallback to point distance (e.g., net end with no radius)
       return (e.position - pos).distance <= eraserRadiusCm;
@@ -1246,6 +1434,15 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     return anchors;
   }
 
+  List<Offset> _circleBoundarySnapPoints(Offset center, double radius) {
+    final points = <Offset>[];
+    for (var i = 0; i < 8; i++) {
+      final angle = i * (math.pi / 4);
+      points.add(center + Offset(math.cos(angle) * radius, math.sin(angle) * radius));
+    }
+    return points;
+  }
+
   List<Offset> _snapPointsFromOtherElements(CourtElement dragged) {
     final points = <Offset>[];
 
@@ -1253,6 +1450,13 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       if (identical(e, dragged)) continue;
 
       points.add(e.position);
+
+      if (e.radius != null &&
+          (e.type == CourtElementType.innerCircle ||
+              e.type == CourtElementType.outerCircle ||
+              e.type == CourtElementType.customCircle)) {
+        points.addAll(_circleBoundarySnapPoints(e.position, e.radius!));
+      }
       if (e.endPosition != null) {
         final end = e.endPosition!;
         points
@@ -1270,6 +1474,63 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     }
 
     return points;
+  }
+
+  bool _trySelectSectorTarget(Offset cmPos, Size size) {
+    final pxPerCm = _settings.cmToLogical(1.0, size).abs();
+    final cmPerPx = pxPerCm == 0 ? 0.0 : (1.0 / pxPerCm);
+    final zoneOutlineMarginCm = 5.0 * cmPerPx;
+    final zoneOutlineToleranceCm = 50.0 + zoneOutlineMarginCm;
+
+    CourtElement? best;
+    double bestDist = zoneOutlineToleranceCm;
+
+    for (final element in _elements.reversed) {
+      if (element.radius == null) continue;
+      if (element.type != CourtElementType.innerCircle &&
+          element.type != CourtElementType.outerCircle &&
+          element.type != CourtElementType.customCircle) {
+        continue;
+      }
+
+      final distFromCenter = (cmPos - element.position).distance;
+      final distanceToOutline = (distFromCenter - element.radius!).abs();
+      if (distanceToOutline <= bestDist) {
+        bestDist = distanceToOutline;
+        best = element;
+      }
+    }
+
+    if (best == null) return false;
+
+    setState(() {
+      _selectedSectorTargetId = _sectorTargetIdForElement(best!);
+      _selectedSectorCenterCm = best!.position;
+      _selectedSectorRadiusCm = best!.radius;
+      _sectorTargetHighlightActive = true;
+      _sectorToolNeedsTargetSelection = false;
+      _sectorDragStartAngle = null;
+      _sectorDragPrevAngle = null;
+      _sectorDragSweepAngle = 0.0;
+      _sectorDragEndAngle = null;
+    });
+    return true;
+  }
+
+  String _sectorTargetIdForElement(CourtElement element) {
+    final pos = element.position;
+    final radius = element.radius ?? 0;
+    return '${element.type.name}_${pos.dx.toStringAsFixed(0)}_${pos.dy.toStringAsFixed(0)}_${radius.toStringAsFixed(0)}';
+  }
+
+  double _normalizeAngleDelta(double delta) {
+    while (delta <= -math.pi) {
+      delta += 2 * math.pi;
+    }
+    while (delta > math.pi) {
+      delta -= 2 * math.pi;
+    }
+    return delta;
   }
 
   CourtElement? _createElementFromTool(
@@ -1363,9 +1624,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       return distFromCenter <= outerBoundsRadius;
     }
 
-    // Check center point
     final dist = (element.position - point).distance;
-    if (dist < threshold) return true;
 
     // For shapes with end position (lines, rectangles)
     if (element.endPosition != null) {
@@ -1396,16 +1655,60 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       }
     }
 
+    if (element.type == CourtElementType.sector &&
+        element.radius != null &&
+        element.startAngle != null &&
+        element.endAngle != null) {
+      final radius = element.radius!;
+      if (dist > radius + threshold) return false;
+      if (dist <= radius - threshold) {
+        final vec = point - element.position;
+        final angle = math.atan2(vec.dy, vec.dx);
+        return _isAngleWithinSector(angle, element.startAngle!, element.endAngle!);
+      }
+      return true;
+    }
+
+    if (_isOuterBoundaryZone(element)) {
+      if (dist < threshold) return true;
+    }
+
     // For circles/zones, check if point is on outline (NOT anywhere within)
     final radius = element.radius ?? 0;
     if (radius > 0) {
-      final distFromCenter = (element.position - point).distance;
-      final distFromOutline = (distFromCenter - radius).abs();
+      final distFromOutline = (dist - radius).abs();
       // Only draggable by the border, not the center area
       return distFromOutline < threshold;
     }
 
     return false;
+  }
+
+  bool _isOuterBoundaryZone(CourtElement element) {
+    if (element.type != CourtElementType.outerCircle) return false;
+    if (element.radius == null) return false;
+    return (element.radius! - _settings.outerBoundsRadiusCm).abs() < 0.5;
+  }
+
+  double _normalizeAnglePositive(double angle) {
+    while (angle < 0) {
+      angle += 2 * math.pi;
+    }
+    while (angle >= 2 * math.pi) {
+      angle -= 2 * math.pi;
+    }
+    return angle;
+  }
+
+  bool _isAngleWithinSector(double angle, double startAngle, double endAngle) {
+    final sweep = endAngle - startAngle;
+    if (sweep >= 0) {
+      final delta = _normalizeAnglePositive(angle - startAngle);
+      return delta <= sweep;
+    }
+
+    final delta = _normalizeAnglePositive(startAngle - angle);
+    return delta <= -sweep;
   }
 
   void _clearAll() {
@@ -1451,48 +1754,34 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Select Tool Color'),
-        content: SizedBox(
+        content: Container(
           width: 280,
           height: 200,
+          color: AppTheme.lightGrey,
           child: GridView.count(
             crossAxisCount: 4,
-            children:
-                [
-                  Colors.white,
-                  Colors.red,
-                  Colors.blue,
-                  Colors.green,
-                  Colors.yellow,
-                  Colors.orange,
-                  Colors.purple,
-                  Colors.pink,
-                  Colors.cyan,
-                  Colors.teal,
-                  Colors.lime,
-                  Colors.indigo,
-                  Colors.brown,
-                ].map((color) {
-                  final isActive = _currentColor.toARGB32() == color.toARGB32();
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                      setState(() {
-                        _currentColor = color;
-                        if (_draggingElement != null) {
-                          _draggingElement!.color = color;
-                        }
-                      });
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: isActive ? AppTheme.darkGrey : Colors.white, width: isActive ? 3 : 1),
-                      ),
-                    ),
-                  );
-                }).toList(),
+            children: AppTheme.editorColors.map((color) {
+              final isActive = _currentColor.toARGB32() == color.toARGB32();
+              return GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _currentColor = color;
+                    if (_draggingElement != null) {
+                      _draggingElement!.color = color;
+                    }
+                  });
+                },
+                child: Container(
+                  margin: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: isActive ? Border.all(color: AppTheme.lightGrey, width: 2) : null,
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ),
       ),
@@ -1608,6 +1897,133 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
       _elementsRevision++;
     });
   }
+}
+
+class _SectorZoneOutlinePainter extends CustomPainter {
+  final Settings settings;
+  final Size boardSize;
+  final Animation<double> pulseAnimation;
+  final String? highlightedZone;
+  final List<CourtElement> elements;
+
+  _SectorZoneOutlinePainter({
+    required this.settings,
+    required this.boardSize,
+    required this.pulseAnimation,
+    required this.highlightedZone,
+    required this.elements,
+  }) : super(repaint: pulseAnimation);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final t = pulseAnimation.value;
+    final pulseRadiusBoost = 3 + (t * 6);
+    final pulseOpacity = 0.2 + (0.6 * (1 - (t - 0.5).abs() * 2));
+
+    for (final element in elements) {
+      if (element.radius == null) continue;
+      if (element.type != CourtElementType.innerCircle &&
+          element.type != CourtElementType.outerCircle &&
+          element.type != CourtElementType.customCircle) {
+        continue;
+      }
+
+      final targetId = _zoneIdForElement(element);
+      final isHighlighted = highlightedZone == targetId;
+      final zoneCenter = center + Offset(
+        settings.cmToLogical(element.position.dx, boardSize),
+        settings.cmToLogical(element.position.dy, boardSize),
+      );
+      final radiusPx = settings.cmToLogical(element.radius!, boardSize).abs();
+      final overlayWidthPx = settings.cmToLogical(10.0, boardSize).abs();
+      _drawZoneOverlay(canvas, zoneCenter, radiusPx, overlayWidthPx, isHighlighted, pulseRadiusBoost, pulseOpacity);
+    }
+  }
+
+  String _zoneIdForElement(CourtElement element) {
+    final pos = element.position;
+    final radius = element.radius ?? 0;
+    return '${element.type.name}_${pos.dx.toStringAsFixed(0)}_${pos.dy.toStringAsFixed(0)}_${radius.toStringAsFixed(0)}';
+  }
+
+  void _drawZoneOverlay(
+    Canvas canvas,
+    Offset center,
+    double radiusPx,
+    double overlayWidthPx,
+    bool isHighlighted,
+    double pulseRadiusBoost,
+    double pulseOpacity,
+  ) {
+    final overlayPaint = Paint()
+      ..color = const Color.fromARGB(80, 100, 150, 255)
+      ..strokeWidth = overlayWidthPx
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radiusPx, overlayPaint);
+
+    final pulsePaint = Paint()
+      ..color = const Color.fromARGB(200, 120, 190, 255).withValues(alpha: pulseOpacity)
+      ..strokeWidth = 3.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radiusPx + pulseRadiusBoost, pulsePaint);
+
+    if (isHighlighted) {
+      final accentPaint = Paint()
+        ..color = const Color.fromARGB(120, 150, 200, 255)
+        ..strokeWidth = overlayWidthPx
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+      canvas.drawCircle(center, radiusPx, accentPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SectorZoneOutlinePainter oldDelegate) =>
+      oldDelegate.highlightedZone != highlightedZone ||
+      oldDelegate.settings != settings ||
+      oldDelegate.boardSize != boardSize ||
+      oldDelegate.elements != elements;
+}
+
+class _SectorTargetHighlightPainter extends CustomPainter {
+  final Offset centerCm;
+  final double radiusCm;
+  final Size screenSize;
+  final Settings settings;
+
+  _SectorTargetHighlightPainter({
+    required this.centerCm,
+    required this.radiusCm,
+    required this.screenSize,
+    required this.settings,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final centerPx = Offset(size.width / 2, size.height / 2) + (centerCm * settings.cmToLogical(1, size));
+    final radiusPx = settings.cmToLogical(radiusCm, size).abs();
+
+    final fillPaint = Paint()
+      ..color = const Color.fromARGB(20, 100, 200, 255)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(centerPx, radiusPx, fillPaint);
+
+    final accentPaint = Paint()
+      ..color = const Color.fromARGB(60, 100, 200, 255)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawCircle(centerPx, radiusPx, accentPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SectorTargetHighlightPainter oldDelegate) =>
+      oldDelegate.centerCm != centerCm ||
+      oldDelegate.radiusCm != radiusCm ||
+      oldDelegate.settings != settings ||
+      oldDelegate.screenSize != screenSize;
 }
 
 class _NetIconPainter extends CustomPainter {

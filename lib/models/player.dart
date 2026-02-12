@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
+import '../config/app_theme.dart';
 
 part 'player.g.dart';
 
@@ -27,7 +28,7 @@ class Player extends HiveObject {
 
   Player({required this.position, this.rotation = 0, List<Offset>? pathPoints, Color? color, String? id, this.label})
     : pathPoints = pathPoints ?? [],
-      colorValue = (color ?? Colors.blue).toARGB32(),
+      colorValue = (color ?? AppTheme.playerColors[0]).toARGB32(),
       id = id ?? const Uuid().v4();
 
   Color get color => Color(colorValue);

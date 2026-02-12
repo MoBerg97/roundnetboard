@@ -28,13 +28,14 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       objectScaleMultiplier: fields[8] as double,
       annotationsAboveObjects: fields[10] == null ? false : fields[10] as bool,
       serveZoneFactor: fields[9] == null ? 1.3 : fields[9] as double,
+      courtBackgroundColorValue: fields[11] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Settings obj) {
     writer
-        ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.playbackSpeed)
       ..writeByte(1)
@@ -53,10 +54,12 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       ..write(obj.showPathControlPoints)
       ..writeByte(8)
       ..write(obj.objectScaleMultiplier)
-        ..writeByte(10)
-        ..write(obj.annotationsAboveObjects)
+      ..writeByte(10)
+      ..write(obj.annotationsAboveObjects)
       ..writeByte(9)
-      ..write(obj.serveZoneFactor);
+      ..write(obj.serveZoneFactor)
+      ..writeByte(11)
+      ..write(obj.courtBackgroundColorValue);
   }
 
   @override

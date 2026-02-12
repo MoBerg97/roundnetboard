@@ -43,7 +43,23 @@ class AppTheme {
   // Court colors for board rendering (colorful – reserved for board objects)
 
   /// Court surface green - more subtle, darker, less neon
-  static const Color courtGreen = Color.fromARGB(255, 136, 197, 166);
+  static const Color courtGreen = Color.fromARGB(255, 129, 179, 154);
+
+  /// Shared editor palette for annotations, objects, and court elements
+  static const List<Color> editorColors = [
+    Color(0xFFF4F1DE),
+    Color(0xFF99999D),
+    Color(0xFF3D405B),
+    Color(0xFF5F797B),
+    Color(0xFF81B29A),
+    Color(0xFF5D987B),
+    Color(0xFFE07A5F),
+    Color(0xFFF2CC8F),
+    Color(0xFFE59B24),
+    Color(0xFFCDDC39),
+    Color(0xFF3F51B5),
+    Color(0xFF795548),
+  ];
 
   /// Court line white
   static const Color courtLine = Color(0xFFFFFFFF);
@@ -53,14 +69,14 @@ class AppTheme {
 
   /// Player colors (customizable via settings)
   static const List<Color> playerColors = [
-    Color(0xFF1976D2), // Blue
-    Color(0xFFD32F2F), // Red
-    Color(0xFFFBC02D), // Yellow
-    Color(0xFF7B1FA2), // Purple
+    Color(0xFF3D405B), // Deep blue from editor palette
+    Color(0xFFE07A5F), // Warm red/orange from editor palette
+    Color(0xFFF2CC8F), // Soft yellow from editor palette
+    Color(0xFF3F51B5), // Indigo from editor palette
   ];
 
   /// Ball color
-  static const Color ballColor = Color(0xFFFBC02D); // Yellow
+  static const Color ballColor = Color(0xFFF2CC8F); // Soft yellow from editor palette
 
   // Timeline colors (UI grey + blue accents)
   static const Color timelineBackground = lightGrey;

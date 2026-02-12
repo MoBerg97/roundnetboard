@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
+import '../config/app_theme.dart';
+
 part 'settings.g.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -82,6 +84,17 @@ class Settings extends HiveObject {
   @HiveField(9, defaultValue: 1.3)
   double serveZoneFactor;
 
+  /// Court background color (stored as ARGB int)
+  /// Default: AppTheme.courtGreen
+  @HiveField(11)
+  int courtBackgroundColorValue;
+
+  /// Default ball sector (circle) radius in cm
+  /// Used when creating a new ball annotation with sector tool
+  /// Default: 1000cm
+  @HiveField(12, defaultValue: 1000.0)
+  double ballSectorRadiusCm;
+
   Settings({
     this.playbackSpeed = 1.0,
     this.outerCircleRadiusCm = 260.0,
@@ -94,7 +107,9 @@ class Settings extends HiveObject {
     this.objectScaleMultiplier = 1.5,
     this.annotationsAboveObjects = false,
     this.serveZoneFactor = 1.3,
-  });
+    this.ballSectorRadiusCm = 1000.0,
+    int? courtBackgroundColorValue,
+  }) : courtBackgroundColorValue = courtBackgroundColorValue ?? AppTheme.courtGreen.toARGB32();
 
   // Converts cm to logical units (pixels)
   // Adaptive fit: use 1.2× serve zone on narrow (mobile-like) widths for larger default zoom, 1.4× otherwise (Windows-friendly)
@@ -115,6 +130,7 @@ class Settings extends HiveObject {
   double get innerCircleRadiusPx => cmToLogical(innerCircleRadiusCm, _lastScreenSize);
   double get netCircleRadiusPx => cmToLogical(netCircleRadiusCm, _lastScreenSize);
   double get outerBoundsRadiusPx => cmToLogical(outerBoundsRadiusCm, _lastScreenSize);
+  Color get courtBackgroundColor => Color(courtBackgroundColorValue);
 
   // Store last used screen size for conversion
   static Size _lastScreenSize = const Size(0, 0);
@@ -133,6 +149,8 @@ class Settings extends HiveObject {
     objectScaleMultiplier: objectScaleMultiplier,
     annotationsAboveObjects: annotationsAboveObjects,
     serveZoneFactor: serveZoneFactor,
+    courtBackgroundColorValue: courtBackgroundColorValue,
+    ballSectorRadiusCm: ballSectorRadiusCm,
   );
 
   @override
@@ -150,7 +168,9 @@ class Settings extends HiveObject {
           showPathControlPoints == other.showPathControlPoints &&
           objectScaleMultiplier == other.objectScaleMultiplier &&
           annotationsAboveObjects == other.annotationsAboveObjects &&
-          serveZoneFactor == other.serveZoneFactor;
+          serveZoneFactor == other.serveZoneFactor &&
+          courtBackgroundColorValue == other.courtBackgroundColorValue &&
+          ballSectorRadiusCm == other.ballSectorRadiusCm;
 
   @override
   int get hashCode =>
@@ -164,7 +184,9 @@ class Settings extends HiveObject {
       showPathControlPoints.hashCode ^
       objectScaleMultiplier.hashCode ^
       annotationsAboveObjects.hashCode ^
-      serveZoneFactor.hashCode;
+      serveZoneFactor.hashCode ^
+      courtBackgroundColorValue.hashCode ^
+      ballSectorRadiusCm.hashCode;
 }
 
 extension SettingsMap on Settings {
@@ -180,6 +202,8 @@ extension SettingsMap on Settings {
     'objectScaleMultiplier': objectScaleMultiplier,
     'annotationsAboveObjects': annotationsAboveObjects,
     'serveZoneFactor': serveZoneFactor,
+    'courtBackgroundColorValue': courtBackgroundColorValue,
+    'ballSectorRadiusCm': ballSectorRadiusCm,
   };
 
   static Settings fromMap(Map<String, dynamic> m) => Settings(
@@ -194,5 +218,7 @@ extension SettingsMap on Settings {
     objectScaleMultiplier: (m['objectScaleMultiplier'] ?? 1.5).toDouble(),
     annotationsAboveObjects: (m['annotationsAboveObjects'] ?? false) as bool,
     serveZoneFactor: (m['serveZoneFactor'] ?? 1.3).toDouble(),
+    courtBackgroundColorValue: (m['courtBackgroundColorValue'] ?? AppTheme.courtGreen.toARGB32()) as int,
+    ballSectorRadiusCm: (m['ballSectorRadiusCm'] ?? 1000.0).toDouble(),
   );
 }
