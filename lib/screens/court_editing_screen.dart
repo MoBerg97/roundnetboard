@@ -166,7 +166,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
           // Court Display
           Expanded(
             child: Container(
-              color: AppTheme.darkGrey,
+              color: AppTheme.courtBackground,
               padding: const EdgeInsets.all(12),
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -279,34 +279,33 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
                   _buildColorPickerButton(),
                   const SizedBox(width: 8),
                   // Undo button
-                  IconButton(
-                    icon: const Icon(Icons.undo),
-                    color: _undoStack.isEmpty ? Colors.grey : Colors.white,
+                  _buildToolbarActionButton(
+                    icon: Icons.undo,
                     tooltip: 'Undo',
                     onPressed: _undoStack.isEmpty ? null : _undo,
                   ),
                   const SizedBox(width: 4),
                   // Redo button
-                  IconButton(
-                    icon: const Icon(Icons.redo),
-                    color: _redoStack.isEmpty ? Colors.grey : Colors.white,
+                  _buildToolbarActionButton(
+                    icon: Icons.redo,
                     tooltip: 'Redo',
                     onPressed: _redoStack.isEmpty ? null : _redo,
                   ),
                   const SizedBox(width: 4),
                   // Duplicate selected
-                  IconButton(
-                    icon: const Icon(Icons.content_copy),
-                    color: _selectedElement == null ? Colors.grey : Colors.white,
+                  _buildToolbarActionButton(
+                    icon: Icons.content_copy,
                     tooltip: 'Duplicate selected element',
                     onPressed: _selectedElement == null ? null : _duplicateSelected,
                   ),
                   const SizedBox(width: 8),
                   // Clear all button
-                  IconButton(
-                    icon: const Icon(Icons.delete_sweep, color: Colors.red),
+                  _buildToolbarActionButton(
+                    icon: Icons.delete_sweep,
                     tooltip: 'Clear All',
                     onPressed: _clearAll,
+                    backgroundColor: AppTheme.errorRed,
+                    preferredIconColor: Colors.white,
                   ),
                 ],
               ),
@@ -323,7 +322,10 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     final iconColor = _contrastIconColor(backgroundColor, Colors.white);
     final iconWidget = icon is IconData
         ? Icon(icon, color: iconColor)
-        : IconTheme(data: IconThemeData(color: iconColor), child: icon as Widget);
+        : IconTheme(
+            data: IconThemeData(color: iconColor),
+            child: icon as Widget,
+          );
 
     return Tooltip(
       message: label,
@@ -332,6 +334,30 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
         backgroundColor: backgroundColor,
         onPressed: () => setState(() => _currentTool = tool),
         child: iconWidget,
+      ),
+    );
+  }
+
+  Widget _buildToolbarActionButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback? onPressed,
+    Color? backgroundColor,
+    Color? preferredIconColor,
+  }) {
+    final bg = backgroundColor ?? AppTheme.mediumGrey;
+    final iconColor = _contrastIconColor(bg, preferredIconColor ?? Colors.white);
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox(
+        width: 40,
+        height: 40,
+        child: FloatingActionButton.small(
+          heroTag: null,
+          backgroundColor: bg,
+          onPressed: onPressed,
+          child: Icon(icon, color: iconColor),
+        ),
       ),
     );
   }
@@ -1011,12 +1037,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     final size = result!.size;
     _textFontSize = size;
 
-    final element = _createElementFromTool(
-      CourtEditorTool.text,
-      positionCm,
-      positionCm,
-      textContent: textValue,
-    )
+    final element = _createElementFromTool(CourtEditorTool.text, positionCm, positionCm, textContent: textValue)
       ?..fontSize = size;
 
     if (element == null) return;
@@ -1391,8 +1412,11 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Clear All Elements?'),
-        content: const Text('This will remove all court elements.'),
+        title: const Text('Clear All Elements?', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'This will remove all court elements.',
+          style: TextStyle(color: Colors.white), // Change text color here
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           FilledButton(

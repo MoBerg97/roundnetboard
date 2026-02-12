@@ -28,6 +28,9 @@ class AppTheme {
   /// Light grey for backgrounds and dividers
   static const Color lightGrey = Color(0xFFf4f1de);
 
+  /// Court background (very light grey-green)
+  static const Color courtBackground = Color(0xFFE9F0E6);
+
   /// Error red for destructive actions
   static const Color errorRed = Color(0xFFD32F2F);
 
@@ -40,7 +43,7 @@ class AppTheme {
   // Court colors for board rendering (colorful – reserved for board objects)
 
   /// Court surface green - more subtle, darker, less neon
-  static const Color courtGreen = Color(0xFF81b29a);
+  static const Color courtGreen = Color.fromARGB(255, 136, 197, 166);
 
   /// Court line white
   static const Color courtLine = Color(0xFFFFFFFF);
@@ -143,11 +146,11 @@ class AppTheme {
       ),
 
       // Dialog styling
-        dialogTheme: const DialogThemeData(
-          backgroundColor: mediumGrey,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-          elevation: 8,
-        ),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: mediumGrey,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+        elevation: 8,
+      ),
 
       // List tile styling
       listTileTheme: const ListTileThemeData(

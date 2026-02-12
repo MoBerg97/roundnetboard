@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/scheduler.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -212,9 +213,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   static const double _objectsMenuHeight = 56.0;
   static const double _annotationMenuHeight = 108.0;
   static const double _timelineHeight = 140.0;
-  static const double _menuButtonWidth = 88.0;
-  static const double _menuButtonHeight = 44.0;
-  static const double _annotationToolButtonWidth = 56.0;
+  static const double _menuButtonSize = 40.0;
 
   bool get _objectsMenuOpen => _activeMenu == BoardMenu.objects;
   bool get _annotationsMenuOpen => _activeMenu == BoardMenu.annotations;
@@ -1377,73 +1376,46 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     );
   }
 
-  Widget _buildObjectsMenuButton({
+  Color _contrastIconColor(Color background, Color preferred) {
+    final bgLum = background.computeLuminance();
+    final prefLum = preferred.computeLuminance();
+    if (bgLum < 0.5 && prefLum < 0.5) return Colors.white;
+    if (bgLum >= 0.5 && prefLum >= 0.5) return Colors.black;
+    return preferred;
+  }
+
+  Widget _buildMenuButton({
     required Widget child,
-    required VoidCallback? onTap,
-    required Color borderColor,
+    required String tooltip,
+    required VoidCallback? onPressed,
     Color? backgroundColor,
+    Color? iconColorOverride,
     bool enabled = true,
-    double? width,
-    double? height,
-    Key? containerKey,
+    VoidCallback? onDoubleTap,
+    Key? buttonKey,
   }) {
-    return Opacity(
-      opacity: enabled ? 1.0 : 0.4,
-      child: GestureDetector(
-        onTap: enabled ? onTap : null,
-        child: Container(
-          key: containerKey,
-          width: width ?? _menuButtonWidth,
-          height: height ?? _menuButtonHeight,
-          margin: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: backgroundColor ?? Colors.transparent,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: borderColor, width: 2),
-          ),
-          child: Center(child: child),
+    final bg = backgroundColor ?? AppTheme.mediumGrey;
+    final iconColor = iconColorOverride ?? _contrastIconColor(bg, Colors.white);
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: SizedBox(
+        width: _menuButtonSize,
+        height: _menuButtonSize,
+        child: FloatingActionButton.small(
+          key: buttonKey,
+          heroTag: null,
+          backgroundColor: bg,
+          onPressed: enabled ? onPressed : null,
+          child: IconTheme(data: IconThemeData(color: iconColor), child: child),
         ),
       ),
     );
-  }
 
-  Widget _buildAnnotationPillButton({
-    required Widget child,
-    required String tooltip,
-    required VoidCallback? onTap,
-    Color? borderColor,
-    Color? backgroundColor,
-    bool enabled = true,
-    VoidCallback? onDoubleTap,
-    Widget? cornerBadge,
-    Key? buttonKey,
-  }) {
-    final content = Stack(
-      alignment: Alignment.topRight,
-      children: [
-        _buildObjectsMenuButton(
-          child: child,
-          onTap: onTap,
-          borderColor: borderColor ?? AppTheme.mediumGrey,
-          backgroundColor: backgroundColor,
-          enabled: enabled,
-          width: _annotationToolButtonWidth,
-          height: _menuButtonHeight,
-          containerKey: buttonKey,
-        ),
-        if (cornerBadge != null) Positioned(right: 10, top: 6, child: cornerBadge),
-      ],
-    );
+    final wrapped = onDoubleTap == null
+        ? content
+        : GestureDetector(onDoubleTap: onDoubleTap, child: content);
 
-    return Tooltip(
-      message: tooltip,
-      child: onDoubleTap == null
-          ? content
-          : GestureDetector(
-              onDoubleTap: onDoubleTap,
-              child: content,
-            ),
-    );
+    return Tooltip(message: tooltip, child: wrapped);
   }
 
   void _deactivateAnnotationTools() {
@@ -2534,7 +2506,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         points.add((ann.points[0] + ann.points[1]) / 2);
       }
 
-      // For circles, could add points on perimeter if needed
+      if ((ann.type == AnnotationType.circle || ann.type == AnnotationType.sector) && ann.points.length >= 2) {
+        final center = ann.points[0];
+        final radiusPoint = ann.points[1];
+        final radius = (radiusPoint - center).distance;
+        if (radius > 0) {
+          for (int i = 0; i < 8; i++) {
+            final angle = (-math.pi / 2) + (math.pi / 4) * i;
+            points.add(center + Offset(math.cos(angle) * radius, math.sin(angle) * radius));
+          }
+        }
+      }
     }
 
     return points;
@@ -2542,20 +2524,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   List<Offset> _snapPointsFromCourtAndObjects() {
     final points = <Offset>[Offset.zero];
-    final radii = [
-      _settings.netCircleRadiusCm,
-      _settings.innerCircleRadiusCm,
-      _settings.outerCircleRadiusCm,
-      _settings.outerBoundsRadiusCm,
-    ];
-
-    for (final radius in radii) {
-      if (radius <= 0) continue;
-      for (int i = 0; i < 8; i++) {
-        final angle = (-math.pi / 2) + (math.pi / 4) * i;
-        points.add(Offset(math.cos(angle) * radius, math.sin(angle) * radius));
-      }
-    }
 
     for (final player in currentFrame.players) {
       points.add(player.position);
@@ -3627,6 +3595,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             setState(() => _lastTappedPlayerColor = color);
             final togglingSame = _showPlayerMenu && _activePlayerId == playerId;
             setState(() {
+              if (_activeMenu == BoardMenu.none) {
+                _activeMenu = BoardMenu.objects;
+              }
               _showPlayerMenu = !togglingSame;
               _activePlayerId = togglingSame ? null : playerId;
               _showModifierMenu = false;
@@ -3772,6 +3743,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               return;
             }
             if (!_isPlaying && !_endedAtLastFrame) {
+              if (_activeMenu == BoardMenu.none) {
+                setState(() {
+                  _activeMenu = BoardMenu.objects;
+                });
+              }
               // If modifier menu is open, close it; otherwise open it
               if (_showModifierMenu) {
                 setState(() {
@@ -4117,7 +4093,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                       absorbing: inPlaybackView && !_isPaused, // Allow taps during paused playback for path tracking
                       child: Container(
                         key: _boardKey,
-                        color: const Color.fromARGB(255, 55, 49, 120),
+                        color: AppTheme.courtBackground,
                         child: Stack(
                           children: [
                         // ┌─────────────────────────────────────────────────────┐
@@ -4227,7 +4203,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                         Positioned.fill(
                           child: GestureDetector(
                             onTapUp: (details) {
-                              if (!_objectsMenuOpen && !_annotationsMenuOpen) return;
                               // Handle path tracking toggle during paused playback
                               if (_isPlaying && _isPaused) {
                                 _togglePathTracking(details.localPosition, screenSize);
@@ -4267,7 +4242,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             },
                             onPanStart: (details) {
                               if (_isPlaying || _endedAtLastFrame) return;
-                              if (!_objectsMenuOpen && !_annotationsMenuOpen) return;
                               if (_annotationsMenuOpen) {
                                 _handleAnnotationDragStart(details, screenSize);
                               } else {
@@ -4276,7 +4250,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             },
                             onPanUpdate: (details) {
                               if (_isPlaying || _endedAtLastFrame) return;
-                              if (!_objectsMenuOpen && !_annotationsMenuOpen) return;
                               if (_annotationsMenuOpen) {
                                 _handleAnnotationDragUpdate(details, screenSize);
                               } else if (_activePathDragId != null) {
@@ -4285,7 +4258,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             },
                             onPanEnd: (details) {
                               if (_isPlaying || _endedAtLastFrame) return;
-                              if (!_objectsMenuOpen && !_annotationsMenuOpen) return;
                               if (_annotationsMenuOpen) {
                                 _handleAnnotationDragEnd(details, screenSize);
                               } else if (_activePathDragId != null) {
@@ -4930,64 +4902,26 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               if (widget.project.projectType == ProjectType.training) ...[
-                                _buildObjectsMenuButton(
-                                  onTap: _startAddPlayer,
+                                _buildMenuButton(
+                                  tooltip: 'Add Player',
+                                  onPressed: _startAddPlayer,
                                   enabled: canEditObjects,
-                                  borderColor: isAddPlayerActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
-                                  backgroundColor: isAddPlayerActive
-                                      ? AppTheme.primaryBlue.withValues(alpha: 0.15)
-                                      : Colors.transparent,
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.person_add,
-                                        size: 20,
-                                        color: isAddPlayerActive ? AppTheme.primaryBlue : AppTheme.darkGrey,
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Add Player',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: isAddPlayerActive ? AppTheme.primaryBlue : AppTheme.darkGrey,
-                                          fontWeight: isAddPlayerActive ? FontWeight.bold : FontWeight.normal,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                  backgroundColor:
+                                      isAddPlayerActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+                                  child: const Icon(Icons.person_add, size: 20),
                                 ),
-                                _buildObjectsMenuButton(
-                                  onTap: _startAddBall,
+                                _buildMenuButton(
+                                  tooltip: 'Add Ball',
+                                  onPressed: _startAddBall,
                                   enabled: canEditObjects,
-                                  borderColor: isAddBallActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
-                                  backgroundColor: isAddBallActive
-                                      ? AppTheme.primaryBlue.withValues(alpha: 0.15)
-                                      : Colors.transparent,
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.control_point_duplicate,
-                                        size: 20,
-                                        color: isAddBallActive ? AppTheme.primaryBlue : AppTheme.darkGrey,
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Add Ball',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: isAddBallActive ? AppTheme.primaryBlue : AppTheme.darkGrey,
-                                          fontWeight: isAddBallActive ? FontWeight.bold : FontWeight.normal,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                  backgroundColor: isAddBallActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+                                  child: const Icon(Icons.control_point_duplicate, size: 20),
                                 ),
                               ],
                               if (_showModifierMenu)
-                                _buildObjectsMenuButton(
-                                  onTap: () {
+                                _buildMenuButton(
+                                  tooltip: 'Set',
+                                  onPressed: () {
                                     setState(() {
                                       if (widget.project.projectType == ProjectType.training && _activeBallId != null) {
                                         final ball = currentFrame.getBallById(_activeBallId!);
@@ -5011,58 +4945,27 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     });
                                     _saveProject();
                                   },
-                                  borderColor:
+                                  backgroundColor:
                                       (widget.project.projectType == ProjectType.training && _activeBallId != null
                                           ? (currentFrame.getBallById(_activeBallId!)?.isSet ?? false)
                                           : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.isSet ?? false)))
                                       ? AppTheme.accentOrange
                                       : AppTheme.mediumGrey,
-                                  backgroundColor:
-                                      (widget.project.projectType == ProjectType.training && _activeBallId != null
+                                  child: CustomPaint(
+                                    size: const Size(24, 24),
+                                    painter: _SetIconPainter(
+                                      active:
+                                          widget.project.projectType == ProjectType.training && _activeBallId != null
                                           ? (currentFrame.getBallById(_activeBallId!)?.isSet ?? false)
-                                          : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.isSet ?? false)))
-                                      ? AppTheme.accentOrange.withValues(alpha: 0.15)
-                                      : Colors.transparent,
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      CustomPaint(
-                                        size: const Size(24, 24),
-                                        painter: _SetIconPainter(
-                                          active:
-                                              widget.project.projectType == ProjectType.training && _activeBallId != null
-                                              ? (currentFrame.getBallById(_activeBallId!)?.isSet ?? false)
-                                              : (currentFrame.balls.isNotEmpty &&
-                                                    (currentFrame.balls.first.isSet ?? false)),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Set',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color:
-                                              (widget.project.projectType == ProjectType.training && _activeBallId != null
-                                                  ? (currentFrame.getBallById(_activeBallId!)?.isSet ?? false)
-                                                  : (currentFrame.balls.isNotEmpty &&
-                                                        (currentFrame.balls.first.isSet ?? false)))
-                                              ? AppTheme.accentOrange
-                                              : AppTheme.mediumGrey,
-                                          fontWeight:
-                                              (widget.project.projectType == ProjectType.training && _activeBallId != null
-                                                  ? (currentFrame.getBallById(_activeBallId!)?.isSet ?? false)
-                                                  : (currentFrame.balls.isNotEmpty &&
-                                                        (currentFrame.balls.first.isSet ?? false)))
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                        ),
-                                      ),
-                                    ],
+                                          : (currentFrame.balls.isNotEmpty &&
+                                                (currentFrame.balls.first.isSet ?? false)),
+                                    ),
                                   ),
                                 ),
                               if (_showModifierMenu)
-                                _buildObjectsMenuButton(
-                                  onTap: () {
+                                _buildMenuButton(
+                                  tooltip: 'Hit',
+                                  onPressed: () {
                                     final prev = _getPreviousFrame();
                                     if (prev != null) {
                                       const tStart = 0.0;
@@ -5090,67 +4993,32 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                       _saveProject();
                                     }
                                   },
-                                  borderColor:
+                                  backgroundColor:
                                       (widget.project.projectType == ProjectType.training && _activeBallId != null
                                           ? (currentFrame.getBallById(_activeBallId!)?.hitT != null)
                                           : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.hitT != null)))
                                       ? AppTheme.warningAmber
                                       : AppTheme.mediumGrey,
-                                  backgroundColor:
-                                      (widget.project.projectType == ProjectType.training && _activeBallId != null
+                                  child: CustomPaint(
+                                    size: const Size(24, 24),
+                                    painter: _HitIconPainter(
+                                      active:
+                                          widget.project.projectType == ProjectType.training && _activeBallId != null
                                           ? (currentFrame.getBallById(_activeBallId!)?.hitT != null)
-                                          : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.hitT != null)))
-                                      ? AppTheme.warningAmber.withValues(alpha: 0.15)
-                                      : Colors.transparent,
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      CustomPaint(
-                                        size: const Size(24, 24),
-                                        painter: _HitIconPainter(
-                                          active:
-                                              widget.project.projectType == ProjectType.training && _activeBallId != null
-                                              ? (currentFrame.getBallById(_activeBallId!)?.hitT != null)
-                                              : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.hitT != null)),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Hit',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color:
-                                              (widget.project.projectType == ProjectType.training && _activeBallId != null
-                                                  ? (currentFrame.getBallById(_activeBallId!)?.hitT != null)
-                                                  : (currentFrame.balls.isNotEmpty &&
-                                                        (currentFrame.balls.first.hitT != null)))
-                                              ? AppTheme.warningAmber
-                                              : AppTheme.mediumGrey,
-                                          fontWeight:
-                                              (widget.project.projectType == ProjectType.training && _activeBallId != null
-                                                  ? (currentFrame.getBallById(_activeBallId!)?.hitT != null)
-                                                  : (currentFrame.balls.isNotEmpty &&
-                                                        (currentFrame.balls.first.hitT != null)))
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                        ),
-                                      ),
-                                    ],
+                                          : (currentFrame.balls.isNotEmpty && (currentFrame.balls.first.hitT != null)),
+                                    ),
                                   ),
                                 ),
                               if (_showModifierMenu &&
                                   ((widget.project.projectType == ProjectType.training && _activeBallId != null) ||
                                       (widget.project.projectType == ProjectType.play && currentFrame.balls.isNotEmpty)))
-                                _buildObjectsMenuButton(
-                                  onTap: _showBallColorPicker,
-                                  borderColor: (widget.project.projectType == ProjectType.training && _activeBallId != null)
-                                      ? (currentFrame.getBallById(_activeBallId!)?.color ?? AppTheme.lightGrey)
-                                      : (currentFrame.balls.isNotEmpty
-                                            ? (currentFrame.balls.first.color ?? AppTheme.lightGrey)
-                                            : AppTheme.lightGrey),
+                                _buildMenuButton(
+                                  tooltip: 'Ball Color',
+                                  onPressed: _showBallColorPicker,
+                                  backgroundColor: AppTheme.mediumGrey,
                                   child: Icon(
                                     Icons.palette,
-                                    size: 24,
+                                    size: 22,
                                     color:
                                         (widget.project.projectType == ProjectType.training && _activeBallId != null)
                                         ? (currentFrame.getBallById(_activeBallId!)?.color ?? AppTheme.lightGrey)
@@ -5163,10 +5031,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   widget.project.projectType == ProjectType.training &&
                                   currentFrame.balls.length > 1 &&
                                   _activeBallId != null)
-                                _buildObjectsMenuButton(
-                                  onTap: () => _undoableDeleteBallFromAllFrames(_activeBallId!),
-                                  borderColor: AppTheme.errorRed,
-                                  child: Icon(Icons.delete, size: 24, color: AppTheme.errorRed),
+                                _buildMenuButton(
+                                  tooltip: 'Delete Ball',
+                                  onPressed: () => _undoableDeleteBallFromAllFrames(_activeBallId!),
+                                  backgroundColor: AppTheme.errorRed,
+                                  child: const Icon(Icons.delete, size: 22),
                                 ),
                               if (_showPlayerMenu && _activePlayerId != null)
                                 Builder(
@@ -5174,44 +5043,33 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     final activePlayer = currentFrame.getPlayerById(_activePlayerId!);
                                     return Row(
                                       children: [
-                                        _buildObjectsMenuButton(
-                                          onTap: _showPlayerColorPicker,
-                                          borderColor: activePlayer?.color ?? AppTheme.primaryBlue,
+                                        _buildMenuButton(
+                                          tooltip: 'Player Color',
+                                          onPressed: _showPlayerColorPicker,
+                                          backgroundColor: AppTheme.mediumGrey,
                                           child: Icon(
                                             Icons.palette,
-                                            size: 24,
+                                            size: 22,
                                             color: activePlayer?.color ?? AppTheme.primaryBlue,
                                           ),
                                         ),
-                                        _buildObjectsMenuButton(
-                                          onTap: _showPlayerLabelDialog,
-                                          borderColor: AppTheme.mediumGrey,
-                                          child: Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Icon(Icons.tag, size: 20, color: AppTheme.mediumGrey),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                'Label',
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  color: AppTheme.mediumGrey,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                                        _buildMenuButton(
+                                          tooltip: 'Player Label',
+                                          onPressed: _showPlayerLabelDialog,
+                                          backgroundColor: AppTheme.mediumGrey,
+                                          child: const Icon(Icons.tag, size: 22),
                                         ),
                                         if (widget.project.projectType == ProjectType.training &&
                                             currentFrame.players.length > 1)
-                                          _buildObjectsMenuButton(
-                                            onTap: () {
+                                          _buildMenuButton(
+                                            tooltip: 'Delete Player',
+                                            onPressed: () {
                                               if (_activePlayerId != null) {
                                                 _undoableDeletePlayerFromAllFrames(_activePlayerId!);
                                               }
                                             },
-                                            borderColor: AppTheme.errorRed,
-                                            child: Icon(Icons.delete, size: 24, color: AppTheme.errorRed),
+                                            backgroundColor: AppTheme.errorRed,
+                                            child: const Icon(Icons.delete, size: 22),
                                           ),
                                       ],
                                     );
@@ -5241,31 +5099,25 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
-                              _buildAnnotationPillButton(
+                              _buildMenuButton(
                                 tooltip: 'Line Tool',
-                                onTap: () => setState(() {
+                                onPressed: () => setState(() {
                                   _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.line
                                       ? AnnotationTool.none
                                       : AnnotationTool.line;
                                   _eraserMode = false;
                                 }),
-                                borderColor: _activeAnnotationTool == AnnotationTool.line
+                                backgroundColor: _activeAnnotationTool == AnnotationTool.line
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
-                                backgroundColor: _activeAnnotationTool == AnnotationTool.line
-                                    ? AppTheme.primaryBlue.withValues(alpha: 0.15)
-                                    : Colors.transparent,
                                 child: Icon(
                                   Symbols.diagonal_line,
                                   size: 20,
-                                  color: _activeAnnotationTool == AnnotationTool.line
-                                      ? AppTheme.primaryBlue
-                                      : AppTheme.darkGrey,
                                 ),
                               ),
-                              _buildAnnotationPillButton(
+                              _buildMenuButton(
                                 tooltip: 'Circle Tool (double-tap to set fill)',
-                                onTap: () {
+                                onPressed: () {
                                   setState(() {
                                     if (_activeAnnotationTool != AnnotationTool.circle) {
                                       _activeAnnotationTool = AnnotationTool.circle;
@@ -5275,34 +5127,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 },
                                 onDoubleTap: () => _toggleCircleFillMenu(forceOpen: true),
                                 buttonKey: _circleFillButtonKey,
-                                borderColor: _activeAnnotationTool == AnnotationTool.circle
+                                backgroundColor: _activeAnnotationTool == AnnotationTool.circle
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
-                                backgroundColor: _activeAnnotationTool == AnnotationTool.circle
-                                    ? AppTheme.primaryBlue.withValues(alpha: 0.15)
-                                    : Colors.transparent,
-                                cornerBadge: _circleFilled
-                                    ? Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: BoxDecoration(
-                                          color: _annotationColor,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(color: Colors.white, width: 1),
-                                        ),
-                                      )
-                                    : null,
                                 child: Icon(
                                   _circleFilled ? Icons.circle : Icons.circle_outlined,
                                   size: 20,
-                                  color: _activeAnnotationTool == AnnotationTool.circle
-                                      ? AppTheme.primaryBlue
-                                      : AppTheme.darkGrey,
                                 ),
                               ),
-                              _buildAnnotationPillButton(
+                              _buildMenuButton(
                                 tooltip: 'Rectangle Tool (double-tap to set fill)',
-                                onTap: () {
+                                onPressed: () {
                                   setState(() {
                                     if (_activeAnnotationTool != AnnotationTool.rectangle) {
                                       _activeAnnotationTool = AnnotationTool.rectangle;
@@ -5312,34 +5147,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 },
                                 onDoubleTap: () => _toggleRectangleFillMenu(forceOpen: true),
                                 buttonKey: _rectangleFillButtonKey,
-                                borderColor: _activeAnnotationTool == AnnotationTool.rectangle
+                                backgroundColor: _activeAnnotationTool == AnnotationTool.rectangle
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
-                                backgroundColor: _activeAnnotationTool == AnnotationTool.rectangle
-                                    ? AppTheme.primaryBlue.withValues(alpha: 0.15)
-                                    : Colors.transparent,
-                                cornerBadge: _rectangleFilled
-                                    ? Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: BoxDecoration(
-                                          color: _annotationColor,
-                                          borderRadius: BorderRadius.circular(3),
-                                          border: Border.all(color: Colors.white, width: 1),
-                                        ),
-                                      )
-                                    : null,
                                 child: Icon(
                                   _rectangleFilled ? Icons.stop : Icons.crop_square,
                                   size: 20,
-                                  color: _activeAnnotationTool == AnnotationTool.rectangle
-                                      ? AppTheme.primaryBlue
-                                      : AppTheme.darkGrey,
                                 ),
                               ),
-                              _buildAnnotationPillButton(
+                              _buildMenuButton(
                                 tooltip: 'Text Tool (double-tap to set size)',
-                                onTap: () {
+                                onPressed: () {
                                   setState(() {
                                     _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.text
                                         ? AnnotationTool.none
@@ -5349,35 +5167,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 },
                                 onDoubleTap: () => _toggleAnnotationTextSizeMenu(forceOpen: true),
                                 buttonKey: _annotationTextButtonKey,
-                                borderColor: _activeAnnotationTool == AnnotationTool.text
+                                backgroundColor: _activeAnnotationTool == AnnotationTool.text
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
-                                backgroundColor: _activeAnnotationTool == AnnotationTool.text
-                                    ? AppTheme.primaryBlue.withValues(alpha: 0.15)
-                                    : Colors.transparent,
-                                cornerBadge: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.darkGrey,
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(color: Colors.white, width: 0.5),
-                                  ),
-                                  child: Text(
-                                    _annotationTextSize.toStringAsFixed(0),
-                                    style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.w600),
-                                  ),
-                                ),
                                 child: Icon(
                                   Icons.text_fields,
                                   size: 20,
-                                  color: _activeAnnotationTool == AnnotationTool.text
-                                      ? AppTheme.primaryBlue
-                                      : AppTheme.darkGrey,
                                 ),
                               ),
-                              _buildAnnotationPillButton(
+                              _buildMenuButton(
                                 tooltip: 'Circle Sector Tool (tap in a court zone)',
-                                onTap: () => setState(() {
+                                onPressed: () => setState(() {
                                   _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.sector
                                       ? AnnotationTool.none
                                       : AnnotationTool.sector;
@@ -5398,18 +5198,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   }
                                   _eraserMode = false;
                                 }),
-                                borderColor: _activeAnnotationTool == AnnotationTool.sector
+                                backgroundColor: _activeAnnotationTool == AnnotationTool.sector
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
-                                backgroundColor: _activeAnnotationTool == AnnotationTool.sector
-                                    ? AppTheme.primaryBlue.withValues(alpha: 0.15)
-                                    : Colors.transparent,
                                 child: Icon(
                                   Symbols.pie_chart,
                                   size: 20,
-                                  color: _activeAnnotationTool == AnnotationTool.sector
-                                      ? AppTheme.primaryBlue
-                                      : AppTheme.darkGrey,
                                 ),
                               ),
                             ],
@@ -5420,42 +5214,35 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
-                              _buildAnnotationPillButton(
+                              _buildMenuButton(
                                 tooltip: 'Move Tool',
-                                onTap: () => setState(() {
+                                onPressed: () => setState(() {
                                   _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.move
                                       ? AnnotationTool.none
                                       : AnnotationTool.move;
                                   _eraserMode = false;
                                 }),
-                                borderColor: _activeAnnotationTool == AnnotationTool.move
+                                backgroundColor: _activeAnnotationTool == AnnotationTool.move
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
-                                backgroundColor: _activeAnnotationTool == AnnotationTool.move
-                                    ? AppTheme.primaryBlue.withValues(alpha: 0.15)
-                                    : Colors.transparent,
                                 child: Icon(
                                   Icons.pan_tool_alt,
                                   size: 20,
-                                  color: _activeAnnotationTool == AnnotationTool.move
-                                      ? AppTheme.primaryBlue
-                                      : AppTheme.darkGrey,
                                 ),
                               ),
-                              _buildAnnotationPillButton(
+                              _buildMenuButton(
                                 tooltip: 'Duplicate last annotation',
-                                onTap: currentFrame.annotations.isNotEmpty ? _duplicateLastAnnotation : null,
+                                onPressed: currentFrame.annotations.isNotEmpty ? _duplicateLastAnnotation : null,
                                 enabled: currentFrame.annotations.isNotEmpty,
-                                borderColor: AppTheme.mediumGrey,
+                                backgroundColor: AppTheme.mediumGrey,
                                 child: Icon(
                                   Icons.content_copy,
                                   size: 20,
-                                  color: currentFrame.annotations.isNotEmpty ? AppTheme.darkGrey : AppTheme.lightGrey,
                                 ),
                               ),
-                              _buildAnnotationPillButton(
+                              _buildMenuButton(
                                 tooltip: 'Eraser (double-tap for size)',
-                                onTap: () {
+                                onPressed: () {
                                   setState(() {
                                     if (!_eraserMode) {
                                       _eraserMode = true;
@@ -5470,47 +5257,51 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 },
                                 onDoubleTap: () => _toggleAnnotationEraserMenu(forceOpen: true),
                                 buttonKey: _annotationEraserButtonKey,
-                                borderColor: _eraserMode ? AppTheme.errorRed : AppTheme.mediumGrey,
-                                backgroundColor: _eraserMode
-                                    ? AppTheme.errorRed.withValues(alpha: 0.15)
-                                    : Colors.transparent,
+                                backgroundColor: _eraserMode ? AppTheme.errorRed : AppTheme.mediumGrey,
                                 child: Icon(
                                   Symbols.ink_eraser,
                                   size: 20,
-                                  color: _eraserMode ? AppTheme.errorRed : AppTheme.darkGrey,
                                 ),
                               ),
-                              _buildAnnotationPillButton(
+                              _buildMenuButton(
                                 tooltip: 'Delete All Annotations',
-                                onTap: _clearCurrentFrameAnnotations,
-                                borderColor: AppTheme.errorRed,
-                                child: Icon(Symbols.delete, size: 20, color: AppTheme.errorRed),
+                                onPressed: _clearCurrentFrameAnnotations,
+                                backgroundColor: AppTheme.errorRed,
+                                child: const Icon(Symbols.delete, size: 20),
                               ),
-                              _buildAnnotationPillButton(
-                                tooltip: _annotationSnappingEnabled ? 'Snapping On' : 'Snapping Off',
-                                onTap: () => setState(() => _annotationSnappingEnabled = !_annotationSnappingEnabled),
-                                borderColor: _annotationSnappingEnabled ? AppTheme.primaryBlue : AppTheme.mediumGrey,
-                                backgroundColor: _annotationSnappingEnabled
-                                    ? AppTheme.primaryBlue.withValues(alpha: 0.15)
-                                    : Colors.transparent,
-                                child: Icon(
-                                  Icons.grid_4x4,
-                                  size: 20,
-                                  color: _annotationSnappingEnabled ? AppTheme.primaryBlue : AppTheme.darkGrey,
-                                ),
+                              Builder(
+                                builder: (context) {
+                                  final snapBg = _annotationSnappingEnabled
+                                      ? AppTheme.primaryBlue
+                                      : AppTheme.mediumGrey;
+                                  final snapIconColor = _contrastIconColor(snapBg, Colors.white);
+                                  return _buildMenuButton(
+                                    tooltip: _annotationSnappingEnabled ? 'Snapping On' : 'Snapping Off',
+                                    onPressed: () =>
+                                        setState(() => _annotationSnappingEnabled = !_annotationSnappingEnabled),
+                                    backgroundColor: snapBg,
+                                    iconColorOverride: snapIconColor,
+                                    child: SvgPicture.asset(
+                                      'assets/icons/snap_nodes.svg',
+                                      width: 20,
+                                      height: 20,
+                                      colorFilter: ColorFilter.mode(snapIconColor, BlendMode.srcIn),
+                                    ),
+                                  );
+                                },
                               ),
-                              _buildAnnotationPillButton(
+                              _buildMenuButton(
                                 tooltip: 'Annotation stroke width (double-tap to adjust)',
-                                onTap: null,
+                                onPressed: null,
                                 onDoubleTap: () => _toggleAnnotationStrokeMenu(forceOpen: true),
                                 buttonKey: _annotationStrokeButtonKey,
-                                borderColor: AppTheme.mediumGrey,
-                                child: Icon(Symbols.line_weight, size: 20, color: AppTheme.darkGrey),
+                                backgroundColor: AppTheme.mediumGrey,
+                                child: const Icon(Symbols.line_weight, size: 20),
                               ),
-                              _buildAnnotationPillButton(
+                              _buildMenuButton(
                                 tooltip: 'Annotation color',
-                                onTap: _showColorPicker,
-                                borderColor: AppTheme.darkGrey,
+                                onPressed: _showColorPicker,
+                                backgroundColor: AppTheme.mediumGrey,
                                 child: Container(
                                   width: 22,
                                   height: 22,
