@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(4),
         color: Colors.grey[850],
         child: Text(
-          'Version 0.1.0+8',
+          'Version 1.1.0',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 10, color: Colors.grey[400]),
         ),
@@ -421,9 +421,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (context.mounted) {
         if (filePath == null) {
           // On web, download is initiated directly
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Project download started!'), duration: Duration(seconds: 3)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Project download started!'), duration: Duration(seconds: 3)));
         } else {
           // On native platforms, show file path
           ScaffoldMessenger.of(context).showSnackBar(

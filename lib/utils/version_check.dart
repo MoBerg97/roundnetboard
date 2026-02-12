@@ -7,7 +7,7 @@ import 'version_reload.dart';
 class VersionCheck {
   // ⚠️ IMPORTANT: Keep this in sync with pubspec.yaml version!
   // Run check-version.ps1 to verify consistency before deploying
-  static const String currentVersion = '0.1.0+8'; // Update this with each deployment
+  static const String currentVersion = '1.1.0+11'; // Update this with each deployment
   static const String versionKey = 'app_version';
 
   static Future<bool> checkVersion(BuildContext context) async {
@@ -19,7 +19,7 @@ class VersionCheck {
     if (savedVersion != currentVersion) {
       // New version detected
       await prefs.setString(versionKey, currentVersion);
-      
+
       if (savedVersion != null && context.mounted) {
         // Show update dialog only if there was a previous version
         _showUpdateDialog(context);
