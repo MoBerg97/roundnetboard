@@ -269,6 +269,36 @@ class ChangePlayerColorAllFramesAction extends ProjectAction {
   }
 }
 
+/// Change player color from a frame to the end (undoable)
+class ChangePlayerColorFromFrameAction extends ProjectAction {
+  final String id; // Player ID
+  final Color from;
+  final Color to;
+
+  ChangePlayerColorFromFrameAction({required super.frameIndex, required this.id, required this.from, required this.to})
+    : super(description: 'Change player color from frame');
+
+  @override
+  void apply(AnimationProject project) {
+    for (int i = frameIndex; i < project.frames.length; i++) {
+      final player = project.frames[i].getPlayerById(id);
+      if (player != null) {
+        player.color = to;
+      }
+    }
+  }
+
+  @override
+  void revert(AnimationProject project) {
+    for (int i = frameIndex; i < project.frames.length; i++) {
+      final player = project.frames[i].getPlayerById(id);
+      if (player != null) {
+        player.color = from;
+      }
+    }
+  }
+}
+
 /// Change player label across all frames (undoable)
 class ChangePlayerLabelAllFramesAction extends ProjectAction {
   final String id; // Player ID
@@ -350,6 +380,36 @@ class ChangeBallColorAllFramesAction extends ProjectAction {
   void revert(AnimationProject project) {
     for (final frame in project.frames) {
       final ball = frame.getBallById(id);
+      if (ball != null) {
+        ball.color = from;
+      }
+    }
+  }
+}
+
+/// Change ball color from a frame to the end (undoable)
+class ChangeBallColorFromFrameAction extends ProjectAction {
+  final String id; // Ball ID
+  final Color from;
+  final Color to;
+
+  ChangeBallColorFromFrameAction({required super.frameIndex, required this.id, required this.from, required this.to})
+    : super(description: 'Change ball color from frame');
+
+  @override
+  void apply(AnimationProject project) {
+    for (int i = frameIndex; i < project.frames.length; i++) {
+      final ball = project.frames[i].getBallById(id);
+      if (ball != null) {
+        ball.color = to;
+      }
+    }
+  }
+
+  @override
+  void revert(AnimationProject project) {
+    for (int i = frameIndex; i < project.frames.length; i++) {
+      final ball = project.frames[i].getBallById(id);
       if (ball != null) {
         ball.color = from;
       }

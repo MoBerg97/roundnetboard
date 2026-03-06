@@ -95,8 +95,8 @@ Quick tips to add to helper screen:
 ### intuitive actions
 
 - [x] hide all current complex project settings (anything size on board related) in the board screen under "advanced settings"
-- [ ] when a user drags an object and stays holding that object for more than 1sec on about the same location (within 50px), a magnifying window (1.5x) showing the object and its surrounding 10% of displaymin = min(screenwidth,screenheight) is shown hovering 20% of displaymin above the location that user is holding.
-- [ ] the magnifying window is deactivated as soon as the user changed the position of the object over 50px in the last .5 seconds
+- [ ] future: when a user drags an object and stays holding that object for more than 1sec on about the same location (within 50px), a magnifying window (1.5x) showing the object and its surrounding 10% of displaymin = min(screenwidth,screenheight) is shown hovering 20% of displaymin above the location that user is holding.
+  - [ ] the magnifying window is deactivated as soon as the user changed the position of the object over 50px in the last .5 seconds
 - [x] court elements snap to corners and center points of other court elements when being dragged within 20px of such a point.
 - [ ] automaticaaly snap annotations upon creation to annotation objects (e.g. line endpoints snap to circle circumference when created within 20px of it)
 - [ ] add optional "magnet markers" for object positions: faint ghost markers of frame-start positions that dragged players/balls can snap back to within ~20px.
@@ -107,7 +107,7 @@ Quick tips to add to helper screen:
 ### court
 
 - [ ] the court should be zoomable with two states, first state is as it currently is, showing at least 1.2 times servezone_radius around the center of the court. second zoom stage should be the whole court towards the outer boundary at 850cm radius around the center of court.
-- [x] #n make objects on court relate in size to court (player and ball circle radius, paths in width adjusted for size not in pixels but in relation to court size (cm))
+- [ ] make objects on court relate in size to court (player and ball circle radius, paths in width adjusted for size not in pixels but in relation to court size (cm))
 - [ ] default starting position of player and ball should be editable in the global (home screen accesible) settings menu and then new projects start with objects in this position.
 - [x] when a new project is created, the user can decide if he wants the play scenario (with all zones on default radii and 4 players in their default start position and one ball) or training scenario (with all zones deactivated and 1 player red and one player blue and one ball)
 - [x] #n default width of circle elements when added to court in court editor should be 30cm radius.

@@ -62,6 +62,8 @@ enum AnnotationTool { none, move, line, circle, rectangle, sector, text }
 
 enum BoardMenu { none, objects, annotations }
 
+enum ColorChangeScope { onlyThisFrame, fromThisFrameToEnd }
+
 class _AnnotationTextDialogResult {
   final String text;
   final double size;
@@ -278,6 +280,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _selectionPulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat();
     _history = HistoryManager(widget.project);
     _timelineController = ScrollController();
+
+    // Ensure object-specific menus are never pre-opened on screen entry.
+    _closeObjectMenusAndSelection();
+    if (widget.project.projectType == ProjectType.play) {
+      _activeMenu = BoardMenu.none;
+    }
 
     // Provide tutorial keys after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) => _provideTutorialKeys());
@@ -1010,6 +1018,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _scrubberMovedManually = false;
       _playbackFrameIndex = 0;
       _playbackT = 0.0;
+      _activeMenu = BoardMenu.none;
+      _pendingBallMark = null;
+      _deactivateAnnotationTools();
+      _closeObjectMenusAndSelection();
     });
     _ticker.start();
     _scrollToPlaybackFrame();
@@ -1432,18 +1444,25 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _removeAnnotationTextSizeMenu();
   }
 
+  void _closeObjectMenusAndSelection() {
+    _showModifierMenu = false;
+    _showPlayerMenu = false;
+    _activePlayerId = null;
+    _activeBallId = null;
+    _addingObjectType = null;
+  }
+
   void _setActiveMenu(BoardMenu menu) {
     setState(() {
       _activeMenu = (_activeMenu == menu) ? BoardMenu.none : menu;
 
       if (_activeMenu == BoardMenu.annotations) {
-        _showModifierMenu = false;
-        _showPlayerMenu = false;
-        _activePlayerId = null;
-        _activeBallId = null;
-        _addingObjectType = null;
+        _closeObjectMenusAndSelection();
       } else {
         _deactivateAnnotationTools();
+        if (_activeMenu != BoardMenu.objects) {
+          _closeObjectMenusAndSelection();
+        }
       }
     });
   }
@@ -1492,48 +1511,98 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   /// Shows color picker dialog for player
   void _showPlayerColorPicker() {
+    ColorChangeScope scope = ColorChangeScope.onlyThisFrame;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Player Color'),
-        content: Container(
-          width: 280,
-          height: 200,
-          color: AppTheme.lightGrey,
-          child: GridView.count(
-            crossAxisCount: 4,
-            children: AppTheme.editorColors
-                .map(
-                  (color) => GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                      if (_activePlayerId != null) {
-                        final player = currentFrame.getPlayerById(_activePlayerId!);
-                        if (player != null) {
-                          final oldColor = player.color;
-                          // Apply color change to all frames using history action
-                          _history.push(
-                            ChangePlayerColorAllFramesAction(id: _activePlayerId!, from: oldColor, to: color),
-                          );
-                          setState(() {
-                            _lastTappedPlayerColor = color;
-                          });
-                        }
-                      }
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: _activePlayerId != null && currentFrame.getPlayerById(_activePlayerId!)?.color == color
-                            ? Border.all(color: AppTheme.lightGrey, width: 2)
-                            : null,
-                      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Select Player Color'),
+          content: Container(
+            width: 280,
+            height: 260,
+            color: AppTheme.lightGrey,
+            child: Column(
+              children: [
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Only this frame'),
+                      selected: scope == ColorChangeScope.onlyThisFrame,
+                      onSelected: (_) => setDialogState(() => scope = ColorChangeScope.onlyThisFrame),
                     ),
+                    ChoiceChip(
+                      label: const Text('From this frame to end'),
+                      selected: scope == ColorChangeScope.fromThisFrameToEnd,
+                      onSelected: (_) => setDialogState(() => scope = ColorChangeScope.fromThisFrameToEnd),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: GridView.count(
+                    crossAxisCount: 4,
+                    children: AppTheme.editorColors
+                        .map(
+                          (color) => GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context);
+                              if (_activePlayerId == null) return;
+
+                              final frameIndex = widget.project.frames.indexOf(currentFrame);
+                              if (frameIndex < 0) return;
+
+                              final player = currentFrame.getPlayerById(_activePlayerId!);
+                              if (player == null) return;
+
+                              final oldColor = player.color;
+                              if (oldColor.toARGB32() == color.toARGB32()) {
+                                return;
+                              }
+
+                              if (scope == ColorChangeScope.onlyThisFrame) {
+                                _history.push(
+                                  ChangePlayerColorAction(
+                                    frameIndex: frameIndex,
+                                    id: _activePlayerId!,
+                                    from: oldColor,
+                                    to: color,
+                                  ),
+                                );
+                              } else {
+                                _history.push(
+                                  ChangePlayerColorFromFrameAction(
+                                    frameIndex: frameIndex,
+                                    id: _activePlayerId!,
+                                    from: oldColor,
+                                    to: color,
+                                  ),
+                                );
+                              }
+
+                              setState(() {
+                                _lastTappedPlayerColor = color;
+                              });
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                border:
+                                    _activePlayerId != null && currentFrame.getPlayerById(_activePlayerId!)?.color == color
+                                    ? Border.all(color: AppTheme.lightGrey, width: 2)
+                                    : null,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
-                )
-                .toList(),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1589,44 +1658,96 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   /// Shows color picker dialog for ball
   void _showBallColorPicker() {
+    ColorChangeScope scope = ColorChangeScope.onlyThisFrame;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Ball Color'),
-        content: Container(
-          width: 280,
-          height: 200,
-          color: AppTheme.lightGrey,
-          child: GridView.count(
-            crossAxisCount: 4,
-            children: AppTheme.editorColors
-                .map(
-                  (color) => GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                      if (_activeBallId != null) {
-                        final ball = currentFrame.getBallById(_activeBallId!);
-                        if (ball != null) {
-                          final oldColor = ball.color;
-                          // Apply color change to all frames using history action
-                          _history.push(ChangeBallColorAllFramesAction(id: _activeBallId!, from: oldColor, to: color));
-                          setState(() {});
-                        }
-                      }
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: _activeBallId != null && currentFrame.getBallById(_activeBallId!)?.color == color
-                            ? Border.all(color: AppTheme.lightGrey, width: 2)
-                            : null,
-                      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Select Ball Color'),
+          content: Container(
+            width: 280,
+            height: 260,
+            color: AppTheme.lightGrey,
+            child: Column(
+              children: [
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Only this frame'),
+                      selected: scope == ColorChangeScope.onlyThisFrame,
+                      onSelected: (_) => setDialogState(() => scope = ColorChangeScope.onlyThisFrame),
                     ),
+                    ChoiceChip(
+                      label: const Text('From this frame to end'),
+                      selected: scope == ColorChangeScope.fromThisFrameToEnd,
+                      onSelected: (_) => setDialogState(() => scope = ColorChangeScope.fromThisFrameToEnd),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: GridView.count(
+                    crossAxisCount: 4,
+                    children: AppTheme.editorColors
+                        .map(
+                          (color) => GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context);
+                              if (_activeBallId == null) return;
+
+                              final frameIndex = widget.project.frames.indexOf(currentFrame);
+                              if (frameIndex < 0) return;
+
+                              final ball = currentFrame.getBallById(_activeBallId!);
+                              if (ball == null) return;
+
+                              final oldColor = ball.color;
+                              if (oldColor.toARGB32() == color.toARGB32()) {
+                                return;
+                              }
+
+                              if (scope == ColorChangeScope.onlyThisFrame) {
+                                _history.push(
+                                  ChangeBallColorAction(
+                                    frameIndex: frameIndex,
+                                    id: _activeBallId!,
+                                    from: oldColor,
+                                    to: color,
+                                  ),
+                                );
+                              } else {
+                                _history.push(
+                                  ChangeBallColorFromFrameAction(
+                                    frameIndex: frameIndex,
+                                    id: _activeBallId!,
+                                    from: oldColor,
+                                    to: color,
+                                  ),
+                                );
+                              }
+
+                              setState(() {});
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                border:
+                                    _activeBallId != null && currentFrame.getBallById(_activeBallId!)?.color == color
+                                    ? Border.all(color: AppTheme.lightGrey, width: 2)
+                                    : null,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
-                )
-                .toList(),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1733,6 +1854,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       }
     }
     if (tryAdd("BALL", prev.ball, currentFrame.ball, currentFrame.ballPathPoints)) return;
+
+    if (_showModifierMenu || _showPlayerMenu || _activePlayerId != null || _activeBallId != null) {
+      setState(() {
+        _closeObjectMenusAndSelection();
+      });
+    }
   }
 
   /// Select a sector target (ball or zone) from a tap/drag position.
@@ -3613,7 +3740,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final playerDiameterPx = playerRadiusPx * 2;
     final borderWidth = math.max(2.0, playerRadiusPx * 0.12);
     final shadowBlur = math.max(4.0, playerRadiusPx * 0.2);
-    final bool isSelected = _activePlayerId == playerId;
+    final bool isSelected = _showPlayerMenu && _activePlayerId == playerId;
     final labelTextColor = _getColorBrightness(color) > 0.5 ? Colors.black : Colors.white;
     return Positioned(
       left: screenPos.dx - playerRadiusPx,
@@ -3630,21 +3757,20 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             setState(() => _lastTappedPlayerColor = color);
             final togglingSame = _showPlayerMenu && _activePlayerId == playerId;
             setState(() {
+              if (togglingSame) {
+                _activeMenu = BoardMenu.none;
+                _closeObjectMenusAndSelection();
+                return;
+              }
+
               if (_activeMenu == BoardMenu.none) {
                 _activeMenu = BoardMenu.objects;
               }
-              _showPlayerMenu = !togglingSame;
-              _activePlayerId = togglingSame ? null : playerId;
+              _showPlayerMenu = true;
+              _activePlayerId = playerId;
               _showModifierMenu = false;
               _activeBallId = null;
             });
-          },
-          onLongPress: () {
-            if (!_isPlaying && !_endedAtLastFrame) {
-              setState(() {
-                _activePlayerId = playerId;
-              });
-            }
           },
           onPanStart: (details) {
             if (_isPlaying || _endedAtLastFrame) return;
@@ -3764,7 +3890,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final ballDiameterPx = ballRadiusPx * 2;
     final borderWidth = math.max(2.0, ballRadiusPx * 0.14);
     final shadowBlur = math.max(3.0, ballRadiusPx * 0.18);
-    final bool isSelected = ballId != null && _activeBallId == ballId;
+    final bool isSelected = ballId != null && _showModifierMenu && _activeBallId == ballId;
     // Get the actual ball color from the current frame if not provided
     final ballColor =
         color ?? (ballId != null ? (currentFrame.getBallById(ballId)?.color ?? Colors.white) : Colors.white);
@@ -3781,25 +3907,27 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               return;
             }
             if (!_isPlaying && !_endedAtLastFrame) {
+              final togglingSame = _showModifierMenu && _activeBallId == ballId;
+
+              if (togglingSame) {
+                setState(() {
+                  _activeMenu = BoardMenu.none;
+                  _closeObjectMenusAndSelection();
+                });
+                return;
+              }
+
               if (_activeMenu == BoardMenu.none) {
                 setState(() {
                   _activeMenu = BoardMenu.objects;
                 });
               }
-              // If modifier menu is open, close it; otherwise open it
-              if (_showModifierMenu) {
-                setState(() {
-                  _showModifierMenu = false;
-                  _activeBallId = null;
-                });
-              } else {
-                setState(() {
-                  _showModifierMenu = true;
-                  _activeBallId = ballId; // Store which ball was tapped
-                  _showPlayerMenu = false; // Close player menu if open
-                  _activePlayerId = null;
-                });
-              }
+              setState(() {
+                _showModifierMenu = true;
+                _activeBallId = ballId; // Store which ball was tapped
+                _showPlayerMenu = false; // Close player menu if open
+                _activePlayerId = null;
+              });
             }
           },
           onPanStart: (details) {
@@ -3844,7 +3972,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             alignment: Alignment.center,
             children: [
               // Pulsing sonar highlight - circular and extends beyond object
-              if (isSelected && _showModifierMenu)
+              if (isSelected)
                 Positioned.fill(
                   child: AnimatedBuilder(
                     animation: _selectionPulseController,
