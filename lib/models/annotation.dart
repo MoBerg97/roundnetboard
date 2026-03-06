@@ -18,6 +18,8 @@ enum AnnotationType {
   sector,
   @HiveField(4)
   text,
+  @HiveField(5)
+  curvedLine,
 }
 
 enum AnnotationLineStyle { straight, arrow, dashed }
@@ -119,21 +121,21 @@ class Annotation extends HiveObject {
 
   /// Copy annotation
   Annotation copy() => Annotation(
-        type: type,
-        color: color,
-        id: id,
-        points: List.from(points),
-        filled: filled,
-        strokeWidthCm: strokeWidthCm,
-        circleAnnotationId: circleAnnotationId,
-        startAngle: startAngle,
-        endAngle: endAngle,
-        text: text,
-        fontSize: fontSize,
-        lineStyle: lineStyle,
-        sectorAttachmentType: sectorAttachmentType,
-        sectorAttachmentId: sectorAttachmentId,
-      );
+    type: type,
+    color: color,
+    id: id,
+    points: List.from(points),
+    filled: filled,
+    strokeWidthCm: strokeWidthCm,
+    circleAnnotationId: circleAnnotationId,
+    startAngle: startAngle,
+    endAngle: endAngle,
+    text: text,
+    fontSize: fontSize,
+    lineStyle: lineStyle,
+    sectorAttachmentType: sectorAttachmentType,
+    sectorAttachmentId: sectorAttachmentId,
+  );
 
   AnnotationLineStyle get lineStyle {
     if (lineStyleIndex < 0 || lineStyleIndex >= AnnotationLineStyle.values.length) {
@@ -153,21 +155,21 @@ class Annotation extends HiveObject {
 
 extension AnnotationMap on Annotation {
   Map<String, dynamic> toMap() => {
-        'type': type.name,
-        'id': id,
-        'colorValue': colorValue,
-        'points': points.map((o) => [o.dx, o.dy]).toList(),
-        'filled': filled,
-        'strokeWidthCm': strokeWidthCm,
-        'circleAnnotationId': circleAnnotationId,
-        'startAngle': startAngle,
-        'endAngle': endAngle,
-        'text': text,
-        'fontSize': fontSize,
-        'lineStyle': lineStyle.name,
-        'sectorAttachmentType': sectorAttachmentType,
-        'sectorAttachmentId': sectorAttachmentId,
-      };
+    'type': type.name,
+    'id': id,
+    'colorValue': colorValue,
+    'points': points.map((o) => [o.dx, o.dy]).toList(),
+    'filled': filled,
+    'strokeWidthCm': strokeWidthCm,
+    'circleAnnotationId': circleAnnotationId,
+    'startAngle': startAngle,
+    'endAngle': endAngle,
+    'text': text,
+    'fontSize': fontSize,
+    'lineStyle': lineStyle.name,
+    'sectorAttachmentType': sectorAttachmentType,
+    'sectorAttachmentId': sectorAttachmentId,
+  };
 
   static AnnotationLineStyle _lineStyleFromValue(dynamic value) {
     if (value is String) {
@@ -185,19 +187,19 @@ extension AnnotationMap on Annotation {
   }
 
   static Annotation fromMap(Map<String, dynamic> m) => Annotation(
-        type: AnnotationType.values.firstWhere((e) => e.name == m['type']),
-        color: Color(m['colorValue'] as int),
-        points: (m['points'] as List).map((e) => Offset(e[0] as double, e[1] as double)).toList(),
-        filled: (m['filled'] as bool?) ?? false,
-        strokeWidthCm: (m['strokeWidthCm'] as num?)?.toDouble() ?? AppConstants.annotationStrokeWidthCm,
-        circleAnnotationId: m['circleAnnotationId'] as String?,
-        id: m['id'] as String?,
-        startAngle: (m['startAngle'] as num?)?.toDouble(),
-        endAngle: (m['endAngle'] as num?)?.toDouble(),
-        text: m['text'] as String?,
-        fontSize: (m['fontSize'] as num?)?.toDouble() ?? 20.0,
-        lineStyle: _lineStyleFromValue(m['lineStyle'] ?? m['lineStyleIndex']),
-        sectorAttachmentType: m['sectorAttachmentType'] as String?,
-        sectorAttachmentId: m['sectorAttachmentId'] as String?,
-      );
+    type: AnnotationType.values.firstWhere((e) => e.name == m['type']),
+    color: Color(m['colorValue'] as int),
+    points: (m['points'] as List).map((e) => Offset(e[0] as double, e[1] as double)).toList(),
+    filled: (m['filled'] as bool?) ?? false,
+    strokeWidthCm: (m['strokeWidthCm'] as num?)?.toDouble() ?? AppConstants.annotationStrokeWidthCm,
+    circleAnnotationId: m['circleAnnotationId'] as String?,
+    id: m['id'] as String?,
+    startAngle: (m['startAngle'] as num?)?.toDouble(),
+    endAngle: (m['endAngle'] as num?)?.toDouble(),
+    text: m['text'] as String?,
+    fontSize: (m['fontSize'] as num?)?.toDouble() ?? 20.0,
+    lineStyle: _lineStyleFromValue(m['lineStyle'] ?? m['lineStyleIndex']),
+    sectorAttachmentType: m['sectorAttachmentType'] as String?,
+    sectorAttachmentId: m['sectorAttachmentId'] as String?,
+  );
 }

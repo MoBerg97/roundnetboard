@@ -43,6 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _settings.serveZoneFactor = 1.3;
       _settings.courtBackgroundColorValue = AppTheme.courtGreen.toARGB32();
       _settings.ballSectorRadiusCm = 1000.0;
+      _settings.handDrawnAnnotations = false;
       _saveSettings();
     });
   }
@@ -206,6 +207,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: _settings.annotationsAboveObjects,
             onChanged: (v) {
               setState(() => _settings.annotationsAboveObjects = v);
+              _saveSettings();
+            },
+          ),
+          SwitchListTile(
+            title: const Text('Hand-drawn Annotation Style'),
+            subtitle: const Text('Squiggly lines, hatched fills, and handwritten text'),
+            value: _settings.handDrawnAnnotations,
+            onChanged: (v) {
+              setState(() => _settings.handDrawnAnnotations = v);
               _saveSettings();
             },
           ),

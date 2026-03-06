@@ -487,11 +487,8 @@ class SetFrameAnnotationsAction extends ProjectAction {
   final List<Annotation> fromAnnotations;
   final List<Annotation> toAnnotations;
 
-  SetFrameAnnotationsAction({
-    required super.frameIndex,
-    required this.fromAnnotations,
-    required this.toAnnotations,
-  }) : super(description: 'Edit annotations');
+  SetFrameAnnotationsAction({required super.frameIndex, required this.fromAnnotations, required this.toAnnotations})
+    : super(description: 'Edit annotations');
 
   List<Annotation> _cloneList(List<Annotation> source) => source.map((a) => a.copy()).toList();
 
