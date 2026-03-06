@@ -1684,7 +1684,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     Player(position: Offset(0, r), color: AppTheme.playerColors[1], id: 'P3'),
                     Player(position: Offset(-r, 0), color: AppTheme.playerColors[1], id: 'P4'),
                   ],
-                  balls: [Ball(position: Offset.zero, color: AppTheme.ballColor, id: 'B1')],
+                  balls: [Ball(position: Offset.zero, color: Colors.white, id: 'B1')],
                 )
               : Frame(
                   players: [
@@ -1693,7 +1693,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     Player(position: Offset(0, r), color: AppTheme.playerColors[1]),
                     Player(position: Offset(-r, 0), color: AppTheme.playerColors[1]),
                   ],
-                  balls: [Ball(position: Offset.zero, color: AppTheme.ballColor)],
+                  balls: [Ball(position: Offset.zero, color: Colors.white)],
                 );
           widget.project.frames.add(defaultFrame);
           currentFrame = defaultFrame;
@@ -4343,8 +4343,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
       widgets.add(
         Positioned(
-          left: pos.dx - 16,
-          top: pos.dy - 16,
+          left: pos.dx - 14,
+          top: pos.dy - 14,
           child: IgnorePointer(
             ignoring: isOnBall, // Ignore pointer when on ball so ball is draggable
             child: GestureDetector(
@@ -4369,7 +4369,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 }
               },
               onPanEnd: (_) => setState(() => _pendingBallMark = null),
-              child: CustomPaint(size: const Size(32, 32), painter: _StarPainter()),
+              child: Opacity(
+                opacity: 0.72,
+                child: CustomPaint(size: const Size(28, 28), painter: _StarPainter()),
+              ),
             ),
           ),
         ),
@@ -4408,20 +4411,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         midCm = (prevBall.position + ball.position) / 2;
       }
       final pos = _toScreenPosition(midCm, size);
-      final double scale = 2.0; // max size for set
+      final double scale = 1.75;
 
       widgets.add(
         Positioned(
-          left: pos.dx - 15 * scale,
-          top: pos.dy - 15 * scale,
+          left: pos.dx - 16 * scale,
+          top: pos.dy - 16 * scale,
           child: IgnorePointer(
             child: Opacity(
-              opacity: 0.35,
-              child: Container(
-                width: 30 * scale,
-                height: 30 * scale,
-                decoration: BoxDecoration(color: AppTheme.accentOrange.withValues(alpha: 0.35), shape: BoxShape.circle),
-              ),
+              opacity: 0.58,
+              child: CustomPaint(size: Size(32 * scale, 32 * scale), painter: _SetMarkerPainter()),
             ),
           ),
         ),
@@ -4576,7 +4575,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final playerRadiusPx = (basePlayerRadius * playerScale).clamp(14.0 * playerScale, 64.0 * playerScale);
     final playerDiameterPx = playerRadiusPx * 2;
     final borderWidth = math.max(2.0, playerRadiusPx * 0.12);
-    final shadowBlur = math.max(4.0, playerRadiusPx * 0.2);
+    final shadowBlur = math.max(6.0, playerRadiusPx * 0.24);
     final bool isSelected = _showPlayerMenu && _activePlayerId == playerId;
     final labelTextColor = _getColorBrightness(color) > 0.5 ? Colors.black : Colors.white;
     return Positioned(
@@ -4677,9 +4676,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     border: Border.all(color: Colors.black, width: borderWidth),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.18),
+                        color: Colors.black.withValues(alpha: 0.24),
                         blurRadius: shadowBlur,
-                        offset: const Offset(0, 2),
+                        spreadRadius: math.max(0.5, playerRadiusPx * 0.04),
+                        offset: const Offset(0, 3),
                       ),
                       if (isSelected)
                         BoxShadow(
@@ -4726,11 +4726,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final ballRadiusPx = (baseBallRadius * ballScale).clamp(9.0 * ballScale, 48.0 * ballScale);
     final ballDiameterPx = ballRadiusPx * 2;
     final borderWidth = math.max(2.0, ballRadiusPx * 0.14);
-    final shadowBlur = math.max(3.0, ballRadiusPx * 0.18);
+    final shadowBlur = math.max(5.0, ballRadiusPx * 0.22);
     final bool isSelected = ballId != null && _showModifierMenu && _activeBallId == ballId;
     // Get the actual ball color from the current frame if not provided
-    final ballColor =
-        color ?? (ballId != null ? (currentFrame.getBallById(ballId)?.color ?? Colors.white) : Colors.white);
+    final ballColor = Colors.white;
     return Positioned(
       left: screenPos.dx - ballRadiusPx * scale,
       top: screenPos.dy - ballRadiusPx * scale,
@@ -4839,9 +4838,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                   border: Border.all(color: Colors.black, width: borderWidth),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.18),
+                      color: Colors.black.withValues(alpha: 0.24),
                       blurRadius: shadowBlur,
-                      offset: const Offset(0, 2),
+                      spreadRadius: math.max(0.4, ballRadiusPx * 0.035),
+                      offset: const Offset(0, 3),
                     ),
                     if (isSelected)
                       BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.6), blurRadius: 10, spreadRadius: 1),
@@ -4854,7 +4854,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                   child: Opacity(
                     opacity: starOpacity,
                     child: CustomPaint(
-                      size: Size(ballDiameterPx * 0.8 * scale, ballDiameterPx * 0.8 * scale),
+                      size: Size(ballDiameterPx * 0.75 * scale, ballDiameterPx * 0.75 * scale),
                       painter: _StarPainter(),
                     ),
                   ),
@@ -4913,7 +4913,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (_addingObjectType != 'ball') return;
 
     // Use the color of the last tapped ball, or default to light grey
-    Color ballColor = AppTheme.ballColor;
+    Color ballColor = Colors.white;
     if (_activeBallId != null) {
       final lastBall = currentFrame.getBallById(_activeBallId!);
       if (lastBall != null) {
@@ -5002,7 +5002,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           ).sample(ballB.hitT!)
         : Offset.lerp(ballA.position, ballB.position, ballB.hitT!)!;
     final pos = _toScreenPosition(posCm, size);
-    return {'pos': pos, 'opacity': 1.0};
+    final fadeT = ((globalNow - hitGlobal) / hold).clamp(0.0, 1.0);
+    final opacity = (0.9 - (fadeT * 0.75)).clamp(0.12, 0.9);
+    return {'pos': pos, 'opacity': opacity};
   }
 
   // control handles are drawn via widgets so this helper is unused and removed
@@ -5403,7 +5405,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             if (!(_isPlaying || _endedAtLastFrame)) ...[
                               // Show control points for all players by ID
                               ...(() {
-                                final showControls = _settings.showPathControlPoints || _activePathDragId != null;
+                                final showControls = _activePathDragId != null;
                                 if (!showControls) return <Widget>[];
                                 final widgets = <Widget>[];
                                 for (final player in currentFrame.players) {
@@ -5428,7 +5430,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               })(),
                               // For balls, show control points for all balls
                               ...(() {
-                                final showControls = _settings.showPathControlPoints || _activePathDragId != null;
+                                final showControls = _activePathDragId != null;
                                 if (!showControls) return <Widget>[];
                                 final widgets = <Widget>[];
                                 for (final ball in currentFrame.balls) {
@@ -6424,7 +6426,7 @@ class _StarPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final outerR = size.width / 2;
-    final innerR = outerR * 0.5;
+    final innerR = outerR * 0.44;
     const points = 8;
     final path = Path();
     for (int i = 0; i < points * 2; i++) {
@@ -6439,13 +6441,56 @@ class _StarPainter extends CustomPainter {
       }
     }
     path.close();
-    final fill = Paint()..color = Colors.yellow;
+    final glow = Paint()
+      ..color = const Color(0xFFFFB74D).withValues(alpha: 0.35)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.5);
+    final fill = Paint()..color = const Color(0xFFFFD54F).withValues(alpha: 0.9);
     final stroke = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
-      ..color = Colors.redAccent;
+      ..strokeWidth = 1.8
+      ..color = const Color(0xFFB45309).withValues(alpha: 0.9);
+    canvas.drawPath(path, glow);
     canvas.drawPath(path, fill);
     canvas.drawPath(path, stroke);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _SetMarkerPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width * 0.42;
+
+    final thickArc = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * 0.14
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFFE65100).withValues(alpha: 0.62);
+
+    final thinArc = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * 0.065
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFFFFA726).withValues(alpha: 0.88);
+
+    final accent = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * 0.045
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: 0.72);
+
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), math.pi * 0.78, math.pi * 0.94, false, thickArc);
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), math.pi * 0.72, math.pi * 0.98, false, thinArc);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius * 0.72),
+      math.pi * 0.86,
+      math.pi * 0.58,
+      false,
+      accent,
+    );
   }
 
   @override

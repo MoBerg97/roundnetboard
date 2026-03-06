@@ -55,6 +55,12 @@ class BoardBackgroundPainter extends CustomPainter {
     final netRadius = settings.netCircleRadiusPx;
     final rimOuterRadius = netRadius + 5;
 
+    final netShadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.16)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6.0);
+    canvas.drawCircle(center + const Offset(0, 2), rimOuterRadius + 1.5, netShadowPaint);
+
     // Draw outer filled circle (light grey)
     final rimPaint = Paint()
       ..color = AppTheme.lightGrey
@@ -174,13 +180,7 @@ class BoardBackgroundPainter extends CustomPainter {
           final fillPaint = Paint()
             ..color = element.color.withValues(alpha: 0.4)
             ..style = PaintingStyle.fill;
-          canvas.drawArc(
-            Rect.fromCircle(center: scaledPos, radius: radius),
-            startAngle,
-            sweepAngle,
-            true,
-            fillPaint,
-          );
+          canvas.drawArc(Rect.fromCircle(center: scaledPos, radius: radius), startAngle, sweepAngle, true, fillPaint);
           canvas.drawArc(
             Rect.fromCircle(center: scaledPos, radius: radius),
             startAngle,

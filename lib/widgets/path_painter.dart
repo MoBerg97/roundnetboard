@@ -78,6 +78,18 @@ class PathPainter extends CustomPainter {
     // Use a linear gradient shader along the path from start->end to avoid
     // overlapping-segment additive alpha. The shader maps startAlpha at
     // samples.first to endAlpha at samples.last.
+    final shadowShader = ui.Gradient.linear(samples.first, samples.last, [
+      Colors.black.withAlpha(((startAlpha * 0.22).clamp(0.0, 1.0) * 255).round()),
+      Colors.black.withAlpha(((endAlpha * 0.16).clamp(0.0, 1.0) * 255).round()),
+    ]);
+    final shadowPaint = Paint()
+      ..shader = shadowShader
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth + 1.6
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.8);
+    canvas.drawPath(path, shadowPaint);
+
     final shader = ui.Gradient.linear(samples.first, samples.last, [
       baseColor.withAlpha((startAlpha.clamp(0.0, 1.0) * 255).round()),
       baseColor.withAlpha((endAlpha.clamp(0.0, 1.0) * 255).round()),
