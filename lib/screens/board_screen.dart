@@ -195,7 +195,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   String? _addingObjectType; // Indicates "player" or "ball" when user is in place-object mode, null otherwise
 
   // ──────────────────────────────────────────────────────────────────────────
-  // PATH TRACKING STATE (for showing full paths during paused playback)
+  // PATH TRACKING STATE (for showing full paths during playback)
   // ──────────────────────────────────────────────────────────────────────────
   final Set<String> _trackedEntityIds = {}; // Entity IDs with full path tracking enabled
 
@@ -1024,7 +1024,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _scrubberMovedManually = false;
       _playbackFrameIndex = 0;
       _playbackT = 0.0;
-      _trackedEntityIds.clear(); // Clear path tracking when stopping playback
     });
     _ticker.stop();
   }
@@ -3071,10 +3070,58 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // PATH TRACKING DURING PAUSED PLAYBACK
+  // PATH TRACKING DURING PLAYBACK
   // ══════════════════════════════════════════════════════════════════════════
-  // Handles toggling full path display for players/balls during paused playback
+  // Handles toggling full path display for players/balls during playback
   // Shows past path as solid line and future path as dashed line
+
+  String _resolveTrackedEntityId(String trackedEntityId, Frame frame) {
+    final directPlayer = frame.getPlayerById(trackedEntityId);
+    if (directPlayer != null) return directPlayer.id;
+
+    switch (trackedEntityId) {
+      case 'P1':
+        return frame.players.isNotEmpty ? frame.players[0].id : trackedEntityId;
+      case 'P2':
+        return frame.players.length > 1 ? frame.players[1].id : trackedEntityId;
+      case 'P3':
+        return frame.players.length > 2 ? frame.players[2].id : trackedEntityId;
+      case 'P4':
+        return frame.players.length > 3 ? frame.players[3].id : trackedEntityId;
+      default:
+        return trackedEntityId;
+    }
+  }
+
+  String? _legacyPlayerAliasForIndex(int index) {
+    switch (index) {
+      case 0:
+        return 'P1';
+      case 1:
+        return 'P2';
+      case 2:
+        return 'P3';
+      case 3:
+        return 'P4';
+      default:
+        return null;
+    }
+  }
+
+  void _toggleTrackedEntityId(String canonicalEntityId, {String? legacyAlias}) {
+    setState(() {
+      final hasCanonical = _trackedEntityIds.contains(canonicalEntityId);
+      final hasLegacy = legacyAlias != null && _trackedEntityIds.contains(legacyAlias);
+      if (hasCanonical || hasLegacy) {
+        _trackedEntityIds.remove(canonicalEntityId);
+        if (legacyAlias != null) {
+          _trackedEntityIds.remove(legacyAlias);
+        }
+      } else {
+        _trackedEntityIds.add(canonicalEntityId);
+      }
+    });
+  }
 
   /// Toggle path tracking for the entity (player or ball) at the tap position
   void _togglePathTracking(Offset tapPos, Size size) {
@@ -3086,30 +3133,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (displayFrame == null) return;
 
     // Check players
-    for (final playerId in ['P1', 'P2', 'P3', 'P4']) {
-      Offset? playerPos;
-      switch (playerId) {
-        case 'P1':
-          playerPos = displayFrame.p1;
-          break;
-        case 'P2':
-          playerPos = displayFrame.p2;
-          break;
-        case 'P3':
-          playerPos = displayFrame.p3;
-          break;
-        case 'P4':
-          playerPos = displayFrame.p4;
-          break;
-      }
-      if (playerPos != null && (playerPos - tapCm).distance < hitRadiusCm) {
-        setState(() {
-          if (_trackedEntityIds.contains(playerId)) {
-            _trackedEntityIds.remove(playerId);
-          } else {
-            _trackedEntityIds.add(playerId);
-          }
-        });
+    for (int i = 0; i < displayFrame.players.length; i++) {
+      final player = displayFrame.players[i];
+      if ((player.position - tapCm).distance < hitRadiusCm) {
+        _toggleTrackedEntityId(player.id, legacyAlias: _legacyPlayerAliasForIndex(i));
         return;
       }
     }
@@ -3117,22 +3144,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     // Check balls
     for (final ball in displayFrame.balls) {
       if ((ball.position - tapCm).distance < hitRadiusCm) {
-        setState(() {
-          if (_trackedEntityIds.contains(ball.id)) {
-            _trackedEntityIds.remove(ball.id);
-          } else {
-            _trackedEntityIds.add(ball.id);
-          }
-        });
+        _toggleTrackedEntityId(ball.id);
         return;
       }
     }
   }
 
-  /// Build full path visualization widgets for tracked entities during paused playback
+  /// Build full path visualization widgets for tracked entities during playback
   List<Widget> _buildTrackedPaths(Size size) {
-    // Show paths whenever playback is active (playing or paused) and tracking is enabled
-    if ((!_isPlaying && !_isPaused) || _trackedEntityIds.isEmpty) {
+    // Show paths whenever playback is active, paused, or ended-at-last-frame and tracking is enabled
+    if ((!_isPlaying && !_isPaused && !_endedAtLastFrame) || _trackedEntityIds.isEmpty) {
       return [];
     }
 
@@ -3140,7 +3161,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final currentPlaybackIndex = _playbackFrameIndex.clamp(0, widget.project.frames.length - 1);
     final frames = widget.project.frames;
 
-    for (final entityId in _trackedEntityIds) {
+    final referenceFrame = frames[currentPlaybackIndex];
+    final renderedEntityIds = <String>{};
+
+    for (final trackedEntityId in _trackedEntityIds) {
+      final entityId = _resolveTrackedEntityId(trackedEntityId, referenceFrame);
+      if (!renderedEntityIds.add(entityId)) continue;
+
       // Helper: append sampled segment (curved if control point exists)
       void appendSegment({
         required List<Offset> out,
@@ -3260,37 +3287,55 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   /// Get position of an entity (player or ball) from a frame
   Offset? _getEntityPosition(Frame frame, String entityId) {
+    final player = frame.getPlayerById(entityId);
+    if (player != null) {
+      return player.position;
+    }
+
+    final ball = frame.getBallById(entityId);
+    if (ball != null) {
+      return ball.position;
+    }
+
     switch (entityId) {
       case 'P1':
-        return frame.p1;
+        return frame.players.isNotEmpty ? frame.players[0].position : null;
       case 'P2':
-        return frame.p2;
+        return frame.players.length > 1 ? frame.players[1].position : null;
       case 'P3':
-        return frame.p3;
+        return frame.players.length > 2 ? frame.players[2].position : null;
       case 'P4':
-        return frame.p4;
+        return frame.players.length > 3 ? frame.players[3].position : null;
       default:
-        // Try to find ball by ID
-        final ball = frame.balls.firstWhere(
-          (b) => b.id == entityId,
-          orElse: () => Ball(id: '', position: Offset.zero),
-        );
-        return ball.id.isNotEmpty ? ball.position : null;
+        return null;
     }
   }
 
   /// Get color of an entity for path rendering
   Color _getEntityColor(String entityId) {
+    final normalizedEntityId = _resolveTrackedEntityId(entityId, currentFrame);
+
     // For players, use their color from current frame
-    final player = currentFrame.getPlayerById(entityId);
+    final player = currentFrame.getPlayerById(normalizedEntityId);
     if (player != null) {
       return player.color;
     }
 
     // For balls, use their color from current frame
-    final ball = currentFrame.getBallById(entityId);
+    final ball = currentFrame.getBallById(normalizedEntityId);
     if (ball != null) {
       return ball.color ?? Colors.white;
+    }
+
+    switch (entityId) {
+      case 'P1':
+        return currentFrame.players.isNotEmpty ? currentFrame.players[0].color : Colors.grey;
+      case 'P2':
+        return currentFrame.players.length > 1 ? currentFrame.players[1].color : Colors.grey;
+      case 'P3':
+        return currentFrame.players.length > 2 ? currentFrame.players[2].color : Colors.grey;
+      case 'P4':
+        return currentFrame.players.length > 3 ? currentFrame.players[3].color : Colors.grey;
     }
 
     return Colors.grey;
@@ -3577,7 +3622,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         ignoring: _annotationsMenuOpen,
         child: GestureDetector(
           onTap: () {
-            if (_isPlaying && _isPaused) {
+            if (_isPlaying) {
               _togglePathTracking(screenPos, size);
               return;
             }
@@ -3602,12 +3647,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             }
           },
           onPanStart: (details) {
+            if (_isPlaying || _endedAtLastFrame) return;
             _dragStartLogical[playerId] = posCm;
             final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
             final localPos = box.globalToLocal(details.globalPosition);
             _dragStartScreen[playerId] = _clampToInteractionBounds(localPos, size);
           },
           onPanUpdate: (details) {
+            if (_isPlaying || _endedAtLastFrame) return;
             setState(() {
               final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
               final localPos = box.globalToLocal(details.globalPosition);
@@ -3618,6 +3665,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             });
           },
           onPanEnd: (_) {
+            if (_isPlaying || _endedAtLastFrame) return;
             final from = _dragStartLogical[playerId] ?? posCm;
             final player = currentFrame.getPlayerById(playerId);
             final to = player?.position ?? posCm;
@@ -3727,8 +3775,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         ignoring: _annotationsMenuOpen,
         child: GestureDetector(
           onTap: () {
-            if (_isPlaying && _isPaused) {
-              // Toggle path tracking for this ball when paused during playback
+            if (_isPlaying) {
+              // Toggle path tracking for this ball during playback
               _togglePathTracking(screenPos, size);
               return;
             }
@@ -3755,6 +3803,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             }
           },
           onPanStart: (details) {
+            if (_isPlaying || _endedAtLastFrame) return;
             if (ballId != null) {
               _activeBallId = ballId; // Set active ball for dragging
             }
@@ -3764,6 +3813,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             _dragStartScreen[ballId ?? "BALL"] = _clampToInteractionBounds(localPos, size);
           },
           onPanUpdate: (details) {
+            if (_isPlaying || _endedAtLastFrame) return;
             setState(() {
               final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
               final localPos = box.globalToLocal(details.globalPosition);
@@ -3777,6 +3827,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             });
           },
           onPanEnd: (_) {
+            if (_isPlaying || _endedAtLastFrame) return;
             final from = _dragStartLogical[ballId ?? "BALL"] ?? posCm;
             final ball = ballId != null ? currentFrame.getBallById(ballId) : null;
             final to = ball?.position ?? posCm;
@@ -4093,7 +4144,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                     final Size screenSize = constraints.biggest;
                     Settings.setScreenSize(screenSize);
                     return AbsorbPointer(
-                      absorbing: inPlaybackView && !_isPaused, // Allow taps during paused playback for path tracking
+                      absorbing: _endedAtLastFrame,
                       child: Container(
                         key: _boardKey,
                         color: _settings.courtBackgroundColor,
@@ -5568,14 +5619,14 @@ class _TrackedPathPainter extends CustomPainter {
     if (points.length < 2) return;
 
     final paint = Paint()
-      ..color = color.withValues(alpha: 0.8)
+      ..color = color.withValues(alpha: 0.45)
       ..strokeWidth = 3.0
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
     if (isDashed) {
-      // Draw dashed line with dash phase continuous across segments
+      // Draw dashed line with phase anchored to the path end
       const dashLength = 10.0;
       const gapLength = 5.0;
       const pattern = dashLength + gapLength;
@@ -5586,8 +5637,12 @@ class _TrackedPathPainter extends CustomPainter {
         path.lineTo(points[i].dx, points[i].dy);
       }
 
-      double globalPos = 0.0; // keeps dash phase across metrics
-      for (final metric in path.computeMetrics()) {
+      final metrics = path.computeMetrics().toList();
+      final totalLength = metrics.fold<double>(0.0, (sum, metric) => sum + metric.length);
+      final endAnchoredOffset = (pattern - (totalLength % pattern)) % pattern;
+
+      double globalPos = endAnchoredOffset; // keeps phase fixed at path end
+      for (final metric in metrics) {
         double local = 0.0;
         while (local < metric.length) {
           final phase = globalPos % pattern;

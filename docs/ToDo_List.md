@@ -90,6 +90,7 @@ Quick tips to add to helper screen:
 - [x] users are not able to share or export projects in web version currently.
 - [x] add two exemplary projects that are preloaded when the app is first installed, showcasing all features of the app (one play scenario, one training scenario)
 - [ ] add missing project settings/features of the exemplary projects (e.g. annotation visibility)
+- [ ] future: add a "community trainings" area with category filters (e.g. serve receive, defense, drills), starting with importable json packs before cloud hosting exists.
 
 ### intuitive actions
 
@@ -98,6 +99,10 @@ Quick tips to add to helper screen:
 - [ ] the magnifying window is deactivated as soon as the user changed the position of the object over 50px in the last .5 seconds
 - [x] court elements snap to corners and center points of other court elements when being dragged within 20px of such a point.
 - [ ] automaticaaly snap annotations upon creation to annotation objects (e.g. line endpoints snap to circle circumference when created within 20px of it)
+- [ ] add optional "magnet markers" for object positions: faint ghost markers of frame-start positions that dragged players/balls can snap back to within ~20px.
+- [ ] add quick swap positioning: dragging a player/ball onto another same-type object and releasing near its center swaps both positions in the current frame.
+- [ ] add alignment helpers for objects (horizontal/vertical/center guide lines + snap) to support precise layout without clutter.
+- [ ] add multi-select align actions in advanced menu: align left/center/right/top/middle/bottom and distribute evenly.
 
 ### court
 
@@ -139,12 +144,15 @@ Quick tips to add to helper screen:
 - [ ] footwork statistics shows for each frame the amount of distance each player travels, as small bars on the top side of the screen.
 - [ ] the maximum footwork distance is 850cm and the minimum is 0cm.
 - [ ] if turned on, the footwork statistics will also be depicted in the animation playback with showing the footwork of a certain frame during the playback of this frame.
-- [x] during animation playback, when the playback is paused, the user can toggle full path revision of a player or the ball by tapping the player or ball and this shows the path that this object already moved (full line) and the upcoming path of this object (dashed line). toggles off when the object is tapped again.
+- [x] during animation playback, the user can toggle full path revision of a player or the ball by tapping the player or ball and this shows the path that this object already moved (full line) and the upcoming path of this object (dashed line). toggles off when the object is tapped again.
 
 ### sharing
 
 - [ ] users can export each frame as a single image, or all frames as images appended to each other, to form a left to right or top to bottom succession.
 - [ ] users can export the animation as a video file. the speed of the exported animation should match the last selected playback speed of the animation.
+- [ ] add direct animation export presets: mp4 (preferred) and gif (fallback/quick share), with simple quality presets to keep UX intuitive.
+- [ ] for export, the screen view should be captured as it is, meaning that if the user has zoomed in on the court, the export should also be zoomed in on the court. If the user has changed the background color of the court, this should also be reflected in the export. Be aware of the screen size of the animation used to edit the project and use this as the export size to avoid misalignment of objects in the export.
+- [ ] for gif export, add loop settings (once / infinite / custom loop count).
 - [x] users can share projects as a json file and import shared json files
 
 ### players
@@ -152,6 +160,8 @@ Quick tips to add to helper screen:
 - [x] the color of player objects should be editable.
 - [x] the user should be able to additionally add a single character (letter or number) shown on the player object always (project specific).
 - [x] the user should be able to delete players and add players. The color of the added player object should match the color of the last tapped player object.
+- [ ] support frame-specific player color changes with two scopes: "only this frame" and "from this frame to end".
+- [ ] add an "advanced colors" picker (custom hue + recent colors + saved palette) behind a secondary button to avoid clutter.
 - [ ] player objects can have frame specific body postures (resembled by changing greaphical representation) and introducing a rotational component of player objects
   - [ ] set (L/R): arm reaching out in front of player on of the side
   - [ ] hit (L/R): arm is with 90degree elbow bend on is going out of one of the sided of the player
@@ -163,11 +173,15 @@ Quick tips to add to helper screen:
 
 - [x] the color of the ball object should be editable.
 - [x] the user should be able to delete a ball and add balls. The color of the added ball object should match the color of the last tapped ball object.
+- [ ] support frame-specific ball color changes with two scopes: "only this frame" and "from this frame to end".
+- [ ] allow quick color transfer between objects (tap source color, then tap target object) for faster training scenario edits.
 
 timeline:
 
 - [ ] playback scrubber should be time related, taking frame duration into account. Currently the playback scrubber moves with equal speed through all frames, regardless of their duration setting.
 - [x] the delete current frame button should only appear when a frame is double tapped if it is the currently selected frame and then disappears again if double tapped or any place else is tapped again.
+- [ ] add playback loop toggle with 3 modes: no loop, loop full animation, loop selected frame range.
+- [ ] allow setting loop in/out frame markers by long press on timeline thumbnails.
 
 ## Fixes
 
