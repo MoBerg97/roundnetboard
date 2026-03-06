@@ -1024,7 +1024,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _scrubberMovedManually = false;
       _playbackFrameIndex = 0;
       _playbackT = 0.0;
-      _trackedEntityIds.clear(); // Clear path tracking when stopping playback
     });
     _ticker.stop();
   }
@@ -3153,8 +3152,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   /// Build full path visualization widgets for tracked entities during playback
   List<Widget> _buildTrackedPaths(Size size) {
-    // Show paths whenever playback is active (playing or paused) and tracking is enabled
-    if ((!_isPlaying && !_isPaused) || _trackedEntityIds.isEmpty) {
+    // Show paths whenever playback is active, paused, or ended-at-last-frame and tracking is enabled
+    if ((!_isPlaying && !_isPaused && !_endedAtLastFrame) || _trackedEntityIds.isEmpty) {
       return [];
     }
 
@@ -5620,14 +5619,14 @@ class _TrackedPathPainter extends CustomPainter {
     if (points.length < 2) return;
 
     final paint = Paint()
-      ..color = color.withValues(alpha: 0.8)
+      ..color = color.withValues(alpha: 0.45)
       ..strokeWidth = 3.0
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
     if (isDashed) {
-      // Draw dashed line with dash phase continuous across segments
+      // Draw dashed line with phase anchored to the path end
       const dashLength = 10.0;
       const gapLength = 5.0;
       const pattern = dashLength + gapLength;
@@ -5638,8 +5637,12 @@ class _TrackedPathPainter extends CustomPainter {
         path.lineTo(points[i].dx, points[i].dy);
       }
 
-      double globalPos = 0.0; // keeps dash phase across metrics
-      for (final metric in path.computeMetrics()) {
+      final metrics = path.computeMetrics().toList();
+      final totalLength = metrics.fold<double>(0.0, (sum, metric) => sum + metric.length);
+      final endAnchoredOffset = (pattern - (totalLength % pattern)) % pattern;
+
+      double globalPos = endAnchoredOffset; // keeps phase fixed at path end
+      for (final metric in metrics) {
         double local = 0.0;
         while (local < metric.length) {
           final phase = globalPos % pattern;
