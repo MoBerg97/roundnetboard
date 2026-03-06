@@ -20,6 +20,8 @@ enum AnnotationType {
   text,
 }
 
+enum AnnotationLineStyle { straight, arrow, dashed }
+
 /// Annotation model for frame-specific drawings
 @HiveType(typeId: 2)
 class Annotation extends HiveObject {
@@ -56,6 +58,15 @@ class Annotation extends HiveObject {
   @HiveField(13)
   double? fontSize; // For text annotations: font size in logical pixels
 
+  @HiveField(14)
+  int lineStyleIndex = 0;
+
+  @HiveField(15)
+  String? sectorAttachmentType;
+
+  @HiveField(16)
+  String? sectorAttachmentId;
+
   Annotation({
     required this.type,
     Color? color,
@@ -68,9 +79,13 @@ class Annotation extends HiveObject {
     String? id,
     this.text,
     this.fontSize,
+    AnnotationLineStyle lineStyle = AnnotationLineStyle.straight,
+    this.sectorAttachmentType,
+    this.sectorAttachmentId,
   }) {
     colorValue = (color ?? Colors.white).toARGB32();
     this.id = id ?? _generateId();
+    lineStyleIndex = lineStyle.index;
   }
 
   // Empty constructor for Hive
@@ -86,6 +101,9 @@ class Annotation extends HiveObject {
     id = _generateId();
     text = null;
     fontSize = null;
+    lineStyleIndex = AnnotationLineStyle.straight.index;
+    sectorAttachmentType = null;
+    sectorAttachmentId = null;
   }
 
   /// Generate a unique ID for this annotation
@@ -112,7 +130,19 @@ class Annotation extends HiveObject {
         endAngle: endAngle,
         text: text,
         fontSize: fontSize,
+        lineStyle: lineStyle,
+        sectorAttachmentType: sectorAttachmentType,
+        sectorAttachmentId: sectorAttachmentId,
       );
+
+  AnnotationLineStyle get lineStyle {
+    if (lineStyleIndex < 0 || lineStyleIndex >= AnnotationLineStyle.values.length) {
+      return AnnotationLineStyle.straight;
+    }
+    return AnnotationLineStyle.values[lineStyleIndex];
+  }
+
+  set lineStyle(AnnotationLineStyle value) => lineStyleIndex = value.index;
 
   /// Get radius for circle annotations
   double? getCircleRadius() {
@@ -134,7 +164,25 @@ extension AnnotationMap on Annotation {
         'endAngle': endAngle,
         'text': text,
         'fontSize': fontSize,
+        'lineStyle': lineStyle.name,
+        'sectorAttachmentType': sectorAttachmentType,
+        'sectorAttachmentId': sectorAttachmentId,
       };
+
+  static AnnotationLineStyle _lineStyleFromValue(dynamic value) {
+    if (value is String) {
+      for (final style in AnnotationLineStyle.values) {
+        if (style.name == value) return style;
+      }
+    }
+    if (value is num) {
+      final idx = value.toInt();
+      if (idx >= 0 && idx < AnnotationLineStyle.values.length) {
+        return AnnotationLineStyle.values[idx];
+      }
+    }
+    return AnnotationLineStyle.straight;
+  }
 
   static Annotation fromMap(Map<String, dynamic> m) => Annotation(
         type: AnnotationType.values.firstWhere((e) => e.name == m['type']),
@@ -148,5 +196,8 @@ extension AnnotationMap on Annotation {
         endAngle: (m['endAngle'] as num?)?.toDouble(),
         text: m['text'] as String?,
         fontSize: (m['fontSize'] as num?)?.toDouble() ?? 20.0,
+        lineStyle: _lineStyleFromValue(m['lineStyle'] ?? m['lineStyleIndex']),
+        sectorAttachmentType: m['sectorAttachmentType'] as String?,
+        sectorAttachmentId: m['sectorAttachmentId'] as String?,
       );
 }

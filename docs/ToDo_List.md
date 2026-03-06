@@ -32,6 +32,7 @@ the menu bar is horizontally scrollable when screen width is too small to show a
 
 ### design ideas
 
+- [ ] add a smooth color transition during playback when an object changes its color from one frame to the next, instead of an instant color change.
 - [ ] separate the annotation tools in two rows. One for the tools that create annotations (circle, lines, rectangles, circle sections) and one row for the tools that modify existing annotations (move, delete, duplicate, fore/background, line width, color).
 - [x] selected objects (players and balls) should be highlighted on court (e.g. circular sonar waves around object)
 - [ ] objects are only highlighted when their respective menu is open, not when dragged or long pressed. Tapping on an object opens its menu and highlights it, tapping elsewhere closes menu and removes highlight.
@@ -119,20 +120,20 @@ Quick tips to add to helper screen:
 - [x] there should be a foldable menu for annotations that provides frame specific annotations.
 - [x] add a line annotation tool, that also is editable in color, user can manually edit the end points of the line.
 - [x] annotations should be frame specific and also should be copyed along all other objects when a new frame is inserted.
-- [ ] temporary annotations can be added in animation playback mode, that are not frame specific and are deleted when the user stops playback. annotations should only be permament (saved per frame) when added in the annotation mode in the editing board screen.
+- [x] temporary annotations can be added in animation playback mode, that are not frame specific and are deleted when the user stops playback. annotations should only be permament (saved per frame) when added in the annotation mode in the editing board screen.
 - [x] add a text annotation tool, that allows to add text labels on the court. (fixed font color, size adjustable via pop-up menu, draggable position, editable text content (double tap to edit text))
 - [x] default width for circles when only tapping once should be 30cm radius.
 - [x] right click or long tap on annotation tools should open a small menu to select default color and default size for this annotation tool (line width/stroke size in 3 steps, indicated by small preview icons, for circle and rectangles: filled or outline only, for text: font size in 3 steps)
-- [ ] add a pop-up menu for the line tool to select between straight line, arrowed line and dashed line.
-- [ ] annotations that are added in paused mode in the animation playback are only temporarely visible during this playback until the current playback is left (going back to the editing screen or back to project overview)
+- [x] add a pop-up menu for the line tool to select between straight line, arrowed line and dashed line.
+- [x] annotations that are added in paused mode in the animation playback are only temporarely visible during this playback until the current playback is left (going back to the editing screen or back to project overview)
 - [x] add a trash can icon to erase all annotations of the current frame
 - [x] circle sector annotation tool (like a pie chart slice) to highlight certain areas on the court. the sector is defined for the last selected circle element. first touch position defines the start of the sector angle and dragging the finger around the circle defines the end angle of the sector. the sector is filled with the selected color. Circle sector annotation are filled shapes only, no outline only option.
   - [x] sector start angle follows the initial touch (no rightward offset)
-  - [ ] add a pop-up menu for the circle sector tool to select to which object or court element it should be attached (center point can be ball, player or zone court element)
-  - [ ] for ball or player attachment, the sector is not moving with the object during animation playback, it is only attached to the object in the frame it is created in at the end position of the object in this frame. the sector radius is fixed to 260cm for ball or player attachment.
-  - [ ] for zone attachment, the sector radius is equal to the zone radius.
-  - [ ] the sector does not snap onto the zero coordinate point of the court, but to the center point of the respective zone court element or player or ball object at that frames end position.
-- [ ] automatically snap annotation objects to court element corners and center points when being dragged within 20px of such a point.
+  - [x] add a pop-up menu for the circle sector tool to select to which object or court element it should be attached (center point can be ball, player or zone court element)
+  - [x] for ball or player attachment, the sector is not moving with the object during animation playback, it is only attached to the object in the frame it is created in at the end position of the object in this frame. the sector radius is fixed to 260cm for ball or player attachment.
+  - [x] for zone attachment, the sector radius is equal to the zone radius.
+  - [x] the sector does not snap onto the zero coordinate point of the court, but to the center point of the respective zone court element or player or ball object at that frames end position.
+- [x] automatically snap annotation objects to court element corners and center points when being dragged within 20px of such a point.
 - [x] Circle sectors should apply to one specific court zone element or ball object. Therefore, when the user taps on the circle sector tool, all possible zone court elements and the ball objects are highlighted with pulsing glow.
       As soon as the user then taps on of the zone elements outline, this zone is selected to have a sector be drawn for, for all consecutive drag and drop actions as long as the circle sector tools stays active. For those circle sectors created after selecting the according court zone element, the court zone elements center point and radius is taken as the variables for the circle sector.
       If the user instead selects a ball by tapping on its area, this ball is selected to have a sector be drawn for, for all consecutive drag and drop actions as long as the circle sector tools stays active. For those circle sectors created after selecting the according ball element, the balls center point is chosen as the variable for the circle sector with a standard radius of 260cm.
@@ -160,7 +161,7 @@ Quick tips to add to helper screen:
 - [x] the color of player objects should be editable.
 - [x] the user should be able to additionally add a single character (letter or number) shown on the player object always (project specific).
 - [x] the user should be able to delete players and add players. The color of the added player object should match the color of the last tapped player object.
-- [ ] support frame-specific player color changes with two scopes: "only this frame" and "from this frame to end".
+- [x] support frame-specific player color changes with two scopes: "only this frame" and "from this frame to end".
 - [ ] add an "advanced colors" picker (custom hue + recent colors + saved palette) behind a secondary button to avoid clutter.
 - [ ] player objects can have frame specific body postures (resembled by changing greaphical representation) and introducing a rotational component of player objects
   - [ ] set (L/R): arm reaching out in front of player on of the side

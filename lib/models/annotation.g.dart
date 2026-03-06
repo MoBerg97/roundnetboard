@@ -27,13 +27,20 @@ class AnnotationAdapter extends TypeAdapter<Annotation> {
       id: fields[11] as String?,
       text: fields[12] as String?,
       fontSize: fields[13] as double?,
+      lineStyle: (fields[14] as int?) != null
+          ? ((fields[14] as int) >= 0 && (fields[14] as int) < AnnotationLineStyle.values.length
+                ? AnnotationLineStyle.values[fields[14] as int]
+                : AnnotationLineStyle.straight)
+          : AnnotationLineStyle.straight,
+      sectorAttachmentType: fields[15] as String?,
+      sectorAttachmentId: fields[16] as String?,
     )..colorValue = fields[4] as int;
   }
 
   @override
   void write(BinaryWriter writer, Annotation obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(14)
       ..writeByte(3)
       ..write(obj.type)
       ..writeByte(4)
@@ -55,7 +62,13 @@ class AnnotationAdapter extends TypeAdapter<Annotation> {
       ..writeByte(12)
       ..write(obj.text)
       ..writeByte(13)
-      ..write(obj.fontSize);
+        ..write(obj.fontSize)
+        ..writeByte(14)
+        ..write(obj.lineStyleIndex)
+        ..writeByte(15)
+        ..write(obj.sectorAttachmentType)
+        ..writeByte(16)
+        ..write(obj.sectorAttachmentId);
   }
 
   @override

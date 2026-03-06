@@ -8,20 +8,24 @@ import '../models/settings.dart';
 class AnnotationPainter extends StatelessWidget {
   final List<Annotation> annotations;
   final List<Annotation>? tempAnnotations;
+  final bool tempAnnotationsShadow;
   final List<Annotation>? erasingAnnotations; // Annotations being erased (for preview)
   final Annotation? selectedAnnotation; // Selected annotation for highlighting
   final Settings settings;
   final Size screenSize;
   final List<Offset>? dragPreviewLine; // Live preview line during drag [start, end]
+  final AnnotationLineStyle dragPreviewLineStyle;
   final double strokeWidthCm;
 
   const AnnotationPainter({
     super.key,
     required this.annotations,
     this.tempAnnotations,
+    this.tempAnnotationsShadow = false,
     this.erasingAnnotations,
     this.selectedAnnotation,
     this.dragPreviewLine,
+    this.dragPreviewLineStyle = AnnotationLineStyle.straight,
     required this.settings,
     required this.screenSize,
     required this.strokeWidthCm,
@@ -41,9 +45,11 @@ class AnnotationPainter extends StatelessWidget {
       painter: AnnotationCanvasPainter(
         annotations: annotations,
         tempAnnotations: tempAnnotations,
+        tempAnnotationsShadow: tempAnnotationsShadow,
         erasingAnnotations: erasingAnnotations,
         selectedAnnotation: selectedAnnotation,
         dragPreviewLine: dragPreviewLine,
+        dragPreviewLineStyle: dragPreviewLineStyle,
         settings: settings,
         screenSize: screenSize,
         boardCenter: _boardCenter(),
@@ -57,9 +63,11 @@ class AnnotationPainter extends StatelessWidget {
 class AnnotationCanvasPainter extends CustomPainter {
   final List<Annotation> annotations;
   final List<Annotation>? tempAnnotations;
+  final bool tempAnnotationsShadow;
   final List<Annotation>? erasingAnnotations;
   final Annotation? selectedAnnotation;
   final List<Offset>? dragPreviewLine;
+  final AnnotationLineStyle dragPreviewLineStyle;
   final Settings settings;
   final Size screenSize;
   final Offset boardCenter;
@@ -68,9 +76,11 @@ class AnnotationCanvasPainter extends CustomPainter {
   AnnotationCanvasPainter({
     required this.annotations,
     this.tempAnnotations,
+    this.tempAnnotationsShadow = false,
     this.erasingAnnotations,
     this.selectedAnnotation,
     this.dragPreviewLine,
+    this.dragPreviewLineStyle = AnnotationLineStyle.straight,
     required this.settings,
     required this.screenSize,
     required this.boardCenter,
@@ -88,12 +98,30 @@ class AnnotationCanvasPainter extends CustomPainter {
   double _strokeWidthPxFor(double cm, [double multiplier = 1.0]) =>
       (settings.cmToLogical(cm, screenSize) * multiplier).clamp(1.0, 20.0);
 
+  bool get _shouldDrawTempShadow => tempAnnotationsShadow;
+
+  void _drawTempShadow(Canvas canvas, VoidCallback draw) {
+    if (!_shouldDrawTempShadow) return;
+    canvas.save();
+    canvas.translate(0, 1.5);
+    draw();
+    canvas.restore();
+  }
+
+  double _tempAlpha(double normal, double emphasized) {
+    return _shouldDrawTempShadow ? emphasized : normal;
+  }
+
   bool _annotationListsDiffer(List<Annotation> a, List<Annotation> b) {
     if (a.length != b.length) return true;
     for (var i = 0; i < a.length; i++) {
       final x = a[i];
       final y = b[i];
       if (x.type != y.type || x.colorValue != y.colorValue || x.filled != y.filled) return true;
+      if (x.lineStyleIndex != y.lineStyleIndex) return true;
+      if (x.sectorAttachmentType != y.sectorAttachmentType || x.sectorAttachmentId != y.sectorAttachmentId) {
+        return true;
+      }
       if (x.strokeWidthCm != y.strokeWidthCm) return true;
       if (x.startAngle != y.startAngle || x.endAngle != y.endAngle) return true;
       if ((x.fontSize ?? 0) != (y.fontSize ?? 0)) return true;
@@ -199,14 +227,21 @@ class AnnotationCanvasPainter extends CustomPainter {
     final tl = _cmToScreen(topLeft);
     final br = _cmToScreen(bottomRight);
     final rect = Rect.fromPoints(tl, br);
+    _drawTempShadow(canvas, () {
+      final shadowPaint = Paint()
+        ..color = Colors.black.withValues(alpha: 0.24)
+        ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm)
+        ..style = annotation.filled ? PaintingStyle.fill : PaintingStyle.stroke;
+      canvas.drawRect(rect, shadowPaint);
+    });
     if (annotation.filled) {
       final fill = Paint()
-        ..color = annotation.color.withValues(alpha: 0.2)
+        ..color = annotation.color.withValues(alpha: _tempAlpha(0.28, 0.5))
         ..style = PaintingStyle.fill;
       canvas.drawRect(rect, fill);
     }
     final paint = Paint()
-      ..color = annotation.color.withValues(alpha: 0.35)
+      ..color = annotation.color.withValues(alpha: _tempAlpha(0.56, 0.78))
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm)
       ..style = PaintingStyle.stroke;
     canvas.drawRect(rect, paint);
@@ -247,12 +282,20 @@ class AnnotationCanvasPainter extends CustomPainter {
     final end = annotation.points[1];
     final startScreen = _cmToScreen(start);
     final endScreen = _cmToScreen(end);
+    _drawTempShadow(canvas, () {
+      final shadowPaint = Paint()
+        ..color = Colors.black.withValues(alpha: 0.26)
+        ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm)
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
+      _paintStyledLine(canvas, startScreen, endScreen, shadowPaint, annotation.lineStyle);
+    });
     final paint = Paint()
-      ..color = annotation.color.withValues(alpha: 0.45)
+      ..color = annotation.color.withValues(alpha: _tempAlpha(0.6, 0.82))
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
-    canvas.drawLine(startScreen, endScreen, paint);
+    _paintStyledLine(canvas, startScreen, endScreen, paint, annotation.lineStyle);
   }
 
   void _paintDragPreviewLine(Canvas canvas, Offset startCm, Offset endCm) {
@@ -264,7 +307,7 @@ class AnnotationCanvasPainter extends CustomPainter {
       ..strokeWidth = _strokeWidthPx(1.5)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
-    canvas.drawLine(startScreen, endScreen, paint);
+    _paintStyledLine(canvas, startScreen, endScreen, paint, dragPreviewLineStyle);
 
     // Draw endpoint markers
     final endpointPaint = Paint()
@@ -287,7 +330,7 @@ class AnnotationCanvasPainter extends CustomPainter {
         if (annotation.points.length >= 2) {
           final start = _cmToScreen(annotation.points[0]);
           final end = _cmToScreen(annotation.points[1]);
-          canvas.drawLine(start, end, highlightPaint);
+          _paintStyledLine(canvas, start, end, highlightPaint, annotation.lineStyle);
         }
       case AnnotationType.circle:
         if (annotation.points.length >= 2) {
@@ -337,14 +380,21 @@ class AnnotationCanvasPainter extends CustomPainter {
     final centerScreen = _cmToScreen(center);
     final scalePerCm = settings.cmToLogical(1.0, screenSize);
     final radiusScreen = radius * scalePerCm;
+    _drawTempShadow(canvas, () {
+      final shadowPaint = Paint()
+        ..color = Colors.black.withValues(alpha: 0.24)
+        ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm)
+        ..style = annotation.filled ? PaintingStyle.fill : PaintingStyle.stroke;
+      canvas.drawCircle(centerScreen, radiusScreen, shadowPaint);
+    });
     if (annotation.filled) {
       final fill = Paint()
-        ..color = annotation.color.withValues(alpha: 0.2)
+        ..color = annotation.color.withValues(alpha: _tempAlpha(0.28, 0.5))
         ..style = PaintingStyle.fill;
       canvas.drawCircle(centerScreen, radiusScreen, fill);
     }
     final paint = Paint()
-      ..color = annotation.color.withValues(alpha: 0.35)
+      ..color = annotation.color.withValues(alpha: _tempAlpha(0.56, 0.78))
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm)
       ..style = PaintingStyle.stroke;
     canvas.drawCircle(centerScreen, radiusScreen, paint);
@@ -366,7 +416,7 @@ class AnnotationCanvasPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
-    canvas.drawLine(startScreen, endScreen, paint);
+    _paintStyledLine(canvas, startScreen, endScreen, paint, annotation.lineStyle);
     // Endpoints are no longer drawn as circles for cleaner annotation lines
   }
 
@@ -432,7 +482,22 @@ class AnnotationCanvasPainter extends CustomPainter {
     final text = annotation.text ?? '';
     if (text.isEmpty) return;
     final center = _cmToScreen(annotation.points.first);
-    final painter = _textPainterFor(annotation, alpha: 0.5);
+    _drawTempShadow(canvas, () {
+      final shadowPainter = _textPainterFor(annotation, alpha: 0.35)
+        ..text = TextSpan(
+          text: annotation.text ?? '',
+          style: TextStyle(
+            color: Colors.black.withValues(alpha: _tempAlpha(0.35, 0.42)),
+            fontSize: annotation.fontSize ?? _defaultTextSize,
+            fontFamily: _textFontFamily,
+            fontWeight: FontWeight.w600,
+          ),
+        )
+        ..layout();
+      final shadowTopLeft = center - Offset(shadowPainter.width / 2, shadowPainter.height / 2);
+      shadowPainter.paint(canvas, shadowTopLeft);
+    });
+    final painter = _textPainterFor(annotation, alpha: _tempAlpha(0.66, 0.86));
     final topLeft = center - Offset(painter.width / 2, painter.height / 2);
     painter.paint(canvas, topLeft);
   }
@@ -470,7 +535,7 @@ class AnnotationCanvasPainter extends CustomPainter {
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm, 1.5)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
-    canvas.drawLine(startScreen, endScreen, fadePaint);
+    _paintStyledLine(canvas, startScreen, endScreen, fadePaint, annotation.lineStyle);
 
     // Draw strikethrough (perpendicular lines across the erasing line)
     final center = (startScreen + endScreen) / 2;
@@ -485,6 +550,60 @@ class AnnotationCanvasPainter extends CustomPainter {
 
     canvas.drawLine(center - perpendicular * strokeLength, center + perpendicular * strokeLength, strikePaint);
     // Endpoints no longer drawn for erasing lines
+  }
+
+  void _paintStyledLine(
+    Canvas canvas,
+    Offset start,
+    Offset end,
+    Paint paint,
+    AnnotationLineStyle style,
+  ) {
+    switch (style) {
+      case AnnotationLineStyle.straight:
+        canvas.drawLine(start, end, paint);
+        break;
+      case AnnotationLineStyle.arrow:
+        canvas.drawLine(start, end, paint);
+        _drawArrowHead(canvas, start, end, paint);
+        break;
+      case AnnotationLineStyle.dashed:
+        _drawDashedLine(canvas, start, end, paint);
+        break;
+    }
+  }
+
+  void _drawDashedLine(Canvas canvas, Offset start, Offset end, Paint paint) {
+    final delta = end - start;
+    final length = delta.distance;
+    if (length <= 0.0001) return;
+
+    final dir = delta / length;
+    final dashLength = math.max(6.0, paint.strokeWidth * 2.8);
+    final gapLength = math.max(4.0, paint.strokeWidth * 1.6);
+
+    double traveled = 0;
+    while (traveled < length) {
+      final dashStart = start + (dir * traveled);
+      final dashEnd = start + (dir * math.min(traveled + dashLength, length));
+      canvas.drawLine(dashStart, dashEnd, paint);
+      traveled += dashLength + gapLength;
+    }
+  }
+
+  void _drawArrowHead(Canvas canvas, Offset start, Offset end, Paint paint) {
+    final delta = end - start;
+    final length = delta.distance;
+    if (length <= 0.0001) return;
+
+    final angle = math.atan2(delta.dy, delta.dx);
+    final headLength = math.max(8.0, paint.strokeWidth * 3.2);
+    const spread = math.pi / 6;
+
+    final left = end - Offset(math.cos(angle - spread), math.sin(angle - spread)) * headLength;
+    final right = end - Offset(math.cos(angle + spread), math.sin(angle + spread)) * headLength;
+    canvas.drawLine(end, left, paint);
+    canvas.drawLine(end, right, paint);
   }
 
   void _paintErasingCircle(Canvas canvas, Annotation annotation) {
@@ -561,9 +680,23 @@ class AnnotationCanvasPainter extends CustomPainter {
     final scalePerCm = settings.cmToLogical(1.0, screenSize);
     final radiusScreen = radius * scalePerCm;
 
+    _drawTempShadow(canvas, () {
+      final shadowPaint = Paint()
+        ..color = Colors.black.withValues(alpha: 0.24)
+        ..style = PaintingStyle.fill;
+      final shadowRect = Rect.fromCircle(center: centerScreen, radius: radiusScreen);
+      canvas.drawArc(
+        shadowRect,
+        annotation.startAngle!,
+        annotation.endAngle! - annotation.startAngle!,
+        true,
+        shadowPaint,
+      );
+    });
+
     // Temporary sector with lighter opacity
     final fill = Paint()
-      ..color = annotation.color.withValues(alpha: 0.2)
+      ..color = annotation.color.withValues(alpha: _tempAlpha(0.3, 0.56))
       ..style = PaintingStyle.fill;
 
     final rect = Rect.fromCircle(center: centerScreen, radius: radiusScreen);
@@ -611,7 +744,9 @@ class AnnotationCanvasPainter extends CustomPainter {
           ? _annotationListsDiffer(erasingAnnotations!, oldDelegate.erasingAnnotations!)
           : erasingAnnotations != oldDelegate.erasingAnnotations) ||
       !listEquals(dragPreviewLine, oldDelegate.dragPreviewLine) ||
+      dragPreviewLineStyle != oldDelegate.dragPreviewLineStyle ||
       selectedAnnotation != oldDelegate.selectedAnnotation ||
+        tempAnnotationsShadow != oldDelegate.tempAnnotationsShadow ||
       boardCenter != oldDelegate.boardCenter ||
       strokeWidthCm != oldDelegate.strokeWidthCm;
 }

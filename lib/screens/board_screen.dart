@@ -64,6 +64,10 @@ enum BoardMenu { none, objects, annotations }
 
 enum ColorChangeScope { onlyThisFrame, fromThisFrameToEnd }
 
+enum _SectorAttachmentType { zone, ball, player }
+
+enum _PlaybackAnnotationStopAction { save, discard, cancel }
+
 class _AnnotationTextDialogResult {
   final String text;
   final double size;
@@ -132,11 +136,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   Color _annotationColor = AppTheme.editorColors[7]; // Current annotation color
   final List<double> _annotationStrokeOptionsCm = const [5.0, 10.0, 15.0];
   double _annotationStrokeCm = AppConstants.annotationStrokeWidthCm;
+  AnnotationLineStyle _annotationLineStyle = AnnotationLineStyle.straight;
   OverlayEntry? _annotationStrokeMenuEntry;
+  OverlayEntry? _annotationLineStyleMenuEntry;
   int _annotationStrokeHoverIndex = -1;
+  int _annotationLineStyleHoverIndex = -1;
   final GlobalKey _annotationStrokeButtonKey = GlobalKey(debugLabel: 'annotation_stroke_button');
+  final GlobalKey _annotationLineStyleButtonKey = GlobalKey(debugLabel: 'annotation_line_style_button');
   final GlobalKey _annotationStrokeMenuKey = GlobalKey(debugLabel: 'annotation_stroke_menu');
+  final GlobalKey _annotationLineStyleMenuKey = GlobalKey(debugLabel: 'annotation_line_style_menu');
   final ValueNotifier<int> _annotationStrokeHoverNotifier = ValueNotifier<int>(-1);
+  final ValueNotifier<int> _annotationLineStyleHoverNotifier = ValueNotifier<int>(-1);
   bool _annotationSnappingEnabled = true;
   bool _circleFilled = false;
   bool _rectangleFilled = false;
@@ -161,19 +171,29 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   final ValueNotifier<int> _annotationTextSizeHoverNotifier = ValueNotifier<int>(-1);
   final List<Annotation> _stagedAnnotations = []; // Annotations staged for preview
   final List<Annotation> _erasingAnnotations = []; // Annotations being erased (preview)
+  final Map<int, List<Annotation>> _playbackSessionAnnotationsByFrame =
+      {}; // Temporary annotations keyed by frame index for the active playback session
   Offset? _currentDragPos; // Current drag position for live preview
   Annotation? _draggingAnnotation; // Annotation being moved/dragged
   Annotation? _selectedAnnotation; // Currently selected annotation for highlighting
   Offset? _annotationDragOffset; // Offset from touch point to annotation's start position for smooth dragging
+  List<Annotation>? _annotationGestureStartSnapshot; // Snapshot used to persist undo/redo for annotation edits
 
   // ──────────────────────────────────────────────────────────────────────────
   // SECTOR TOOL STATE (Two-stage: select target, then draw sectors)
   // ──────────────────────────────────────────────────────────────────────────
   bool _sectorToolNeedsTargetSelection = false; // True when sector tool active but no target selected yet
   String? _selectedSectorTarget; // "innerCircle", "outerCircle", "outerBounds", or ball ID
+  String? _selectedSectorAttachmentId;
+  _SectorAttachmentType _sectorAttachmentType = _SectorAttachmentType.zone;
   Offset? _selectedSectorCenterCm; // Center point for sector reference (origin or ball position)
   double? _selectedSectorRadiusCm; // Radius for sector's reference circle (zone radius or 260cm for balls)
   bool _sectorTargetHighlightActive = false; // True when target selected and highlighting active
+  OverlayEntry? _sectorAttachmentMenuEntry;
+  int _sectorAttachmentHoverIndex = -1;
+  final GlobalKey _sectorAttachmentButtonKey = GlobalKey(debugLabel: 'annotation_sector_attachment_button');
+  final GlobalKey _sectorAttachmentMenuKey = GlobalKey(debugLabel: 'annotation_sector_attachment_menu');
+  final ValueNotifier<int> _sectorAttachmentHoverNotifier = ValueNotifier<int>(-1);
   double? _sectorDragStartAngle; // Start angle captured on drag start
   double? _sectorDragPrevAngle; // Previous drag angle for delta accumulation
   double _sectorDragSweepAngle = 0.0; // Accumulated sweep angle following drag direction
@@ -309,8 +329,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _selectionPulseController.dispose();
     _timelineController.dispose();
     _removeAnnotationEraserMenu();
+    _removeAnnotationLineStyleMenu();
     _removeAnnotationStrokeMenu();
     _removeAnnotationTextSizeMenu();
+    _removeSectorAttachmentMenu();
     super.dispose();
   }
 
@@ -385,6 +407,75 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (!_eraserMode || _eraserPosCm == null) return false;
     // Show eraser overlay on all platforms
     return true;
+  }
+
+  static const List<AnnotationLineStyle> _annotationLineStyleOptions = [
+    AnnotationLineStyle.straight,
+    AnnotationLineStyle.arrow,
+    AnnotationLineStyle.dashed,
+  ];
+
+  static const List<_SectorAttachmentType> _sectorAttachmentOptions = [
+    _SectorAttachmentType.zone,
+    _SectorAttachmentType.ball,
+    _SectorAttachmentType.player,
+  ];
+
+  static const double _objectAttachedSectorRadiusCm = 260.0;
+
+  IconData _iconForLineStyle(AnnotationLineStyle style) {
+    switch (style) {
+      case AnnotationLineStyle.straight:
+        return Icons.horizontal_rule;
+      case AnnotationLineStyle.arrow:
+        return Icons.trending_flat;
+      case AnnotationLineStyle.dashed:
+        return Icons.more_horiz;
+    }
+  }
+
+  String _lineStyleLabel(AnnotationLineStyle style) {
+    switch (style) {
+      case AnnotationLineStyle.straight:
+        return 'Straight line';
+      case AnnotationLineStyle.arrow:
+        return 'Arrow line';
+      case AnnotationLineStyle.dashed:
+        return 'Dashed line';
+    }
+  }
+
+  IconData _iconForSectorAttachment(_SectorAttachmentType type) {
+    switch (type) {
+      case _SectorAttachmentType.zone:
+        return Icons.adjust;
+      case _SectorAttachmentType.ball:
+        return Icons.sports_baseball;
+      case _SectorAttachmentType.player:
+        return Icons.person_pin_circle;
+    }
+  }
+
+  String _labelForSectorAttachment(_SectorAttachmentType type) {
+    switch (type) {
+      case _SectorAttachmentType.zone:
+        return 'Zone attachment';
+      case _SectorAttachmentType.ball:
+        return 'Ball attachment';
+      case _SectorAttachmentType.player:
+        return 'Player attachment';
+    }
+  }
+
+  String _storageValueForSectorAttachment(_SectorAttachmentType type) {
+    switch (type) {
+      case _SectorAttachmentType.zone:
+        return 'zone';
+      case _SectorAttachmentType.ball:
+        return 'ball';
+      case _SectorAttachmentType.player:
+        return 'player';
+    }
   }
 
   void _toggleAnnotationEraserMenu({Offset? globalPos, bool forceOpen = false}) {
@@ -483,6 +574,99 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _annotationEraserMenuEntry = null;
     _annotationHoverEraserIndex = -1;
     _annotationEraserHoverNotifier.value = -1;
+  }
+
+  void _toggleAnnotationLineStyleMenu({Offset? globalPos, bool forceOpen = false}) {
+    if (_annotationLineStyleMenuEntry != null) {
+      _removeAnnotationLineStyleMenu();
+      if (!forceOpen) return;
+    }
+
+    final overlay = Overlay.of(context);
+    final box = _annotationLineStyleButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final buttonOrigin = box.localToGlobal(Offset.zero);
+    final buttonSize = box.size;
+    final anchor = globalPos ?? (buttonOrigin + Offset(buttonSize.width / 2, buttonSize.height / 2));
+    final menuHeight = HoverSelectionMenu.totalHeightForCount(_annotationLineStyleOptions.length);
+    final menuWidth = HoverSelectionMenu.menuWidth;
+    final screenSize = MediaQuery.of(context).size;
+    final placeAbove = anchor.dy > (screenSize.height / 2);
+    final unclampedLeft = anchor.dx - (menuWidth / 2);
+    final unclampedTop = placeAbove ? buttonOrigin.dy - menuHeight - 12 : buttonOrigin.dy + buttonSize.height + 12;
+    final left = unclampedLeft.clamp(8.0, screenSize.width - menuWidth - 8.0);
+    final top = unclampedTop.clamp(8.0, screenSize.height - menuHeight - 8.0);
+
+    _annotationLineStyleHoverIndex = _annotationLineStyleOptions.indexOf(_annotationLineStyle);
+    _annotationLineStyleHoverNotifier.value = _annotationLineStyleHoverIndex;
+
+    _annotationLineStyleMenuEntry = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          IgnorePointer(),
+          Positioned(
+            left: left,
+            top: top,
+            child: HoverSelectionMenu(
+              options: _annotationLineStyleOptions
+                  .map(
+                    (style) => HoverMenuOption(
+                      builder: (isHover) => Center(
+                        child: Icon(
+                          _iconForLineStyle(style),
+                          color: isHover ? AppTheme.primaryBlue : Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              initialHover: _annotationLineStyleHoverIndex,
+              hoverNotifier: _annotationLineStyleHoverNotifier,
+              onHover: (i) => setState(() => _annotationLineStyleHoverIndex = i),
+              onSelect: (i) {
+                setState(() {
+                  _annotationLineStyle = _annotationLineStyleOptions[i];
+                  _activeAnnotationTool = AnnotationTool.line;
+                });
+                _removeAnnotationLineStyleMenu();
+              },
+              onDismiss: _removeAnnotationLineStyleMenu,
+              menuKey: _annotationLineStyleMenuKey,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(_annotationLineStyleMenuEntry!);
+    _updateAnnotationLineStyleMenuHover(anchor);
+  }
+
+  void _updateAnnotationLineStyleMenuHover(Offset globalPos) {
+    final box = _annotationLineStyleMenuKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(globalPos);
+    final width = HoverSelectionMenu.menuWidth;
+    final height = HoverSelectionMenu.totalHeightForCount(_annotationLineStyleOptions.length);
+    if (local.dx < 0 || local.dx > width || local.dy < 0 || local.dy > height) {
+      _annotationLineStyleHoverNotifier.value = -1;
+      setState(() => _annotationLineStyleHoverIndex = -1);
+      return;
+    }
+    final idx = (local.dy / HoverSelectionMenu.itemExtent).floor().clamp(0, _annotationLineStyleOptions.length - 1);
+    if (idx != _annotationLineStyleHoverIndex) {
+      _annotationLineStyleHoverNotifier.value = idx;
+      setState(() => _annotationLineStyleHoverIndex = idx);
+    }
+  }
+
+  void _removeAnnotationLineStyleMenu() {
+    _annotationLineStyleMenuEntry?.remove();
+    _annotationLineStyleMenuEntry = null;
+    _annotationLineStyleHoverIndex = -1;
+    _annotationLineStyleHoverNotifier.value = -1;
   }
 
   void _toggleAnnotationStrokeMenu({Offset? globalPos, bool forceOpen = false}) {
@@ -903,6 +1087,105 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _annotationTextSizeHoverNotifier.value = -1;
   }
 
+  void _toggleSectorAttachmentMenu({Offset? globalPos, bool forceOpen = false}) {
+    if (_sectorAttachmentMenuEntry != null) {
+      _removeSectorAttachmentMenu();
+      if (!forceOpen) return;
+    }
+
+    final overlay = Overlay.of(context);
+    final box = _sectorAttachmentButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final buttonOrigin = box.localToGlobal(Offset.zero);
+    final buttonSize = box.size;
+    final anchor = globalPos ?? (buttonOrigin + Offset(buttonSize.width / 2, buttonSize.height / 2));
+    final menuHeight = HoverSelectionMenu.totalHeightForCount(_sectorAttachmentOptions.length);
+    final menuWidth = HoverSelectionMenu.menuWidth;
+    final screenSize = MediaQuery.of(context).size;
+    final placeAbove = anchor.dy > (screenSize.height / 2);
+    final unclampedLeft = anchor.dx - (menuWidth / 2);
+    final unclampedTop = placeAbove ? buttonOrigin.dy - menuHeight - 12 : buttonOrigin.dy + buttonSize.height + 12;
+    final left = unclampedLeft.clamp(8.0, screenSize.width - menuWidth - 8.0);
+    final top = unclampedTop.clamp(8.0, screenSize.height - menuHeight - 8.0);
+
+    _sectorAttachmentHoverIndex = _sectorAttachmentOptions.indexOf(_sectorAttachmentType);
+    _sectorAttachmentHoverNotifier.value = _sectorAttachmentHoverIndex;
+
+    _sectorAttachmentMenuEntry = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          IgnorePointer(),
+          Positioned(
+            left: left,
+            top: top,
+            child: HoverSelectionMenu(
+              options: _sectorAttachmentOptions
+                  .map(
+                    (type) => HoverMenuOption(
+                      builder: (isHover) => Center(
+                        child: Icon(
+                          _iconForSectorAttachment(type),
+                          color: isHover ? AppTheme.primaryBlue : Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              initialHover: _sectorAttachmentHoverIndex,
+              hoverNotifier: _sectorAttachmentHoverNotifier,
+              onHover: (i) => setState(() => _sectorAttachmentHoverIndex = i),
+              onSelect: (i) {
+                setState(() {
+                  _sectorAttachmentType = _sectorAttachmentOptions[i];
+                  _activeAnnotationTool = AnnotationTool.sector;
+                  _sectorToolNeedsTargetSelection = true;
+                  _selectedSectorTarget = null;
+                  _selectedSectorAttachmentId = null;
+                  _selectedSectorCenterCm = null;
+                  _selectedSectorRadiusCm = null;
+                  _sectorTargetHighlightActive = false;
+                });
+                _removeSectorAttachmentMenu();
+              },
+              onDismiss: _removeSectorAttachmentMenu,
+              menuKey: _sectorAttachmentMenuKey,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(_sectorAttachmentMenuEntry!);
+    _updateSectorAttachmentMenuHover(anchor);
+  }
+
+  void _updateSectorAttachmentMenuHover(Offset globalPos) {
+    final box = _sectorAttachmentMenuKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(globalPos);
+    final width = HoverSelectionMenu.menuWidth;
+    final height = HoverSelectionMenu.totalHeightForCount(_sectorAttachmentOptions.length);
+    if (local.dx < 0 || local.dx > width || local.dy < 0 || local.dy > height) {
+      _sectorAttachmentHoverNotifier.value = -1;
+      setState(() => _sectorAttachmentHoverIndex = -1);
+      return;
+    }
+    final idx = (local.dy / HoverSelectionMenu.itemExtent).floor().clamp(0, _sectorAttachmentOptions.length - 1);
+    if (idx != _sectorAttachmentHoverIndex) {
+      _sectorAttachmentHoverNotifier.value = idx;
+      setState(() => _sectorAttachmentHoverIndex = idx);
+    }
+  }
+
+  void _removeSectorAttachmentMenu() {
+    _sectorAttachmentMenuEntry?.remove();
+    _sectorAttachmentMenuEntry = null;
+    _sectorAttachmentHoverIndex = -1;
+    _sectorAttachmentHoverNotifier.value = -1;
+  }
+
   /// Derive available logical screen size from the active window (web/windows) or MediaQuery elsewhere.
   Size _effectiveScreenSize(BuildContext context) {
     final mqSize = MediaQuery.of(context).size;
@@ -1013,6 +1296,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   void _startPlayback() {
     if (widget.project.frames.length < 2) return;
     setState(() {
+      _resetPlaybackAnnotationSession();
       _isPlaying = true;
       _endedAtLastFrame = false;
       _scrubberMovedManually = false;
@@ -1030,6 +1314,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// Stop playback and return to edit mode
   void _stopPlayback() {
     setState(() {
+      _resetPlaybackAnnotationSession();
       _isPlaying = false;
       _isPaused = false;
       _endedAtLastFrame = false;
@@ -1038,6 +1323,80 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _playbackT = 0.0;
     });
     _ticker.stop();
+  }
+
+  Future<void> _handleStopPlaybackPressed() async {
+    if (!_hasPlaybackSessionAnnotations()) {
+      _stopPlayback();
+      return;
+    }
+
+    final action = await _showSavePlaybackAnnotationsDialog();
+    if (!mounted || action == _PlaybackAnnotationStopAction.cancel) return;
+
+    if (action == _PlaybackAnnotationStopAction.save) {
+      _persistPlaybackAnnotationsToProject();
+    }
+
+    _stopPlayback();
+  }
+
+  Future<void> _handleBackNavigationRequested() async {
+    if ((_isPlaying || _endedAtLastFrame) && _hasPlaybackSessionAnnotations()) {
+      final action = await _showSavePlaybackAnnotationsDialog();
+      if (!mounted || action == _PlaybackAnnotationStopAction.cancel) return;
+      if (action == _PlaybackAnnotationStopAction.save) {
+        _persistPlaybackAnnotationsToProject();
+      }
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
+  Future<_PlaybackAnnotationStopAction> _showSavePlaybackAnnotationsDialog() async {
+    final choice = await showDialog<_PlaybackAnnotationStopAction>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Save annotations?'),
+        content: const Text(
+          'You added temporary playback annotations. Save them to their corresponding frames?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(_PlaybackAnnotationStopAction.cancel),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(_PlaybackAnnotationStopAction.discard),
+            child: const Text('Discard'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(_PlaybackAnnotationStopAction.save),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    return choice ?? _PlaybackAnnotationStopAction.cancel;
+  }
+
+  bool _hasPlaybackSessionAnnotations() {
+    for (final frameAnnotations in _playbackSessionAnnotationsByFrame.values) {
+      if (frameAnnotations.isNotEmpty) return true;
+    }
+    return false;
+  }
+
+  void _persistPlaybackAnnotationsToProject() {
+    if (!_hasPlaybackSessionAnnotations()) return;
+    for (int frameIndex = 0; frameIndex < widget.project.frames.length; frameIndex++) {
+      final tempAnnotations = _playbackSessionAnnotationsForFrame(frameIndex);
+      if (tempAnnotations.isEmpty) continue;
+      final from = _cloneAnnotations(widget.project.frames[frameIndex].annotations);
+      final to = <Annotation>[...from, ...tempAnnotations.map((annotation) => annotation.copy())];
+      _history.push(SetFrameAnnotationsAction(frameIndex: frameIndex, fromAnnotations: from, toAnnotations: to));
+    }
   }
 
   /// Pause playback (can be resumed)
@@ -1052,6 +1411,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   void _resumePlayback() {
     setState(() {
       _isPaused = false;
+      _activeMenu = BoardMenu.none;
+      _deactivateAnnotationTools();
     });
     _ticker.start();
   }
@@ -1431,6 +1792,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _activeAnnotationTool = AnnotationTool.none;
     _sectorToolNeedsTargetSelection = false;
     _selectedSectorTarget = null;
+    _selectedSectorAttachmentId = null;
     _selectedSectorCenterCm = null;
     _selectedSectorRadiusCm = null;
     _sectorTargetHighlightActive = false;
@@ -1440,8 +1802,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _eraserMode = false;
     _eraserPosCm = null;
     _removeAnnotationEraserMenu();
+    _removeAnnotationLineStyleMenu();
     _removeAnnotationStrokeMenu();
     _removeAnnotationTextSizeMenu();
+    _removeSectorAttachmentMenu();
   }
 
   void _closeObjectMenusAndSelection() {
@@ -1450,6 +1814,164 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _activePlayerId = null;
     _activeBallId = null;
     _addingObjectType = null;
+  }
+
+  bool get _isPausedPlayback => _isPlaying && _isPaused;
+
+  bool get _isTemporaryPlaybackAnnotationMode => _isPausedPlayback;
+
+  int _playbackDisplayFrameIndex() {
+    if (widget.project.frames.isEmpty) return 0;
+    final lastIndex = widget.project.frames.length - 1;
+    if (_playbackFrameIndex >= lastIndex) return lastIndex;
+    return (_playbackFrameIndex + 1).clamp(0, lastIndex);
+  }
+
+  List<Annotation> _resolvedPlaybackSessionAnnotationsForFrame(int frameIndex) {
+    if (widget.project.frames.isEmpty) return <Annotation>[];
+    final clampedFrame = frameIndex.clamp(0, widget.project.frames.length - 1);
+    for (int idx = clampedFrame; idx >= 0; idx--) {
+      final annotations = _playbackSessionAnnotationsByFrame[idx];
+      if (annotations != null) {
+        return _cloneAnnotations(annotations);
+      }
+    }
+    return <Annotation>[];
+  }
+
+  List<Annotation> _playbackSessionAnnotationsForFrame(int frameIndex, {bool createIfMissing = false}) {
+    if (createIfMissing) {
+      return _playbackSessionAnnotationsByFrame.putIfAbsent(
+        frameIndex,
+        () => _resolvedPlaybackSessionAnnotationsForFrame(frameIndex),
+      );
+    }
+    return _resolvedPlaybackSessionAnnotationsForFrame(frameIndex);
+  }
+
+  List<Annotation> _activeAnnotationList() {
+    if (_isTemporaryPlaybackAnnotationMode) {
+      return _playbackSessionAnnotationsForFrame(_playbackDisplayFrameIndex(), createIfMissing: true);
+    }
+    return currentFrame.annotations;
+  }
+
+  void _setPlaybackSessionAnnotationsForFrame(int frameIndex, List<Annotation> annotations) {
+    _playbackSessionAnnotationsByFrame[frameIndex] = _cloneAnnotations(annotations);
+  }
+
+  Annotation _interpolatePlaybackAnnotation(Annotation from, Annotation to, double t) {
+    final interpolated = to.copy();
+    if (from.points.length == to.points.length) {
+      interpolated.points = List<Offset>.generate(
+        to.points.length,
+        (index) => Offset.lerp(from.points[index], to.points[index], t) ?? to.points[index],
+      );
+    }
+    if (from.startAngle != null && to.startAngle != null) {
+      interpolated.startAngle = (from.startAngle! + (to.startAngle! - from.startAngle!) * t);
+    }
+    if (from.endAngle != null && to.endAngle != null) {
+      interpolated.endAngle = (from.endAngle! + (to.endAngle! - from.endAngle!) * t);
+    }
+    if (from.fontSize != null && to.fontSize != null) {
+      interpolated.fontSize = from.fontSize! + (to.fontSize! - from.fontSize!) * t;
+    }
+    return interpolated;
+  }
+
+  List<Annotation> _interpolatePlaybackSessionAnnotations(int fromFrame, int toFrame, double t) {
+    final fromAnnotations = _playbackSessionAnnotationsForFrame(fromFrame);
+    final toAnnotations = _playbackSessionAnnotationsForFrame(toFrame);
+
+    if (toAnnotations.isEmpty) return <Annotation>[];
+    if (fromAnnotations.isEmpty) return _cloneAnnotations(toAnnotations);
+
+    final fromById = <String, Annotation>{};
+    for (final annotation in fromAnnotations) {
+      if (annotation.id != null) {
+        fromById[annotation.id!] = annotation;
+      }
+    }
+
+    final interpolated = <Annotation>[];
+    for (final annotation in toAnnotations) {
+      final annotationId = annotation.id;
+      if (annotationId == null) {
+        interpolated.add(annotation.copy());
+        continue;
+      }
+      final fromMatch = fromById[annotationId];
+      if (fromMatch == null || fromMatch.type != annotation.type || fromMatch.points.length != annotation.points.length) {
+        interpolated.add(annotation.copy());
+        continue;
+      }
+      interpolated.add(_interpolatePlaybackAnnotation(fromMatch, annotation, t));
+    }
+
+    return interpolated;
+  }
+
+  void _resetPlaybackAnnotationSession() {
+    _playbackSessionAnnotationsByFrame.clear();
+    _annotationGestureStartSnapshot = null;
+  }
+
+  String _newAnnotationId() {
+    final ts = DateTime.now().microsecondsSinceEpoch;
+    final random = math.Random().nextInt(1 << 20);
+    return '${ts}_$random';
+  }
+
+  List<Annotation> _cloneAnnotations(List<Annotation> source) => source.map((annotation) => annotation.copy()).toList();
+
+  bool _annotationEquals(Annotation a, Annotation b) {
+    if (a.type != b.type) return false;
+    if (a.colorValue != b.colorValue) return false;
+    if (a.filled != b.filled) return false;
+    if (a.lineStyleIndex != b.lineStyleIndex) return false;
+    if ((a.strokeWidthCm - b.strokeWidthCm).abs() > 0.001) return false;
+    if (a.circleAnnotationId != b.circleAnnotationId) return false;
+    if (a.sectorAttachmentType != b.sectorAttachmentType) return false;
+    if (a.sectorAttachmentId != b.sectorAttachmentId) return false;
+    if (((a.startAngle ?? 0) - (b.startAngle ?? 0)).abs() > 0.001) {
+      return false;
+    }
+    if (((a.endAngle ?? 0) - (b.endAngle ?? 0)).abs() > 0.001) {
+      return false;
+    }
+    if (a.id != b.id) return false;
+    if (a.text != b.text) return false;
+    if (((a.fontSize ?? 0) - (b.fontSize ?? 0)).abs() > 0.001) return false;
+    if (a.points.length != b.points.length) return false;
+    for (int i = 0; i < a.points.length; i++) {
+      if ((a.points[i].dx - b.points[i].dx).abs() > 0.001 || (a.points[i].dy - b.points[i].dy).abs() > 0.001) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool _annotationsEqual(List<Annotation> a, List<Annotation> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (!_annotationEquals(a[i], b[i])) return false;
+    }
+    return true;
+  }
+
+  void _pushAnnotationHistoryIfChanged(List<Annotation> before, List<Annotation> after) {
+    if (_annotationsEqual(before, after)) return;
+
+    if (_isTemporaryPlaybackAnnotationMode) {
+      final frameIndex = _playbackDisplayFrameIndex();
+      _setPlaybackSessionAnnotationsForFrame(frameIndex, after);
+      return;
+    }
+
+    final frameIndex = widget.project.frames.indexOf(currentFrame);
+    if (frameIndex < 0) return;
+    _history.push(SetFrameAnnotationsAction(frameIndex: frameIndex, fromAnnotations: before, toAnnotations: after));
   }
 
   void _setActiveMenu(BoardMenu menu) {
@@ -1591,7 +2113,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 color: color,
                                 shape: BoxShape.circle,
                                 border:
-                                    _activePlayerId != null && currentFrame.getPlayerById(_activePlayerId!)?.color == color
+                                    _activePlayerId != null &&
+                                        currentFrame.getPlayerById(_activePlayerId!)?.color == color
                                     ? Border.all(color: AppTheme.lightGrey, width: 2)
                                     : null,
                               ),
@@ -1646,14 +2169,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   void _duplicateLastAnnotation() {
-    if (currentFrame.annotations.isEmpty) return;
+    final annotations = _activeAnnotationList();
+    if (annotations.isEmpty) return;
     const Offset delta = Offset(10, 10); // shift in cm coords
-    final dup = currentFrame.annotations.last.copy();
+    final before = _cloneAnnotations(annotations);
+    final dup = annotations.last.copy();
+    dup.id = _newAnnotationId();
     dup.points = dup.points.map((p) => p + delta).toList();
     setState(() {
-      currentFrame.annotations.add(dup);
+      annotations.add(dup);
     });
-    _saveProject();
+    _pushAnnotationHistoryIfChanged(before, _cloneAnnotations(annotations));
   }
 
   /// Shows color picker dialog for ball
@@ -1762,15 +2288,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   // - Drag: annotation drawing, eraser, object movement, path control editing
 
   void _handleBoardTap(Offset tapPos, Size size) {
-    // Path tracking toggle during paused playback
-    if (_isPlaying && _isPaused) {
-      if (_objectsMenuOpen) {
-        _togglePathTracking(tapPos, size);
-      }
+    if ((_isPlaying && !_isPaused) || _endedAtLastFrame) return;
+
+    // Path tracking toggle during paused playback while objects menu is open
+    if (_isPausedPlayback && _objectsMenuOpen) {
+      _togglePathTracking(tapPos, size);
       return;
     }
-
-    if (_isPlaying || _endedAtLastFrame) return;
 
     if (!_objectsMenuOpen && !_annotationsMenuOpen) return;
 
@@ -1869,25 +2393,38 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final cmPerPx = pxPerCm == 0 ? 0.0 : (1.0 / pxPerCm);
     final zoneOutlineMarginCm = 5.0 * cmPerPx;
     final zoneOutlineToleranceCm = 50.0 + zoneOutlineMarginCm;
-    final ballToleranceCm = 50.0 + zoneOutlineMarginCm;
-    // Check balls FIRST with priority
-    // When both ball and zone are within tapped location, always use ball as reference
-    for (final ball in currentFrame.balls) {
-      final distToBall = (cmPos - ball.position).distance;
-      if (distToBall <= ballToleranceCm) {
-        // Ball selected - balls take priority over zones
-        setState(() {
-          _selectedSectorTarget = 'ball_${ball.id}';
-          _selectedSectorCenterCm = ball.position;
-          _selectedSectorRadiusCm = _settings.ballSectorRadiusCm; // Use configurable ball sector radius
-          _sectorTargetHighlightActive = true;
-          _pendingAnnotationPoints.clear();
-          _currentDragPos = cmPos;
-          _stagedAnnotations.clear();
-          _sectorToolNeedsTargetSelection = false; // Exit selection phase, ready to draw
-        });
-        return true;
+    final objectToleranceCm = 50.0 + zoneOutlineMarginCm;
+
+    if (_sectorAttachmentType == _SectorAttachmentType.ball) {
+      for (final ball in currentFrame.balls) {
+        final distToBall = (cmPos - ball.position).distance;
+        if (distToBall <= objectToleranceCm) {
+          _selectSectorTarget(
+            targetKey: 'ball_${ball.id}',
+            attachmentId: ball.id,
+            centerCm: ball.position,
+            radiusCm: _objectAttachedSectorRadiusCm,
+          );
+          return true;
+        }
       }
+      return false;
+    }
+
+    if (_sectorAttachmentType == _SectorAttachmentType.player) {
+      for (final player in currentFrame.players) {
+        final distToPlayer = (cmPos - player.position).distance;
+        if (distToPlayer <= objectToleranceCm) {
+          _selectSectorTarget(
+            targetKey: 'player_${player.id}',
+            attachmentId: player.id,
+            centerCm: player.position,
+            radiusCm: _objectAttachedSectorRadiusCm,
+          );
+          return true;
+        }
+      }
+      return false;
     }
 
     // Build list of available zones based on project type
@@ -1926,21 +2463,37 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final distanceToOutline = (distFromZoneCenter - radius).abs();
 
       if (distanceToOutline <= zoneOutlineToleranceCm) {
-        setState(() {
-          _selectedSectorTarget = zone['type'] as String;
-          _selectedSectorCenterCm = center;
-          _selectedSectorRadiusCm = radius;
-          _sectorTargetHighlightActive = true;
-          _pendingAnnotationPoints.clear();
-          _currentDragPos = cmPos;
-          _stagedAnnotations.clear();
-          _sectorToolNeedsTargetSelection = false; // Exit selection phase, ready to draw
-        });
+        final zoneKey = zone['type'] as String;
+        _selectSectorTarget(
+          targetKey: zoneKey,
+          attachmentId: zoneKey,
+          centerCm: center,
+          radiusCm: radius,
+        );
         return true;
       }
     }
 
     return false;
+  }
+
+  void _selectSectorTarget({
+    required String targetKey,
+    required String attachmentId,
+    required Offset centerCm,
+    required double radiusCm,
+  }) {
+    setState(() {
+      _selectedSectorTarget = targetKey;
+      _selectedSectorAttachmentId = attachmentId;
+      _selectedSectorCenterCm = centerCm;
+      _selectedSectorRadiusCm = radiusCm;
+      _sectorTargetHighlightActive = true;
+      _pendingAnnotationPoints.clear();
+      _currentDragPos = centerCm;
+      _stagedAnnotations.clear();
+      _sectorToolNeedsTargetSelection = false;
+    });
   }
 
   double _normalizeAngleDelta(double delta) {
@@ -2012,7 +2565,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   Annotation? _findTextAnnotationAt(Offset pointCm, Size size) {
-    for (final ann in currentFrame.annotations.reversed) {
+    final annotations = _activeAnnotationList();
+    for (final ann in annotations.reversed) {
       if (ann.type != AnnotationType.text) continue;
       final rect = _textBoundsPx(ann, size);
       if (rect == null) continue;
@@ -2080,9 +2634,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (textValue == null || textValue.isEmpty) return;
 
     final chosenSize = result!.size;
+    final annotations = _activeAnnotationList();
+    final before = _cloneAnnotations(annotations);
     setState(() {
       _annotationTextSize = chosenSize;
-      currentFrame.annotations.add(
+      annotations.add(
         Annotation(
           type: AnnotationType.text,
           color: _annotationColor,
@@ -2093,7 +2649,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         ),
       );
     });
-    _saveProject();
+    _pushAnnotationHistoryIfChanged(before, _cloneAnnotations(annotations));
   }
 
   Future<void> _editTextAnnotation(Annotation annotation, Size size) async {
@@ -2109,12 +2665,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         textValue != (annotation.text ?? '') || chosenSize != (annotation.fontSize ?? _annotationTextSize);
     if (!hasChanges) return;
 
+    final annotations = _activeAnnotationList();
+    final before = _cloneAnnotations(annotations);
     setState(() {
       annotation
         ..text = textValue
         ..fontSize = chosenSize;
     });
-    _saveProject();
+    _pushAnnotationHistoryIfChanged(before, _cloneAnnotations(annotations));
   }
 
   /// Check if a point is near an annotation (for selecting it with move tool)
@@ -2196,9 +2754,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   /// Handle drag start for line drawing
   void _handleAnnotationDragStart(DragStartDetails details, Size size) {
-    if (_isPlaying || _endedAtLastFrame) return;
+    if ((_isPlaying && !_isPaused) || _endedAtLastFrame) return;
     if (!_annotationsMenuOpen) return;
+    _annotationGestureStartSnapshot = null;
     if (_eraserMode) {
+      _annotationGestureStartSnapshot = _cloneAnnotations(_activeAnnotationList());
       // Start eraser drag
       if (_showModifierMenu) {
         setState(() => _showModifierMenu = false);
@@ -2222,10 +2782,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final localPos = box.globalToLocal(details.globalPosition);
       final clampedPos = _clampToInteractionBounds(localPos, size);
       final cmPos = _screenToCm(clampedPos, size);
+      final annotations = _activeAnnotationList();
 
       // Find annotation under cursor (check in reverse order so top annotations are selected first)
-      for (final ann in currentFrame.annotations.reversed) {
+      for (final ann in annotations.reversed) {
         if (_isPointNearAnnotation(cmPos, ann, 30.0, size)) {
+          _annotationGestureStartSnapshot = _cloneAnnotations(annotations);
           setState(() {
             _draggingAnnotation = ann;
             _annotationDragOffset = ann.points.isNotEmpty ? ann.points.first - cmPos : Offset.zero;
@@ -2257,16 +2819,22 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       return; // If not on a ball or zone outline, don't do anything
     }
 
+    final startPoint = (_annotationSnappingEnabled && _shouldSnapDuringCreation(_activeAnnotationTool))
+        ? _applyAnnotationCreationSnap(cmPos, size)
+        : cmPos;
+
+    _annotationGestureStartSnapshot = _cloneAnnotations(_activeAnnotationList());
+
     setState(() {
       _pendingAnnotationPoints.clear();
-      _pendingAnnotationPoints.add(cmPos);
-      _currentDragPos = cmPos;
+      _pendingAnnotationPoints.add(startPoint);
+      _currentDragPos = startPoint;
       _stagedAnnotations.clear();
       if (_activeAnnotationTool == AnnotationTool.sector &&
           _selectedSectorCenterCm != null &&
           _selectedSectorRadiusCm != null) {
         final center = _selectedSectorCenterCm!;
-        final startVec = cmPos - center;
+        final startVec = startPoint - center;
         final startAngle = math.atan2(startVec.dy, startVec.dx);
         _sectorDragStartAngle = startAngle;
         _sectorDragPrevAngle = startAngle;
@@ -2278,7 +2846,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   /// Handle drag update for live line preview and erasing
   void _handleAnnotationDragUpdate(DragUpdateDetails details, Size size) {
-    if (_isPlaying || _endedAtLastFrame) return;
+    if ((_isPlaying && !_isPaused) || _endedAtLastFrame) return;
     if (!_annotationsMenuOpen) return;
 
     final currentPos = details.globalPosition;
@@ -2295,50 +2863,62 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       }
 
       // Update eraser position and instantly delete annotations touched by circle
+      final annotations = _activeAnnotationList();
       setState(() {
         _eraserPosCm = cmPos;
-        currentFrame.annotations.removeWhere(
+        annotations.removeWhere(
           (ann) => _isAnnotationTouchedByCircle(ann, cmPos, _annotationEraserRadiusCm, size),
         );
       });
-      _saveProject();
     } else if (!_eraserMode && _activeAnnotationTool == AnnotationTool.text) {
       return;
     } else if (_activeAnnotationTool == AnnotationTool.move && _draggingAnnotation != null) {
       // Update annotation position while dragging with snapping
+      final annotations = _activeAnnotationList();
       setState(() {
         final offset = _annotationDragOffset ?? Offset.zero;
         var newPos = cmPos + offset;
 
         if (_draggingAnnotation!.points.isNotEmpty) {
-          final idx = currentFrame.annotations.indexOf(_draggingAnnotation!);
+          final draggingId = _draggingAnnotation!.id;
+          final idx = draggingId != null
+              ? annotations.indexWhere((annotation) => annotation.id == draggingId)
+              : annotations.indexOf(_draggingAnnotation!);
           if (idx != -1) {
             // Apply snapping to the new position
             if (_annotationSnappingEnabled) {
-              newPos = _applyAnnotationSnap(newPos, _draggingAnnotation!, currentFrame.annotations);
+              newPos = _applyAnnotationSnap(newPos, _draggingAnnotation!, annotations, size);
             }
 
             final delta = newPos - _draggingAnnotation!.points.first;
             final updated = _draggingAnnotation!.copy();
             updated.points = updated.points.map((p) => p + delta).toList();
             _draggingAnnotation = updated;
-            final nextAnnotations = List<Annotation>.from(currentFrame.annotations);
+            final nextAnnotations = List<Annotation>.from(annotations);
             nextAnnotations[idx] = updated;
-            currentFrame.annotations = nextAnnotations;
+            if (_isTemporaryPlaybackAnnotationMode) {
+              _setPlaybackSessionAnnotationsForFrame(_playbackDisplayFrameIndex(), nextAnnotations);
+            } else {
+              currentFrame.annotations = nextAnnotations;
+            }
           }
         }
       });
     } else if (_pendingAnnotationPoints.isNotEmpty && _activeAnnotationTool != AnnotationTool.none) {
+      final previewPos = (_annotationSnappingEnabled && _shouldSnapDuringCreation(_activeAnnotationTool))
+          ? _applyAnnotationCreationSnap(cmPos, size)
+          : cmPos;
+
       // Update preview position for active tool
       setState(() {
-        _currentDragPos = cmPos;
+        _currentDragPos = previewPos;
         _stagedAnnotations.clear();
         if (_activeAnnotationTool == AnnotationTool.rectangle) {
           _stagedAnnotations.add(
             Annotation(
               type: AnnotationType.rectangle,
               color: _annotationColor,
-              points: [_pendingAnnotationPoints.first, cmPos],
+              points: [_pendingAnnotationPoints.first, previewPos],
               filled: _rectangleFilled,
               strokeWidthCm: _annotationStrokeCm,
             ),
@@ -2348,7 +2928,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             Annotation(
               type: AnnotationType.circle,
               color: _annotationColor,
-              points: [_pendingAnnotationPoints.first, cmPos],
+              points: [_pendingAnnotationPoints.first, previewPos],
               filled: _circleFilled,
               strokeWidthCm: _annotationStrokeCm,
             ),
@@ -2386,6 +2966,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               filled: true,
               strokeWidthCm: _annotationStrokeCm,
               circleAnnotationId: _selectedSectorTarget,
+              sectorAttachmentType: _storageValueForSectorAttachment(_sectorAttachmentType),
+              sectorAttachmentId: _selectedSectorAttachmentId,
               startAngle: startAngle,
               endAngle: endAngle,
             ),
@@ -2397,16 +2979,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   /// Clear all annotations on the current frame
   void _clearCurrentFrameAnnotations() {
-    if (_isPlaying || _endedAtLastFrame) return;
+    if ((_isPlaying && !_isPaused) || _endedAtLastFrame) return;
+    final annotations = _activeAnnotationList();
+    if (annotations.isEmpty) return;
+    final before = _cloneAnnotations(annotations);
     setState(() {
-      currentFrame.annotations.clear();
+      annotations.clear();
       _stagedAnnotations.clear();
       _erasingAnnotations.clear();
       _eraserPosCm = null;
-      final idx = widget.project.frames.indexOf(currentFrame);
-      if (idx >= 0) widget.project.frames[idx] = currentFrame;
     });
-    _saveProject();
+    _pushAnnotationHistoryIfChanged(before, _cloneAnnotations(annotations));
   }
 
   /// Check if an annotation intersects with the eraser circle
@@ -2483,11 +3066,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   /// Apply snapping to annotation position based on nearby annotations
-  Offset _applyAnnotationSnap(Offset newPos, Annotation dragged, List<Annotation> allAnnotations) {
-    const double thresholdCm = 20.0; // 20cm snap threshold for cm-based coordinates
+  Offset _applyAnnotationSnap(Offset newPos, Annotation dragged, List<Annotation> allAnnotations, Size size) {
+    final thresholdCm = _snapThresholdCm(size);
     final anchors = _annotationAnchorPoints(dragged, newPos);
     final candidates = <Offset>[
-      ..._snapPointsFromOtherAnnotations(dragged, allAnnotations),
+      ..._snapPointsFromAnnotations(allAnnotations, exclude: dragged),
       ..._snapPointsFromCourtAndObjects(),
     ];
 
@@ -2509,6 +3092,36 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     }
 
     return newPos;
+  }
+
+  bool _shouldSnapDuringCreation(AnnotationTool tool) {
+    return tool == AnnotationTool.line || tool == AnnotationTool.circle || tool == AnnotationTool.rectangle;
+  }
+
+  double _snapThresholdCm(Size size) {
+    final pxPerCm = _settings.cmToLogical(1.0, size).abs();
+    if (pxPerCm <= 0) return 20.0;
+    return 20.0 / pxPerCm;
+  }
+
+  Offset _applyAnnotationCreationSnap(Offset pointCm, Size size) {
+    final thresholdCm = _snapThresholdCm(size);
+    final candidates = <Offset>[
+      ..._snapPointsFromAnnotations(_activeAnnotationList()),
+      ..._snapPointsFromCourtAndObjects(),
+    ];
+
+    double bestDist = thresholdCm;
+    Offset? best;
+    for (final target in candidates) {
+      final dist = (target - pointCm).distance;
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = target;
+      }
+    }
+
+    return best ?? pointCm;
   }
 
   /// Get anchor points from the dragged annotation (center, endpoints, corners)
@@ -2555,12 +3168,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     return anchors;
   }
 
-  /// Get snap target points from other annotations
-  List<Offset> _snapPointsFromOtherAnnotations(Annotation dragged, List<Annotation> allAnnotations) {
+  List<Offset> _snapPointsFromAnnotations(List<Annotation> annotations, {Annotation? exclude}) {
     final points = <Offset>[];
 
-    for (final ann in allAnnotations) {
-      if (identical(ann, dragged)) continue;
+    for (final ann in annotations) {
+      if (exclude != null) {
+        final sameId = ann.id != null && exclude.id != null && ann.id == exclude.id;
+        if (identical(ann, exclude) || sameId) {
+          continue;
+        }
+      }
       if (ann.points.isEmpty) continue;
 
       // Add all annotation points
@@ -2653,31 +3270,43 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   /// Handle drag end for committing line or finishing erase
   void _handleAnnotationDragEnd(DragEndDetails details, Size size) {
-    if (_isPlaying || _endedAtLastFrame) return;
+    if ((_isPlaying && !_isPaused) || _endedAtLastFrame) return;
     if (!_annotationsMenuOpen) return;
 
     if (_activeAnnotationTool == AnnotationTool.move) {
       // Finish moving annotation (keep selected for highlighting)
+      final before = _annotationGestureStartSnapshot;
+      final after = _cloneAnnotations(_activeAnnotationList());
       setState(() {
         _draggingAnnotation = null;
         _annotationDragOffset = null;
       });
-      _saveProject();
+      if (before != null) {
+        _pushAnnotationHistoryIfChanged(before, after);
+      }
+      _annotationGestureStartSnapshot = null;
       return;
     }
 
     if (_eraserMode) {
       // Erasing already happened during drag, clear eraser position
+      final before = _annotationGestureStartSnapshot;
+      final after = _cloneAnnotations(_activeAnnotationList());
       setState(() {
         _erasingAnnotations.clear();
         _eraserPosCm = null;
       });
+      if (before != null) {
+        _pushAnnotationHistoryIfChanged(before, after);
+      }
+      _annotationGestureStartSnapshot = null;
       return;
     }
 
     if (_activeAnnotationTool == AnnotationTool.text) {
       _pendingAnnotationPoints.clear();
       _currentDragPos = null;
+      _annotationGestureStartSnapshot = null;
       return;
     }
 
@@ -2709,6 +3338,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             filled: true, // Sectors are always filled
             strokeWidthCm: _annotationStrokeCm,
             circleAnnotationId: _selectedSectorTarget,
+            sectorAttachmentType: _storageValueForSectorAttachment(_sectorAttachmentType),
+            sectorAttachmentId: _selectedSectorAttachmentId,
             startAngle: startAngle,
             endAngle: endAngle,
           );
@@ -2720,6 +3351,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             color: _annotationColor,
             points: [start, end],
             strokeWidthCm: _annotationStrokeCm,
+            lineStyle: _annotationLineStyle,
           );
         } else if (_activeAnnotationTool == AnnotationTool.circle) {
           ann = Annotation(
@@ -2752,8 +3384,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       // Remove the duplicate sector handling that was here
 
       if (ann != null) {
+        final annotations = _activeAnnotationList();
+        final before = _annotationGestureStartSnapshot ?? _cloneAnnotations(annotations);
         setState(() {
-          currentFrame.annotations.add(ann!);
+          annotations.add(ann!);
           _pendingAnnotationPoints.clear();
           _currentDragPos = null;
           _stagedAnnotations.clear();
@@ -2765,7 +3399,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           // _sectorToolNeedsTargetSelection remains false
           // _selectedSectorTarget, _selectedSectorCenterCm, _selectedSectorRadiusCm stay selected
         });
-        _saveProject();
+        _pushAnnotationHistoryIfChanged(before, _cloneAnnotations(annotations));
+        _annotationGestureStartSnapshot = null;
       } else {
         setState(() {
           _pendingAnnotationPoints.clear();
@@ -2773,8 +3408,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           _stagedAnnotations.clear();
           // Don't reset sector selection here either
         });
+        _annotationGestureStartSnapshot = null;
       }
     }
+
+    _annotationGestureStartSnapshot = null;
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -3093,7 +3731,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
     // Determine the actual entity ID for history tracking
     // For balls, use the ball ID instead of "BALL" label
-    final entityIdForHistory = (labelToUse == "BALL" && bestBallId != null) ? bestBallId : labelToUse;
+    final String entityIdForHistory =
+      (labelToUse == "BALL" && bestBallId != null) ? bestBallId : labelToUse;
 
     // Store the initial state for undo/redo
     final fromPoints = List<Offset>.from(pathPoints);
@@ -3122,9 +3761,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     }
 
     // Store the initial path state for this drag operation using entity ID
-    if (entityIdForHistory != null) {
-      _pathDragStartPoints[entityIdForHistory] = fromPoints;
-    }
+    _pathDragStartPoints[entityIdForHistory] = fromPoints;
 
     return true;
   }
@@ -3451,7 +4088,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     // For balls, use their color from current frame
     final ball = currentFrame.getBallById(normalizedEntityId);
     if (ball != null) {
-      return ball.color ?? Colors.white;
+      return ball.color;
     }
 
     switch (entityId) {
@@ -4178,12 +4815,26 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final inPlaybackView = _isPlaying || _endedAtLastFrame;
     // During playback or when scrubbing in ended state, show interpolated frame
     final frameToShow = (inPlaybackView && _animatedFrame != null) ? _animatedFrame! : currentFrame;
+    final editingFrameIndex = widget.project.frames.indexOf(currentFrame);
+    final renderFrameIndex = inPlaybackView
+        ? _playbackDisplayFrameIndex()
+        : (editingFrameIndex < 0 ? 0 : editingFrameIndex.clamp(0, widget.project.frames.length - 1));
+    final savedAnnotationsToRender = widget.project.frames[renderFrameIndex].annotations;
+    final sessionPlaybackAnnotationsToRender =
+      (isPlayback && !_isPaused && _playbackFrameIndex < widget.project.frames.length - 1)
+      ? _interpolatePlaybackSessionAnnotations(_playbackFrameIndex, _playbackFrameIndex + 1, _playbackT)
+      : _playbackSessionAnnotationsForFrame(renderFrameIndex);
+    final tempAnnotationsToRender = <Annotation>[
+      ...sessionPlaybackAnnotationsToRender,
+      ..._stagedAnnotations,
+    ];
+    final showPlaybackTempShadow = inPlaybackView && sessionPlaybackAnnotationsToRender.isNotEmpty;
     // Timeline maintains consistent height during state transitions to avoid layout shifts
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) return;
-        // Handle back button press if needed
+        _handleBackNavigationRequested();
       },
       child: Scaffold(
         appBar: AppBar(
@@ -4192,7 +4843,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             tooltip: 'Back to Projects',
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: _handleBackNavigationRequested,
           ),
           actions: [
             if (!_isPlaying && !_endedAtLastFrame)
@@ -4207,7 +4858,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 onPressed: () => _setActiveMenu(BoardMenu.objects),
                 isSelected: _objectsMenuOpen,
               ),
-            if (!_isPlaying && !_endedAtLastFrame)
+            if ((!_isPlaying && !_endedAtLastFrame) || _isPausedPlayback)
               IconButton(
                 key: _annotationModeButtonKey,
                 icon: SvgPicture.asset(
@@ -4316,8 +4967,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               IgnorePointer(
                                 ignoring: true,
                                 child: AnnotationPainter(
-                                  annotations: frameToShow.annotations,
-                                  tempAnnotations: _stagedAnnotations.isNotEmpty ? _stagedAnnotations : null,
+                                  annotations: savedAnnotationsToRender,
+                                  tempAnnotations: tempAnnotationsToRender.isNotEmpty ? tempAnnotationsToRender : null,
+                                  tempAnnotationsShadow: showPlaybackTempShadow,
                                   erasingAnnotations: _erasingAnnotations.isNotEmpty ? _erasingAnnotations : null,
                                   dragPreviewLine:
                                       _annotationsMenuOpen &&
@@ -4325,6 +4977,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                           _currentDragPos != null
                                       ? [_pendingAnnotationPoints.first, _currentDragPos!]
                                       : null,
+                                  dragPreviewLineStyle: _annotationLineStyle,
                                   settings: _settings,
                                   screenSize: screenSize,
                                   strokeWidthCm: _annotationStrokeCm,
@@ -4363,8 +5016,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     boardSize: screenSize,
                                     pulseAnimation: _selectionPulseController,
                                     highlightedZone: _selectedSectorTarget,
+                                    attachmentType: _sectorAttachmentType,
                                     projectType: widget.project.projectType,
                                     customCourtElements: widget.project.customCourtElements,
+                                    players: frameToShow.players,
                                     balls: frameToShow.balls,
                                   ),
                                 ),
@@ -4389,12 +5044,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                             Positioned.fill(
                               child: GestureDetector(
                                 onTapUp: (details) {
-                                  // Handle path tracking toggle during paused playback
-                                  if (_isPlaying && _isPaused) {
+                                  // Handle path tracking toggle during paused playback when objects menu is open
+                                  if (_isPausedPlayback && _objectsMenuOpen) {
                                     _togglePathTracking(details.localPosition, screenSize);
                                     return;
                                   }
-                                  if (!(_isPlaying || _endedAtLastFrame)) {
+                                  if ((_isPlaying && !_isPaused) || _endedAtLastFrame) return;
+                                  if (!(_isPlaying || _endedAtLastFrame) || _isPausedPlayback) {
                                     if (_pendingBallMark == 'hit') {
                                       _placeBallHitAt(details.localPosition, screenSize);
                                     } else {
@@ -4405,7 +5061,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   }
                                 },
                                 onDoubleTapDown: (details) {
-                                  if (_isPlaying || _endedAtLastFrame) return;
+                                  if ((_isPlaying && !_isPaused) || _endedAtLastFrame) return;
                                   if (_annotationsMenuOpen) {
                                     final clampedTap = _clampToInteractionBounds(details.localPosition, screenSize);
                                     final tapCm = _screenToCm(clampedTap, screenSize);
@@ -4429,26 +5085,26 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   }
                                 },
                                 onPanStart: (details) {
-                                  if (_isPlaying || _endedAtLastFrame) return;
+                                  if ((_isPlaying && !_isPaused) || _endedAtLastFrame) return;
                                   if (_annotationsMenuOpen) {
                                     _handleAnnotationDragStart(details, screenSize);
-                                  } else {
+                                  } else if (!_isPausedPlayback) {
                                     _maybeStartPathDrag(details.localPosition, screenSize);
                                   }
                                 },
                                 onPanUpdate: (details) {
-                                  if (_isPlaying || _endedAtLastFrame) return;
+                                  if ((_isPlaying && !_isPaused) || _endedAtLastFrame) return;
                                   if (_annotationsMenuOpen) {
                                     _handleAnnotationDragUpdate(details, screenSize);
-                                  } else if (_activePathDragId != null) {
+                                  } else if (!_isPausedPlayback && _activePathDragId != null) {
                                     _updatePathDrag(details.localPosition, screenSize);
                                   }
                                 },
                                 onPanEnd: (details) {
-                                  if (_isPlaying || _endedAtLastFrame) return;
+                                  if ((_isPlaying && !_isPaused) || _endedAtLastFrame) return;
                                   if (_annotationsMenuOpen) {
                                     _handleAnnotationDragEnd(details, screenSize);
-                                  } else if (_activePathDragId != null) {
+                                  } else if (!_isPausedPlayback && _activePathDragId != null) {
                                     _endPathDrag();
                                   }
                                 },
@@ -4502,8 +5158,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               IgnorePointer(
                                 ignoring: true,
                                 child: AnnotationPainter(
-                                  annotations: frameToShow.annotations,
-                                  tempAnnotations: _stagedAnnotations.isNotEmpty ? _stagedAnnotations : null,
+                                  annotations: savedAnnotationsToRender,
+                                  tempAnnotations: tempAnnotationsToRender.isNotEmpty ? tempAnnotationsToRender : null,
+                                  tempAnnotationsShadow: showPlaybackTempShadow,
                                   erasingAnnotations: _erasingAnnotations.isNotEmpty ? _erasingAnnotations : null,
                                   dragPreviewLine:
                                       _annotationsMenuOpen &&
@@ -4511,6 +5168,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                           _currentDragPos != null
                                       ? [_pendingAnnotationPoints.first, _currentDragPos!]
                                       : null,
+                                    dragPreviewLineStyle: _annotationLineStyle,
                                   selectedAnnotation: _selectedAnnotation,
                                   settings: _settings,
                                   screenSize: screenSize,
@@ -4901,7 +5559,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           child: Row(
                             children: [
                               ElevatedButton(
-                                onPressed: _stopPlayback,
+                                onPressed: _handleStopPlaybackPressed,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppTheme.errorRed,
                                   minimumSize: const Size(40, 40),
@@ -5088,6 +5746,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               widget.project.projectType == ProjectType.training && !_isPlaying && !_endedAtLastFrame;
                           final isAddPlayerActive = _addingObjectType == 'player';
                           final isAddBallActive = _addingObjectType == 'ball';
+                          final noObjectSelected =
+                              !_showModifierMenu &&
+                              !_showPlayerMenu &&
+                              _activePlayerId == null &&
+                              _activeBallId == null;
                           return Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -5137,6 +5800,22 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   ),
                                 ),
                               ],
+                              if (noObjectSelected)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  child: Opacity(
+                                    opacity: 0.65,
+                                    child: Text(
+                                      'Select a Player or Ball',
+                                      style: TextStyle(
+                                        color: AppTheme.darkGrey,
+                                        fontSize: 13,
+                                        fontStyle: FontStyle.italic,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               if (_showModifierMenu)
                                 _buildMenuButton(
                                   tooltip: 'Set',
@@ -5244,7 +5923,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     color: (widget.project.projectType == ProjectType.training && _activeBallId != null)
                                         ? (currentFrame.getBallById(_activeBallId!)?.color ?? AppTheme.lightGrey)
                                         : (currentFrame.balls.isNotEmpty
-                                              ? (currentFrame.balls.first.color ?? AppTheme.lightGrey)
+                                              ? currentFrame.balls.first.color
                                               : AppTheme.lightGrey),
                                   ),
                                 ),
@@ -5321,17 +6000,19 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                           child: Row(
                             children: [
                               _buildMenuButton(
-                                tooltip: 'Line Tool',
+                                tooltip: _lineStyleLabel(_annotationLineStyle),
                                 onPressed: () => setState(() {
                                   _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.line
                                       ? AnnotationTool.none
                                       : AnnotationTool.line;
                                   _eraserMode = false;
                                 }),
+                                onDoubleTap: () => _toggleAnnotationLineStyleMenu(forceOpen: true),
+                                buttonKey: _annotationLineStyleButtonKey,
                                 backgroundColor: _activeAnnotationTool == AnnotationTool.line
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
-                                child: Icon(Symbols.diagonal_line, size: 20),
+                                child: Icon(_iconForLineStyle(_annotationLineStyle), size: 20),
                               ),
                               _buildMenuButton(
                                 tooltip: 'Circle Tool (double-tap to set fill)',
@@ -5385,7 +6066,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 child: Icon(Icons.text_fields, size: 20),
                               ),
                               _buildMenuButton(
-                                tooltip: 'Circle Sector Tool (tap in a court zone)',
+                                tooltip:
+                                    'Circle Sector Tool (${_labelForSectorAttachment(_sectorAttachmentType)}; double-tap to select)',
                                 onPressed: () => setState(() {
                                   _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.sector
                                       ? AnnotationTool.none
@@ -5394,6 +6076,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     // Activate sector target selection phase
                                     _sectorToolNeedsTargetSelection = true;
                                     _selectedSectorTarget = null;
+                                    _selectedSectorAttachmentId = null;
                                     _selectedSectorCenterCm = null;
                                     _selectedSectorRadiusCm = null;
                                     _sectorTargetHighlightActive = false;
@@ -5401,12 +6084,15 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     // Deactivate sector tool and reset state
                                     _sectorToolNeedsTargetSelection = false;
                                     _selectedSectorTarget = null;
+                                    _selectedSectorAttachmentId = null;
                                     _selectedSectorCenterCm = null;
                                     _selectedSectorRadiusCm = null;
                                     _sectorTargetHighlightActive = false;
                                   }
                                   _eraserMode = false;
                                 }),
+                                onDoubleTap: () => _toggleSectorAttachmentMenu(forceOpen: true),
+                                buttonKey: _sectorAttachmentButtonKey,
                                 backgroundColor: _activeAnnotationTool == AnnotationTool.sector
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
@@ -5431,106 +6117,135 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   ),
                                 ),
                               ),
+                              _buildMenuButton(
+                                tooltip: _labelForSectorAttachment(_sectorAttachmentType),
+                                onPressed: () {
+                                  setState(() {
+                                    final currentIndex = _sectorAttachmentOptions.indexOf(_sectorAttachmentType);
+                                    final nextIndex = (currentIndex + 1) % _sectorAttachmentOptions.length;
+                                    _sectorAttachmentType = _sectorAttachmentOptions[nextIndex];
+                                    _activeAnnotationTool = AnnotationTool.sector;
+                                    _sectorToolNeedsTargetSelection = true;
+                                    _selectedSectorTarget = null;
+                                    _selectedSectorAttachmentId = null;
+                                    _selectedSectorCenterCm = null;
+                                    _selectedSectorRadiusCm = null;
+                                    _sectorTargetHighlightActive = false;
+                                    _eraserMode = false;
+                                  });
+                                },
+                                onDoubleTap: () => _toggleSectorAttachmentMenu(forceOpen: true),
+                                backgroundColor: AppTheme.mediumGrey,
+                                child: Icon(_iconForSectorAttachment(_sectorAttachmentType), size: 20),
+                              ),
                             ],
                           ),
                         ),
                         const SizedBox(height: 4),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              _buildMenuButton(
-                                tooltip: 'Move Tool',
-                                onPressed: () => setState(() {
-                                  _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.move
-                                      ? AnnotationTool.none
-                                      : AnnotationTool.move;
-                                  _eraserMode = false;
-                                }),
-                                backgroundColor: _activeAnnotationTool == AnnotationTool.move
-                                    ? AppTheme.primaryBlue
-                                    : AppTheme.mediumGrey,
-                                child: Icon(Icons.pan_tool_alt, size: 20),
-                              ),
-                              _buildMenuButton(
-                                tooltip: 'Duplicate last annotation',
-                                onPressed: currentFrame.annotations.isNotEmpty ? _duplicateLastAnnotation : null,
-                                enabled: currentFrame.annotations.isNotEmpty,
-                                backgroundColor: AppTheme.mediumGrey,
-                                child: Icon(Icons.content_copy, size: 20),
-                              ),
-                              _buildMenuButton(
-                                tooltip: 'Eraser (double-tap for size)',
-                                onPressed: () {
-                                  setState(() {
-                                    if (!_eraserMode) {
-                                      _eraserMode = true;
-                                      _activeAnnotationTool = AnnotationTool.none;
-                                      _sectorToolNeedsTargetSelection = false;
-                                      _selectedSectorTarget = null;
-                                      _selectedSectorCenterCm = null;
-                                      _selectedSectorRadiusCm = null;
-                                      _sectorTargetHighlightActive = false;
-                                    }
-                                  });
-                                },
-                                onDoubleTap: () => _toggleAnnotationEraserMenu(forceOpen: true),
-                                buttonKey: _annotationEraserButtonKey,
-                                backgroundColor: _eraserMode ? AppTheme.errorRed : AppTheme.mediumGrey,
-                                child: Icon(Symbols.ink_eraser, size: 20),
-                              ),
-                              _buildMenuButton(
-                                tooltip: 'Delete All Annotations',
-                                onPressed: _clearCurrentFrameAnnotations,
-                                backgroundColor: AppTheme.errorRed,
-                                child: const Icon(Symbols.delete, size: 20),
-                              ),
-                              Builder(
-                                builder: (context) {
-                                  final snapBg = _annotationSnappingEnabled
-                                      ? AppTheme.primaryBlue
-                                      : AppTheme.mediumGrey;
-                                  final snapIconColor = _contrastIconColor(snapBg, Colors.white);
-                                  return _buildMenuButton(
-                                    tooltip: _annotationSnappingEnabled ? 'Snapping On' : 'Snapping Off',
-                                    onPressed: () =>
-                                        setState(() => _annotationSnappingEnabled = !_annotationSnappingEnabled),
-                                    backgroundColor: snapBg,
-                                    iconColorOverride: snapIconColor,
-                                    child: SvgPicture.asset(
-                                      'assets/icons/snap_nodes.svg',
-                                      width: 20,
-                                      height: 20,
-                                      colorFilter: ColorFilter.mode(snapIconColor, BlendMode.srcIn),
-                                    ),
-                                  );
-                                },
-                              ),
-                              _buildMenuButton(
-                                tooltip: 'Annotation stroke width (double-tap to adjust)',
-                                onPressed: null,
-                                onDoubleTap: () => _toggleAnnotationStrokeMenu(forceOpen: true),
-                                buttonKey: _annotationStrokeButtonKey,
-                                backgroundColor: AppTheme.mediumGrey,
-                                child: const Icon(Symbols.line_weight, size: 20),
-                              ),
-                              _buildMenuButton(
-                                tooltip: 'Annotation color',
-                                onPressed: _showColorPicker,
-                                backgroundColor: AppTheme.mediumGrey,
-                                child: Container(
-                                  width: 22,
-                                  height: 22,
-                                  decoration: BoxDecoration(
-                                    color: _annotationColor,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: AppTheme.darkGrey, width: 2),
+                        Builder(
+                          builder: (context) {
+                            final canDuplicateAnnotation = _isTemporaryPlaybackAnnotationMode
+                                ? _playbackSessionAnnotationsForFrame(_playbackDisplayFrameIndex()).isNotEmpty
+                                : currentFrame.annotations.isNotEmpty;
+                            return SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  _buildMenuButton(
+                                    tooltip: 'Move Tool',
+                                    onPressed: () => setState(() {
+                                      _activeAnnotationTool = _activeAnnotationTool == AnnotationTool.move
+                                          ? AnnotationTool.none
+                                          : AnnotationTool.move;
+                                      _eraserMode = false;
+                                    }),
+                                    backgroundColor: _activeAnnotationTool == AnnotationTool.move
+                                        ? AppTheme.primaryBlue
+                                        : AppTheme.mediumGrey,
+                                    child: Icon(Icons.pan_tool_alt, size: 20),
                                   ),
-                                  child: const Icon(Icons.palette, size: 12, color: Colors.white),
-                                ),
+                                  _buildMenuButton(
+                                    tooltip: 'Duplicate last annotation',
+                                    onPressed: canDuplicateAnnotation ? _duplicateLastAnnotation : null,
+                                    enabled: canDuplicateAnnotation,
+                                    backgroundColor: AppTheme.mediumGrey,
+                                    child: Icon(Icons.content_copy, size: 20),
+                                  ),
+                                  _buildMenuButton(
+                                    tooltip: 'Eraser (double-tap for size)',
+                                    onPressed: () {
+                                      setState(() {
+                                        if (!_eraserMode) {
+                                          _eraserMode = true;
+                                          _activeAnnotationTool = AnnotationTool.none;
+                                          _sectorToolNeedsTargetSelection = false;
+                                          _selectedSectorTarget = null;
+                                          _selectedSectorAttachmentId = null;
+                                          _selectedSectorCenterCm = null;
+                                          _selectedSectorRadiusCm = null;
+                                          _sectorTargetHighlightActive = false;
+                                        }
+                                      });
+                                    },
+                                    onDoubleTap: () => _toggleAnnotationEraserMenu(forceOpen: true),
+                                    buttonKey: _annotationEraserButtonKey,
+                                    backgroundColor: _eraserMode ? AppTheme.errorRed : AppTheme.mediumGrey,
+                                    child: Icon(Symbols.ink_eraser, size: 20),
+                                  ),
+                                  _buildMenuButton(
+                                    tooltip: 'Delete All Annotations',
+                                    onPressed: _clearCurrentFrameAnnotations,
+                                    backgroundColor: AppTheme.errorRed,
+                                    child: const Icon(Symbols.delete, size: 20),
+                                  ),
+                                  Builder(
+                                    builder: (context) {
+                                      final snapBg = _annotationSnappingEnabled
+                                          ? AppTheme.primaryBlue
+                                          : AppTheme.mediumGrey;
+                                      final snapIconColor = _contrastIconColor(snapBg, Colors.white);
+                                      return _buildMenuButton(
+                                        tooltip: _annotationSnappingEnabled ? 'Snapping On' : 'Snapping Off',
+                                        onPressed: () =>
+                                            setState(() => _annotationSnappingEnabled = !_annotationSnappingEnabled),
+                                        backgroundColor: snapBg,
+                                        iconColorOverride: snapIconColor,
+                                        child: SvgPicture.asset(
+                                          'assets/icons/snap_nodes.svg',
+                                          width: 20,
+                                          height: 20,
+                                          colorFilter: ColorFilter.mode(snapIconColor, BlendMode.srcIn),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  _buildMenuButton(
+                                    tooltip: 'Annotation stroke width (double-tap to adjust)',
+                                    onPressed: null,
+                                    onDoubleTap: () => _toggleAnnotationStrokeMenu(forceOpen: true),
+                                    buttonKey: _annotationStrokeButtonKey,
+                                    backgroundColor: AppTheme.mediumGrey,
+                                    child: const Icon(Symbols.line_weight, size: 20),
+                                  ),
+                                  _buildMenuButton(
+                                    tooltip: 'Annotation color',
+                                    onPressed: _showColorPicker,
+                                    backgroundColor: AppTheme.mediumGrey,
+                                    child: Container(
+                                      width: 22,
+                                      height: 22,
+                                      decoration: BoxDecoration(
+                                        color: _annotationColor,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: AppTheme.darkGrey, width: 2),
+                                      ),
+                                      child: const Icon(Icons.palette, size: 12, color: Colors.white),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -5809,8 +6524,10 @@ class _SectorZoneOutlinePainter extends CustomPainter {
   final Size boardSize;
   final Animation<double> pulseAnimation; // 0.0 to 1.0, controlled by AnimationController
   final String? highlightedZone; // Zone to highlight
+  final _SectorAttachmentType attachmentType;
   final ProjectType projectType;
   final List<CourtElement>? customCourtElements;
+  final List<Player> players;
   final List<Ball> balls;
 
   _SectorZoneOutlinePainter({
@@ -5818,8 +6535,10 @@ class _SectorZoneOutlinePainter extends CustomPainter {
     required this.boardSize,
     required this.pulseAnimation,
     this.highlightedZone,
+    required this.attachmentType,
     required this.projectType,
     this.customCourtElements,
+    required this.players,
     required this.balls,
   }) : super(repaint: pulseAnimation);
 
@@ -5831,91 +6550,110 @@ class _SectorZoneOutlinePainter extends CustomPainter {
     final pulseRadiusBoost = 6.0 + 10.0 * t;
     final pulseOpacity = (0.35 + 0.55 * (1.0 - t)).clamp(0.0, 1.0);
 
-    // Draw zone overlays based on project type
-    if (projectType == ProjectType.play) {
-      // Play scenario: Draw standard court zones
-      final innerRadiusPx = settings.cmToLogical(settings.innerCircleRadiusCm, boardSize).abs();
-      final outerRadiusPx = settings.cmToLogical(settings.outerCircleRadiusCm, boardSize).abs();
-      final boundsRadiusPx = settings.cmToLogical(settings.outerBoundsRadiusCm, boardSize).abs();
+    if (attachmentType == _SectorAttachmentType.zone) {
+      // Draw zone overlays based on project type
+      if (projectType == ProjectType.play) {
+        final innerRadiusPx = settings.cmToLogical(settings.innerCircleRadiusCm, boardSize).abs();
+        final outerRadiusPx = settings.cmToLogical(settings.outerCircleRadiusCm, boardSize).abs();
+        final boundsRadiusPx = settings.cmToLogical(settings.outerBoundsRadiusCm, boardSize).abs();
 
-      final zones = [
-        ('innerCircle', center, innerRadiusPx),
-        ('outerCircle', center, outerRadiusPx),
-        ('outerBounds', center, boundsRadiusPx),
-      ];
+        final zones = [
+          ('innerCircle', center, innerRadiusPx),
+          ('outerCircle', center, outerRadiusPx),
+          ('outerBounds', center, boundsRadiusPx),
+        ];
 
-      for (final (zoneType, zoneCenter, radiusPx) in zones) {
-        _drawZoneOverlay(
-          canvas,
-          zoneCenter,
-          radiusPx,
-          overlayWidthPx,
-          zoneType == highlightedZone,
-          pulseRadiusBoost,
-          pulseOpacity,
-        );
-      }
-    } else {
-      // Training scenario: Draw custom court zone elements
-      if (customCourtElements != null) {
-        for (final element in customCourtElements!) {
-          if (element.type == CourtElementType.innerCircle ||
-              element.type == CourtElementType.outerCircle ||
-              element.type == CourtElementType.customCircle) {
-            final elementCenter =
-                center +
-                Offset(
-                  settings.cmToLogical(element.position.dx, boardSize),
-                  settings.cmToLogical(element.position.dy, boardSize),
-                );
-            final radiusPx = settings.cmToLogical(element.radius ?? 0, boardSize).abs();
-            final zoneId =
-                '${element.type.toString().split('.').last}_${element.position.dx.toStringAsFixed(0)}_${element.position.dy.toStringAsFixed(0)}';
-            _drawZoneOverlay(
-              canvas,
-              elementCenter,
-              radiusPx,
-              overlayWidthPx,
-              zoneId == highlightedZone,
-              pulseRadiusBoost,
-              pulseOpacity,
-            );
+        for (final (zoneType, zoneCenter, radiusPx) in zones) {
+          _drawZoneOverlay(
+            canvas,
+            zoneCenter,
+            radiusPx,
+            overlayWidthPx,
+            zoneType == highlightedZone,
+            pulseRadiusBoost,
+            pulseOpacity,
+          );
+        }
+      } else {
+        if (customCourtElements != null) {
+          for (final element in customCourtElements!) {
+            if (element.type == CourtElementType.innerCircle ||
+                element.type == CourtElementType.outerCircle ||
+                element.type == CourtElementType.customCircle) {
+              final elementCenter =
+                  center +
+                  Offset(
+                    settings.cmToLogical(element.position.dx, boardSize),
+                    settings.cmToLogical(element.position.dy, boardSize),
+                  );
+              final radiusPx = settings.cmToLogical(element.radius ?? 0, boardSize).abs();
+              final zoneId =
+                  '${element.type.toString().split('.').last}_${element.position.dx.toStringAsFixed(0)}_${element.position.dy.toStringAsFixed(0)}';
+              _drawZoneOverlay(
+                canvas,
+                elementCenter,
+                radiusPx,
+                overlayWidthPx,
+                zoneId == highlightedZone,
+                pulseRadiusBoost,
+                pulseOpacity,
+              );
+            }
           }
         }
       }
-    }
-
-    // Draw ball overlays (1.5x ball size)
-    for (final ball in balls) {
-      final ballCenter =
-          center +
-          Offset(settings.cmToLogical(ball.position.dx, boardSize), settings.cmToLogical(ball.position.dy, boardSize));
-      final ballRadiusPx = settings.cmToLogical(9 * 2, boardSize).abs(); // 1.5x ball size radius
-      final ballId = 'ball_${ball.id}';
-      final isHighlighted = ballId == highlightedZone;
-
-      // Blue transparent overlay for ball
-      final overlayPaint = Paint()
-        ..color =
-            const Color.fromARGB(80, 100, 150, 255) // Blue transparent overlay
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(ballCenter, ballRadiusPx, overlayPaint);
-
-      // Pulsating blue ring above ball when selectable
-      final pulseRingPaint = Paint()
-        ..color = const Color.fromARGB(200, 120, 190, 255).withValues(alpha: pulseOpacity)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.0;
-      canvas.drawCircle(ballCenter, ballRadiusPx + pulseRadiusBoost, pulseRingPaint);
-
-      // If highlighted, add a brighter accent
-      if (isHighlighted) {
-        final accentPaint = Paint()
-          ..color =
-              const Color.fromARGB(120, 150, 200, 255) // Brighter blue
-          ..style = PaintingStyle.fill;
-        canvas.drawCircle(ballCenter, ballRadiusPx, accentPaint);
+    } else if (attachmentType == _SectorAttachmentType.ball) {
+      for (final ball in balls) {
+        final ballCenter =
+            center +
+            Offset(settings.cmToLogical(ball.position.dx, boardSize), settings.cmToLogical(ball.position.dy, boardSize));
+        final ballRadiusPx = settings.cmToLogical(AppConstants.ballRadiusCm * 2.0, boardSize).abs();
+        final ballId = 'ball_${ball.id}';
+        final isHighlighted = ballId == highlightedZone;
+        _drawObjectOverlay(canvas, ballCenter, ballRadiusPx, isHighlighted, pulseRadiusBoost, pulseOpacity);
       }
+    } else {
+      for (final player in players) {
+        final playerCenter =
+            center +
+            Offset(
+              settings.cmToLogical(player.position.dx, boardSize),
+              settings.cmToLogical(player.position.dy, boardSize),
+            );
+        final playerRadiusPx = settings
+            .cmToLogical(AppConstants.playerRadiusCm * settings.objectScaleMultiplier * 1.2, boardSize)
+            .abs();
+        final playerId = 'player_${player.id}';
+        final isHighlighted = playerId == highlightedZone;
+        _drawObjectOverlay(canvas, playerCenter, playerRadiusPx, isHighlighted, pulseRadiusBoost, pulseOpacity);
+      }
+    }
+  }
+
+  void _drawObjectOverlay(
+    Canvas canvas,
+    Offset center,
+    double radiusPx,
+    bool isHighlighted,
+    double pulseRadiusBoost,
+    double pulseOpacity,
+  ) {
+    final overlayPaint = Paint()
+      ..color = const Color.fromARGB(80, 100, 150, 255)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radiusPx, overlayPaint);
+
+    final pulseRingPaint = Paint()
+      ..color = const Color.fromARGB(200, 120, 190, 255).withValues(alpha: pulseOpacity)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0;
+    canvas.drawCircle(center, radiusPx + pulseRadiusBoost, pulseRingPaint);
+
+    if (isHighlighted) {
+      final accentPaint = Paint()
+        ..color = const Color.fromARGB(120, 150, 200, 255)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(center, radiusPx, accentPaint);
     }
   }
 
@@ -5960,10 +6698,12 @@ class _SectorZoneOutlinePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _SectorZoneOutlinePainter oldDelegate) =>
       oldDelegate.highlightedZone != highlightedZone ||
+      oldDelegate.attachmentType != attachmentType ||
       oldDelegate.settings != settings ||
       oldDelegate.boardSize != boardSize ||
       oldDelegate.projectType != projectType ||
       oldDelegate.customCourtElements != customCourtElements ||
+      oldDelegate.players != players ||
       oldDelegate.balls != balls;
 }
 

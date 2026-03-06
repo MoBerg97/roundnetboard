@@ -4,6 +4,7 @@ import '../models/frame.dart';
 import '../models/settings.dart';
 import '../models/player.dart';
 import '../models/ball.dart';
+import '../models/annotation.dart';
 import 'path_engine.dart';
 
 abstract class ProjectAction {
@@ -478,6 +479,32 @@ class EditPathControlPointsAction extends ProjectAction {
       // Invalidate path cache so the visual path updates
       PathEngine.invalidateCacheFor(frameIndex, entityId);
     }
+  }
+}
+
+/// Replace a frame's annotation list (undoable)
+class SetFrameAnnotationsAction extends ProjectAction {
+  final List<Annotation> fromAnnotations;
+  final List<Annotation> toAnnotations;
+
+  SetFrameAnnotationsAction({
+    required super.frameIndex,
+    required this.fromAnnotations,
+    required this.toAnnotations,
+  }) : super(description: 'Edit annotations');
+
+  List<Annotation> _cloneList(List<Annotation> source) => source.map((a) => a.copy()).toList();
+
+  @override
+  void apply(AnimationProject project) {
+    if (frameIndex < 0 || frameIndex >= project.frames.length) return;
+    project.frames[frameIndex].annotations = _cloneList(toAnnotations);
+  }
+
+  @override
+  void revert(AnimationProject project) {
+    if (frameIndex < 0 || frameIndex >= project.frames.length) return;
+    project.frames[frameIndex].annotations = _cloneList(fromAnnotations);
   }
 }
 
