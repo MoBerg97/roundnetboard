@@ -39,7 +39,7 @@ input Animation_Data {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `Animation`.`id` of type `UUID!`)
   """
-  id_expr: UUID_Expr
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Animation`.`boardId` of type `UUID`
   """
@@ -47,11 +47,11 @@ input Animation_Data {
   """
   ✨ `_expr` server value variant of `boardId` (✨ Generated from Field `Animation`.`boardId` of type `UUID`)
   """
-  boardId_expr: UUID_Expr
+  boardId_expr: UUID_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Animation`.`board` of type `Board`
   """
-  board: Board_Key
+  board: Board_Key @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Animation`.`createdAt` of type `Timestamp!`
   """
@@ -59,15 +59,15 @@ input Animation_Data {
   """
   ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Animation`.`createdAt` of type `Timestamp!`)
   """
-  createdAt_expr: Timestamp_Expr
+  createdAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
   """
   ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Animation`.`createdAt` of type `Timestamp!`)
   """
-  createdAt_time: Timestamp_Relative
+  createdAt_time: Timestamp_Relative @fdc_forbiddenInVariables
   """
   ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Animation`.`createdAt` of type `Timestamp!`)
   """
-  createdAt_update: [Timestamp_Update!]
+  createdAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Animation`.`description` of type `String`
   """
@@ -75,7 +75,7 @@ input Animation_Data {
   """
   ✨ `_expr` server value variant of `description` (✨ Generated from Field `Animation`.`description` of type `String`)
   """
-  description_expr: String_Expr
+  description_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Animation`.`name` of type `String!`
   """
@@ -83,7 +83,7 @@ input Animation_Data {
   """
   ✨ `_expr` server value variant of `name` (✨ Generated from Field `Animation`.`name` of type `String!`)
   """
-  name_expr: String_Expr
+  name_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Animation`.`updatedAt` of type `Timestamp!`
   """
@@ -91,15 +91,15 @@ input Animation_Data {
   """
   ✨ `_expr` server value variant of `updatedAt` (✨ Generated from Field `Animation`.`updatedAt` of type `Timestamp!`)
   """
-  updatedAt_expr: Timestamp_Expr
+  updatedAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
   """
   ✨ `_time` server value variant of `updatedAt` (✨ Generated from Field `Animation`.`updatedAt` of type `Timestamp!`)
   """
-  updatedAt_time: Timestamp_Relative
+  updatedAt_time: Timestamp_Relative @fdc_forbiddenInVariables
   """
   ✨ `_update` server value variant of `updatedAt` (✨ Generated from Field `Animation`.`updatedAt` of type `Timestamp!`)
   """
-  updatedAt_update: [Timestamp_Update!]
+  updatedAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
 }
 """
 ✨ Generated filter input type for table 'Animation'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
@@ -239,7 +239,7 @@ input Animation_Key {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `Animation`.`id` of type `UUID!`)
   """
-  id_expr: UUID_Expr
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
 }
 """
 ✨ Generated list filter input type for table 'Animation'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
@@ -342,7 +342,7 @@ input AnimationFrame_Data {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `AnimationFrame`.`id` of type `UUID!`)
   """
-  id_expr: UUID_Expr
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `AnimationFrame`.`animationId` of type `UUID`
   """
@@ -350,11 +350,11 @@ input AnimationFrame_Data {
   """
   ✨ `_expr` server value variant of `animationId` (✨ Generated from Field `AnimationFrame`.`animationId` of type `UUID`)
   """
-  animationId_expr: UUID_Expr
+  animationId_expr: UUID_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `AnimationFrame`.`animation` of type `Animation`
   """
-  animation: Animation_Key
+  animation: Animation_Key @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `AnimationFrame`.`boardElementStates` of type `String`
   """
@@ -362,7 +362,7 @@ input AnimationFrame_Data {
   """
   ✨ `_expr` server value variant of `boardElementStates` (✨ Generated from Field `AnimationFrame`.`boardElementStates` of type `String`)
   """
-  boardElementStates_expr: String_Expr
+  boardElementStates_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `AnimationFrame`.`frameNumber` of type `Int!`
   """
@@ -370,11 +370,11 @@ input AnimationFrame_Data {
   """
   ✨ `_expr` server value variant of `frameNumber` (✨ Generated from Field `AnimationFrame`.`frameNumber` of type `Int!`)
   """
-  frameNumber_expr: Int_Expr
+  frameNumber_expr: Int_Expr @fdc_forbiddenInVariables
   """
   ✨ `_update` server value variant of `frameNumber` (✨ Generated from Field `AnimationFrame`.`frameNumber` of type `Int!`)
   """
-  frameNumber_update: [Int_Update!]
+  frameNumber_update: [Int_Update!] @fdc_forbiddenInVariables
 }
 """
 ✨ Generated filter input type for table 'AnimationFrame'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
@@ -494,7 +494,7 @@ input AnimationFrame_Key {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `AnimationFrame`.`id` of type `UUID!`)
   """
-  id_expr: UUID_Expr
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
 }
 """
 ✨ Generated list filter input type for table 'AnimationFrame'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
@@ -581,7 +581,7 @@ input Board_Data {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `Board`.`id` of type `UUID!`)
   """
-  id_expr: UUID_Expr
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Board`.`ownerId` of type `UUID`
   """
@@ -589,11 +589,11 @@ input Board_Data {
   """
   ✨ `_expr` server value variant of `ownerId` (✨ Generated from Field `Board`.`ownerId` of type `UUID`)
   """
-  ownerId_expr: UUID_Expr
+  ownerId_expr: UUID_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Board`.`owner` of type `User`
   """
-  owner: User_Key
+  owner: User_Key @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Board`.`createdAt` of type `Timestamp!`
   """
@@ -601,15 +601,15 @@ input Board_Data {
   """
   ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Board`.`createdAt` of type `Timestamp!`)
   """
-  createdAt_expr: Timestamp_Expr
+  createdAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
   """
   ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Board`.`createdAt` of type `Timestamp!`)
   """
-  createdAt_time: Timestamp_Relative
+  createdAt_time: Timestamp_Relative @fdc_forbiddenInVariables
   """
   ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Board`.`createdAt` of type `Timestamp!`)
   """
-  createdAt_update: [Timestamp_Update!]
+  createdAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Board`.`description` of type `String`
   """
@@ -617,7 +617,7 @@ input Board_Data {
   """
   ✨ `_expr` server value variant of `description` (✨ Generated from Field `Board`.`description` of type `String`)
   """
-  description_expr: String_Expr
+  description_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Board`.`isPublic` of type `Boolean`
   """
@@ -625,7 +625,7 @@ input Board_Data {
   """
   ✨ `_expr` server value variant of `isPublic` (✨ Generated from Field `Board`.`isPublic` of type `Boolean`)
   """
-  isPublic_expr: Boolean_Expr
+  isPublic_expr: Boolean_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Board`.`name` of type `String!`
   """
@@ -633,7 +633,7 @@ input Board_Data {
   """
   ✨ `_expr` server value variant of `name` (✨ Generated from Field `Board`.`name` of type `String!`)
   """
-  name_expr: String_Expr
+  name_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `Board`.`updatedAt` of type `Timestamp!`
   """
@@ -641,15 +641,15 @@ input Board_Data {
   """
   ✨ `_expr` server value variant of `updatedAt` (✨ Generated from Field `Board`.`updatedAt` of type `Timestamp!`)
   """
-  updatedAt_expr: Timestamp_Expr
+  updatedAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
   """
   ✨ `_time` server value variant of `updatedAt` (✨ Generated from Field `Board`.`updatedAt` of type `Timestamp!`)
   """
-  updatedAt_time: Timestamp_Relative
+  updatedAt_time: Timestamp_Relative @fdc_forbiddenInVariables
   """
   ✨ `_update` server value variant of `updatedAt` (✨ Generated from Field `Board`.`updatedAt` of type `Timestamp!`)
   """
-  updatedAt_update: [Timestamp_Update!]
+  updatedAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
 }
 """
 ✨ Generated filter input type for table 'Board'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
@@ -801,7 +801,7 @@ input Board_Key {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `Board`.`id` of type `UUID!`)
   """
-  id_expr: UUID_Expr
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
 }
 """
 ✨ Generated list filter input type for table 'Board'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
@@ -912,7 +912,7 @@ input BoardElement_Data {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `BoardElement`.`id` of type `UUID!`)
   """
-  id_expr: UUID_Expr
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `BoardElement`.`boardId` of type `UUID`
   """
@@ -920,11 +920,11 @@ input BoardElement_Data {
   """
   ✨ `_expr` server value variant of `boardId` (✨ Generated from Field `BoardElement`.`boardId` of type `UUID`)
   """
-  boardId_expr: UUID_Expr
+  boardId_expr: UUID_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `BoardElement`.`board` of type `Board`
   """
-  board: Board_Key
+  board: Board_Key @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `BoardElement`.`color` of type `String!`
   """
@@ -932,7 +932,7 @@ input BoardElement_Data {
   """
   ✨ `_expr` server value variant of `color` (✨ Generated from Field `BoardElement`.`color` of type `String!`)
   """
-  color_expr: String_Expr
+  color_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `BoardElement`.`pathCoordinates` of type `String`
   """
@@ -940,7 +940,7 @@ input BoardElement_Data {
   """
   ✨ `_expr` server value variant of `pathCoordinates` (✨ Generated from Field `BoardElement`.`pathCoordinates` of type `String`)
   """
-  pathCoordinates_expr: String_Expr
+  pathCoordinates_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `BoardElement`.`playerNumber` of type `Int`
   """
@@ -948,11 +948,11 @@ input BoardElement_Data {
   """
   ✨ `_expr` server value variant of `playerNumber` (✨ Generated from Field `BoardElement`.`playerNumber` of type `Int`)
   """
-  playerNumber_expr: Int_Expr
+  playerNumber_expr: Int_Expr @fdc_forbiddenInVariables
   """
   ✨ `_update` server value variant of `playerNumber` (✨ Generated from Field `BoardElement`.`playerNumber` of type `Int`)
   """
-  playerNumber_update: [Int_Update!]
+  playerNumber_update: [Int_Update!] @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `BoardElement`.`size` of type `Float`
   """
@@ -960,11 +960,11 @@ input BoardElement_Data {
   """
   ✨ `_expr` server value variant of `size` (✨ Generated from Field `BoardElement`.`size` of type `Float`)
   """
-  size_expr: Float_Expr
+  size_expr: Float_Expr @fdc_forbiddenInVariables
   """
   ✨ `_update` server value variant of `size` (✨ Generated from Field `BoardElement`.`size` of type `Float`)
   """
-  size_update: [Float_Update!]
+  size_update: [Float_Update!] @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `BoardElement`.`text` of type `String`
   """
@@ -972,7 +972,7 @@ input BoardElement_Data {
   """
   ✨ `_expr` server value variant of `text` (✨ Generated from Field `BoardElement`.`text` of type `String`)
   """
-  text_expr: String_Expr
+  text_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `BoardElement`.`type` of type `String!`
   """
@@ -980,7 +980,7 @@ input BoardElement_Data {
   """
   ✨ `_expr` server value variant of `type` (✨ Generated from Field `BoardElement`.`type` of type `String!`)
   """
-  type_expr: String_Expr
+  type_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `BoardElement`.`xPosition` of type `Float!`
   """
@@ -988,11 +988,11 @@ input BoardElement_Data {
   """
   ✨ `_expr` server value variant of `xPosition` (✨ Generated from Field `BoardElement`.`xPosition` of type `Float!`)
   """
-  xPosition_expr: Float_Expr
+  xPosition_expr: Float_Expr @fdc_forbiddenInVariables
   """
   ✨ `_update` server value variant of `xPosition` (✨ Generated from Field `BoardElement`.`xPosition` of type `Float!`)
   """
-  xPosition_update: [Float_Update!]
+  xPosition_update: [Float_Update!] @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `BoardElement`.`yPosition` of type `Float!`
   """
@@ -1000,11 +1000,11 @@ input BoardElement_Data {
   """
   ✨ `_expr` server value variant of `yPosition` (✨ Generated from Field `BoardElement`.`yPosition` of type `Float!`)
   """
-  yPosition_expr: Float_Expr
+  yPosition_expr: Float_Expr @fdc_forbiddenInVariables
   """
   ✨ `_update` server value variant of `yPosition` (✨ Generated from Field `BoardElement`.`yPosition` of type `Float!`)
   """
-  yPosition_update: [Float_Update!]
+  yPosition_update: [Float_Update!] @fdc_forbiddenInVariables
 }
 """
 ✨ Generated filter input type for table 'BoardElement'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
@@ -1220,7 +1220,7 @@ input BoardElement_Key {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `BoardElement`.`id` of type `UUID!`)
   """
-  id_expr: UUID_Expr
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
 }
 """
 ✨ Generated list filter input type for table 'BoardElement'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
@@ -1403,7 +1403,7 @@ input User_Data {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `UUID!`)
   """
-  id_expr: UUID_Expr
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
   """
@@ -1411,15 +1411,15 @@ input User_Data {
   """
   ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
   """
-  createdAt_expr: Timestamp_Expr
+  createdAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
   """
   ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
   """
-  createdAt_time: Timestamp_Relative
+  createdAt_time: Timestamp_Relative @fdc_forbiddenInVariables
   """
   ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
   """
-  createdAt_update: [Timestamp_Update!]
+  createdAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `User`.`displayName` of type `String`
   """
@@ -1427,7 +1427,7 @@ input User_Data {
   """
   ✨ `_expr` server value variant of `displayName` (✨ Generated from Field `User`.`displayName` of type `String`)
   """
-  displayName_expr: String_Expr
+  displayName_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `User`.`email` of type `String!`
   """
@@ -1435,7 +1435,7 @@ input User_Data {
   """
   ✨ `_expr` server value variant of `email` (✨ Generated from Field `User`.`email` of type `String!`)
   """
-  email_expr: String_Expr
+  email_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `User`.`profilePictureUrl` of type `String`
   """
@@ -1443,7 +1443,7 @@ input User_Data {
   """
   ✨ `_expr` server value variant of `profilePictureUrl` (✨ Generated from Field `User`.`profilePictureUrl` of type `String`)
   """
-  profilePictureUrl_expr: String_Expr
+  profilePictureUrl_expr: String_Expr @fdc_forbiddenInVariables
   """
   ✨ Generated from Field `User`.`username` of type `String!`
   """
@@ -1451,7 +1451,7 @@ input User_Data {
   """
   ✨ `_expr` server value variant of `username` (✨ Generated from Field `User`.`username` of type `String!`)
   """
-  username_expr: String_Expr
+  username_expr: String_Expr @fdc_forbiddenInVariables
 }
 """
 ✨ Generated filter input type for table 'User'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
@@ -1579,7 +1579,7 @@ input User_Key {
   """
   ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `UUID!`)
   """
-  id_expr: UUID_Expr
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
 }
 """
 ✨ Generated list filter input type for table 'User'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.

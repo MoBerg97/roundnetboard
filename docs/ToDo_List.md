@@ -35,7 +35,7 @@ the menu bar is horizontally scrollable when screen width is too small to show a
 - [ ] add a smooth color transition during playback when an object changes its color from one frame to the next, instead of an instant color change.
 - [ ] separate the annotation tools in two rows. One for the tools that create annotations (circle, lines, rectangles, circle sections) and one row for the tools that modify existing annotations (move, delete, duplicate, fore/background, line width, color).
 - [x] selected objects (players and balls) should be highlighted on court (e.g. circular sonar waves around object)
-- [ ] objects are only highlighted when their respective menu is open, not when dragged or long pressed. Tapping on an object opens its menu and highlights it, tapping elsewhere closes menu and removes highlight.
+- [ ] objects are only highlighted when their respectwwadive menu is open, not when dragged or long pressed. Tapping on an object opens its menu and highlights it, tapping elsewhere closes menu and removes highlight.
 - [ ] hit marker in animation playback should fade out smoothly instead of disappearing instantly
 - [ ] change the hit marker on the board screen to another icon (e.g. circle with bounce arrow inside)
 - [ ] default color of ball should be white with black outline
@@ -86,12 +86,17 @@ Quick tips to add to helper screen:
 
 ## Features
 
-### project screen
+### home aka project screen
 
 - [x] users are not able to share or export projects in web version currently.
 - [x] add two exemplary projects that are preloaded when the app is first installed, showcasing all features of the app (one play scenario, one training scenario)
-- [ ] add missing project settings/features of the exemplary projects (e.g. annotation visibility)
+- [ ] add missing project settings/features of the preinstalled exemplary projects (e.g. annotation visibility)
 - [ ] future: add a "community trainings" area with category filters (e.g. serve receive, defense, drills), starting with importable json packs before cloud hosting exists.
+- [ ] add collapsable folders for projects to keep the project overview organized when many projects are created. Projects can be dragged and dropped into folders and also between folders. Folders can be renamed and deleted (deleting a folder deletes all projects inside the folder, there is no separate delete option for empty folders). Folders can be color coded by the user to easier distinguish them.
+- [ ] add a search function to find projects by name in the project overview. add the tag system mentioned in the next point to also be included in the search function, so that projects can be found by their tags as well.
+- [ ] show the projects type (training /play) in the project overview, that can be filtered for by the user.
+- [ ] add tags to the porjects that can be edited by the user and are shown in the project overview. tags can be used to filter projects in the project overview.
+- [ ] show small thumbnail preview of the project in the project overview, showing the court and the objects on it in a small thumbnail image of the first frame. The user can choose a different frame to be the thumbnail preview in the project settings. The thumbnail preview should be generated automatically when a project is created and updated whenever the user changes the court or objects in the frame that is set as the thumbnail preview frame. The thumbnail picker should be a side scrollabel list of all frames in the project as a pop-up, that can be opened by tapping on the thumbnail preview in the project overview. The user can then select one of the frames to be the new thumbnail preview frame.
 
 ### intuitive actions
 
@@ -156,6 +161,13 @@ Quick tips to add to helper screen:
 - [ ] for gif export, add loop settings (once / infinite / custom loop count).
 - [x] users can share projects as a json file and import shared json files
 
+## Objects
+
+- [ ] add "ghost" objects (players or balls) by double tap into drag of an existing object, that are a transparent copy of the existing object that only exist in the current frame and the subsequent frames until the user taps this ghost object in any subsequent frame to choose to merge it back into the original object (removing the ghost status and making it a permanent object again) or to delete it. This allows for quick temporary variations of player and ball positions in different frames without having to create multiple permanent objects for this.
+  - [ ] multiple ghost objects of the same original object should be distinguishable by slightly changing the hue of each ghost object. If a frame has no existing ghost object in the current frame, the new ghost object gets the same color as the original object but with 50% opacity. If a frame already has one ghost object of the original object, the new ghost object gets a hue shift of +20 degrees in the HSV color space and 50% opacity. If a frame already has two ghost objects of the original object, the new ghost object gets a hue shift of -20 degrees in the HSV color space and 50% opacity. If a frame already has three or more ghost objects of the original object, the new ghost object gets a random hue shift between -20 and +20 degrees in the HSV color space and 50% opacity.
+  - [ ] paths of ghost objects in animation playback should be shown as dotted lines, toggled on by tapping either the original object or the ghost object, and toggled off by tapping the ghost object again.
+  - [ ] when a ghost object is merged back into the original object, the position of the ghost object is automatically set to the position of the original object in that frame. The ghost object should then be removed from subsequent frames.
+
 ### players
 
 - [x] the color of player objects should be editable.
@@ -179,10 +191,11 @@ Quick tips to add to helper screen:
 
 timeline:
 
-- [ ] playback scrubber should be time related, taking frame duration into account. Currently the playback scrubber moves with equal speed through all frames, regardless of their duration setting.
+- [ ] playback scrubber should be time related, taking frame duration into account. Currently the playback scrubber moves with equal speed through all frames, regardless of their duration setting. The time relation can be shown by extending the current frame thumbnail width in the timeline according to the duration of the frame, so that frames with longer duration have a wider thumbnail in the timeline and frames with shorter duration have a smaller thumbnail in the timeline. Thumbnail width should be 1px for each 10ms of frame.
 - [x] the delete current frame button should only appear when a frame is double tapped if it is the currently selected frame and then disappears again if double tapped or any place else is tapped again.
 - [ ] add playback loop toggle with 3 modes: no loop, loop full animation, loop selected frame range.
-- [ ] allow setting loop in/out frame markers by long press on timeline thumbnails.
+  - [ ] allow setting loop in/out frame markers by long press on timeline thumbnails.
+- [ ] add a custom frame duration setting in the frame edit menu, with a default of 1000ms and the option to set it to "automatic" which sets the duration of the frame to the time until the next frame starts in animation playback.
 
 ## Fixes
 
