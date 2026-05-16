@@ -22,7 +22,7 @@ enum AnnotationType {
   curvedLine,
 }
 
-enum AnnotationLineStyle { straight, arrow, dashed }
+enum AnnotationLineStyle { straight, arrow, dashed, markerX, markerPylon, markerDot }
 
 /// Annotation model for frame-specific drawings
 @HiveType(typeId: 2)

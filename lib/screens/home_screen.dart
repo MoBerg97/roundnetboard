@@ -290,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context, setState) => AlertDialog(
           backgroundColor: AppTheme.darkGrey,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.dialogBorderRadius)),
-          title: const Text("New Project"),
+          title: const Text("New Project", style: TextStyle(color: Colors.white)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -299,25 +299,59 @@ class _HomeScreenState extends State<HomeScreen> {
                 TextField(
                   controller: controller,
                   autofocus: true,
+                  style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
                     labelText: "Project Name",
+                    labelStyle: TextStyle(color: Colors.white70),
+                    floatingLabelStyle: TextStyle(color: Colors.white),
                     hintText: "Enter project name",
-                    prefixIcon: Icon(Icons.edit),
+                    hintStyle: TextStyle(color: Colors.white38),
+                    prefixIcon: Icon(Icons.edit, color: Colors.white70),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                    filled: true,
+                    fillColor: Color(0x1AFFFFFF),
+                    border: OutlineInputBorder(),
+                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white38)),
+                    focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white, width: 1.4)),
                   ),
                   textCapitalization: TextCapitalization.words,
                 ),
                 const SizedBox(height: 24),
                 // Project type toggle (modern switch style)
-                Text('Project Type', style: Theme.of(context).textTheme.labelMedium),
+                Text('Project Type', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Colors.white70)),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
+                        Icon(
+                          Icons.sports_volleyball,
+                          size: 18,
+                          color: isTrainingMode ? Colors.white30 : AppTheme.primaryBlue,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Play',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(color: isTrainingMode ? Colors.white38 : Colors.white),
+                        ),
+                        const SizedBox(width: 8),
                         Switch(value: isTrainingMode, onChanged: (v) => setState(() => isTrainingMode = v)),
                         const SizedBox(width: 8),
-                        Text(isTrainingMode ? 'Training' : 'Play', style: Theme.of(context).textTheme.bodySmall),
+                        Text(
+                          'Training',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(color: isTrainingMode ? Colors.white : Colors.white38),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.sports_handball,
+                          size: 18,
+                          color: isTrainingMode ? AppTheme.primaryBlue : Colors.white30,
+                        ),
                       ],
                     ),
                   ],

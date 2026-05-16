@@ -137,16 +137,22 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   final List<double> _annotationStrokeOptionsCm = const [5.0, 10.0, 15.0];
   double _annotationStrokeCm = AppConstants.annotationStrokeWidthCm;
   AnnotationLineStyle _annotationLineStyle = AnnotationLineStyle.straight;
+  AnnotationLineStyle _annotationMarkerStyle = AnnotationLineStyle.markerX;
   OverlayEntry? _annotationStrokeMenuEntry;
   OverlayEntry? _annotationLineStyleMenuEntry;
+  OverlayEntry? _annotationMarkerStyleMenuEntry;
   int _annotationStrokeHoverIndex = -1;
   int _annotationLineStyleHoverIndex = -1;
+  int _annotationMarkerStyleHoverIndex = -1;
   final GlobalKey _annotationStrokeButtonKey = GlobalKey(debugLabel: 'annotation_stroke_button');
   final GlobalKey _annotationLineStyleButtonKey = GlobalKey(debugLabel: 'annotation_line_style_button');
   final GlobalKey _annotationStrokeMenuKey = GlobalKey(debugLabel: 'annotation_stroke_menu');
   final GlobalKey _annotationLineStyleMenuKey = GlobalKey(debugLabel: 'annotation_line_style_menu');
+  final GlobalKey _annotationMarkerStyleButtonKey = GlobalKey(debugLabel: 'annotation_marker_style_button');
+  final GlobalKey _annotationMarkerStyleMenuKey = GlobalKey(debugLabel: 'annotation_marker_style_menu');
   final ValueNotifier<int> _annotationStrokeHoverNotifier = ValueNotifier<int>(-1);
   final ValueNotifier<int> _annotationLineStyleHoverNotifier = ValueNotifier<int>(-1);
+  final ValueNotifier<int> _annotationMarkerStyleHoverNotifier = ValueNotifier<int>(-1);
   bool _annotationSnappingEnabled = true;
   bool _circleFilled = false;
   bool _rectangleFilled = false;
@@ -329,6 +335,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _selectionPulseController.dispose();
     _timelineController.dispose();
     _removeAnnotationEraserMenu();
+    _removeAnnotationMarkerStyleMenu();
     _removeAnnotationLineStyleMenu();
     _removeAnnotationStrokeMenu();
     _removeAnnotationTextSizeMenu();
@@ -415,6 +422,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     AnnotationLineStyle.dashed,
   ];
 
+  static const List<AnnotationLineStyle> _annotationMarkerStyleOptions = [
+    AnnotationLineStyle.markerX,
+    AnnotationLineStyle.markerPylon,
+    AnnotationLineStyle.markerDot,
+  ];
+
   static const List<_SectorAttachmentType> _sectorAttachmentOptions = [
     _SectorAttachmentType.zone,
     _SectorAttachmentType.ball,
@@ -431,6 +444,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         return Icons.trending_flat;
       case AnnotationLineStyle.dashed:
         return Icons.more_horiz;
+      case AnnotationLineStyle.markerX:
+        return Icons.close;
+      case AnnotationLineStyle.markerPylon:
+        return Icons.circle;
+      case AnnotationLineStyle.markerDot:
+        return Icons.fiber_manual_record;
     }
   }
 
@@ -442,6 +461,23 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         return 'Arrow line';
       case AnnotationLineStyle.dashed:
         return 'Dashed line';
+      case AnnotationLineStyle.markerX:
+        return 'X marker';
+      case AnnotationLineStyle.markerPylon:
+        return 'Pylon marker';
+      case AnnotationLineStyle.markerDot:
+        return 'Dot marker';
+    }
+  }
+
+  String _shortSectorAttachmentLabel(_SectorAttachmentType type) {
+    switch (type) {
+      case _SectorAttachmentType.zone:
+        return 'zone';
+      case _SectorAttachmentType.ball:
+        return 'ball';
+      case _SectorAttachmentType.player:
+        return 'player';
     }
   }
 
@@ -599,6 +635,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final top = unclampedTop.clamp(8.0, screenSize.height - menuHeight - 8.0);
 
     _annotationLineStyleHoverIndex = _annotationLineStyleOptions.indexOf(_annotationLineStyle);
+    if (_annotationLineStyleHoverIndex < 0) {
+      _annotationLineStyleHoverIndex = 0;
+    }
     _annotationLineStyleHoverNotifier.value = _annotationLineStyleHoverIndex;
 
     _annotationLineStyleMenuEntry = OverlayEntry(
@@ -669,6 +708,99 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _annotationLineStyleMenuEntry = null;
     _annotationLineStyleHoverIndex = -1;
     _annotationLineStyleHoverNotifier.value = -1;
+  }
+
+  void _toggleAnnotationMarkerStyleMenu({Offset? globalPos, bool forceOpen = false}) {
+    if (_annotationMarkerStyleMenuEntry != null) {
+      _removeAnnotationMarkerStyleMenu();
+      if (!forceOpen) return;
+    }
+
+    final overlay = Overlay.of(context);
+    final box = _annotationMarkerStyleButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final buttonOrigin = box.localToGlobal(Offset.zero);
+    final buttonSize = box.size;
+    final anchor = globalPos ?? (buttonOrigin + Offset(buttonSize.width / 2, buttonSize.height / 2));
+    final menuHeight = HoverSelectionMenu.totalHeightForCount(_annotationMarkerStyleOptions.length);
+    final menuWidth = HoverSelectionMenu.menuWidth;
+    final screenSize = MediaQuery.of(context).size;
+    final placeAbove = anchor.dy > (screenSize.height / 2);
+    final unclampedLeft = anchor.dx - (menuWidth / 2);
+    final unclampedTop = placeAbove ? buttonOrigin.dy - menuHeight - 12 : buttonOrigin.dy + buttonSize.height + 12;
+    final left = unclampedLeft.clamp(8.0, screenSize.width - menuWidth - 8.0);
+    final top = unclampedTop.clamp(8.0, screenSize.height - menuHeight - 8.0);
+
+    _annotationMarkerStyleHoverIndex = _annotationMarkerStyleOptions.indexOf(_annotationMarkerStyle);
+    _annotationMarkerStyleHoverNotifier.value = _annotationMarkerStyleHoverIndex;
+
+    _annotationMarkerStyleMenuEntry = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          IgnorePointer(),
+          Positioned(
+            left: left,
+            top: top,
+            child: HoverSelectionMenu(
+              options: _annotationMarkerStyleOptions
+                  .map(
+                    (style) => HoverMenuOption(
+                      builder: (isHover) => Center(
+                        child: Icon(
+                          _iconForLineStyle(style),
+                          color: isHover ? AppTheme.primaryBlue : Colors.white,
+                          size: style == AnnotationLineStyle.markerDot ? 14 : 22,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              initialHover: _annotationMarkerStyleHoverIndex,
+              hoverNotifier: _annotationMarkerStyleHoverNotifier,
+              onHover: (i) => setState(() => _annotationMarkerStyleHoverIndex = i),
+              onSelect: (i) {
+                setState(() {
+                  _annotationMarkerStyle = _annotationMarkerStyleOptions[i];
+                  _setAnnotationTool(AnnotationTool.line);
+                });
+                _removeAnnotationMarkerStyleMenu();
+              },
+              onDismiss: _removeAnnotationMarkerStyleMenu,
+              menuKey: _annotationMarkerStyleMenuKey,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(_annotationMarkerStyleMenuEntry!);
+    _updateAnnotationMarkerStyleMenuHover(anchor);
+  }
+
+  void _updateAnnotationMarkerStyleMenuHover(Offset globalPos) {
+    final box = _annotationMarkerStyleMenuKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(globalPos);
+    final width = HoverSelectionMenu.menuWidth;
+    final height = HoverSelectionMenu.totalHeightForCount(_annotationMarkerStyleOptions.length);
+    if (local.dx < 0 || local.dx > width || local.dy < 0 || local.dy > height) {
+      _annotationMarkerStyleHoverNotifier.value = -1;
+      setState(() => _annotationMarkerStyleHoverIndex = -1);
+      return;
+    }
+    final idx = (local.dy / HoverSelectionMenu.itemExtent).floor().clamp(0, _annotationMarkerStyleOptions.length - 1);
+    if (idx != _annotationMarkerStyleHoverIndex) {
+      _annotationMarkerStyleHoverNotifier.value = idx;
+      setState(() => _annotationMarkerStyleHoverIndex = idx);
+    }
+  }
+
+  void _removeAnnotationMarkerStyleMenu() {
+    _annotationMarkerStyleMenuEntry?.remove();
+    _annotationMarkerStyleMenuEntry = null;
+    _annotationMarkerStyleHoverIndex = -1;
+    _annotationMarkerStyleHoverNotifier.value = -1;
   }
 
   void _toggleAnnotationStrokeMenu({Offset? globalPos, bool forceOpen = false}) {
@@ -1126,10 +1258,28 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                   .map(
                     (type) => HoverMenuOption(
                       builder: (isHover) => Center(
-                        child: Icon(
-                          _iconForSectorAttachment(type),
-                          color: isHover ? AppTheme.primaryBlue : Colors.white,
-                          size: 22,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _iconForSectorAttachment(type),
+                              color: isHover ? AppTheme.primaryBlue : Colors.white,
+                              size: 18,
+                            ),
+                            const SizedBox(height: 1),
+                            SizedBox(
+                              height: 10,
+                              child: Text(
+                                _shortSectorAttachmentLabel(type),
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  height: 1.0,
+                                  color: isHover ? AppTheme.primaryBlue : Colors.white70,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -1790,6 +1940,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _eraserMode = false;
     _eraserPosCm = null;
     _removeAnnotationEraserMenu();
+    _removeAnnotationMarkerStyleMenu();
     _removeAnnotationLineStyleMenu();
     _removeAnnotationStrokeMenu();
     _removeAnnotationTextSizeMenu();
@@ -2610,6 +2761,155 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       }
     }
     return null;
+  }
+
+  Annotation? _findAnnotationAt(Offset pointCm, Size size) {
+    final annotations = _activeAnnotationList();
+    for (final ann in annotations.reversed) {
+      if (_isPointNearAnnotation(pointCm, ann, 30.0, size)) {
+        return ann;
+      }
+    }
+    return null;
+  }
+
+  bool _isMarkerLineStyle(AnnotationLineStyle style) {
+    return style == AnnotationLineStyle.markerX ||
+        style == AnnotationLineStyle.markerPylon ||
+        style == AnnotationLineStyle.markerDot;
+  }
+
+  Future<void> _editAnnotationStyle(Annotation annotation, Size size) async {
+    final annotations = _activeAnnotationList();
+    final before = _cloneAnnotations(annotations);
+
+    Color selectedColor = annotation.color;
+    double alpha = selectedColor.a.clamp(0.0, 1.0);
+    double selectedStroke = annotation.strokeWidthCm;
+    AnnotationLineStyle selectedLineStyle = annotation.lineStyle;
+    bool selectedFilled = annotation.filled;
+
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          final supportsFill = annotation.type == AnnotationType.circle || annotation.type == AnnotationType.rectangle;
+          final supportsLineStyle =
+              annotation.type == AnnotationType.line || annotation.type == AnnotationType.curvedLine;
+          return AlertDialog(
+            backgroundColor: AppTheme.darkGrey,
+            title: const Text('Annotation Style', style: TextStyle(color: Colors.white)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: AppTheme.editorColors.map((color) {
+                      final bool selected = selectedColor.withValues(alpha: 1.0).toARGB32() == color.toARGB32();
+                      return GestureDetector(
+                        onTap: () => setStateDialog(() {
+                          selectedColor = color.withValues(alpha: alpha);
+                        }),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: selected ? Colors.white : Colors.transparent, width: 2),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Transparency', style: TextStyle(color: Colors.white70)),
+                  Slider(
+                    value: alpha,
+                    min: 0.1,
+                    max: 1.0,
+                    divisions: 18,
+                    label: '${(alpha * 100).round()}%',
+                    onChanged: (value) => setStateDialog(() {
+                      alpha = value;
+                      selectedColor = selectedColor.withValues(alpha: alpha);
+                    }),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('Stroke Size', style: TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    children: _annotationStrokeOptionsCm.map((w) {
+                      final selected = (selectedStroke - w).abs() < 0.001;
+                      return ChoiceChip(
+                        label: Text(w.toStringAsFixed(0)),
+                        selected: selected,
+                        onSelected: (_) => setStateDialog(() => selectedStroke = w),
+                      );
+                    }).toList(),
+                  ),
+                  if (supportsFill) ...[
+                    const SizedBox(height: 12),
+                    const Text('Fill', style: TextStyle(color: Colors.white70)),
+                    const SizedBox(height: 6),
+                    SwitchListTile(
+                      value: selectedFilled,
+                      onChanged: (v) => setStateDialog(() => selectedFilled = v),
+                      title: const Text('Filled', style: TextStyle(color: Colors.white)),
+                      dense: true,
+                    ),
+                  ],
+                  if (supportsLineStyle) ...[
+                    const SizedBox(height: 10),
+                    const Text('Line / Marker Style', style: TextStyle(color: Colors.white70)),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [..._annotationLineStyleOptions, ..._annotationMarkerStyleOptions].map((style) {
+                        final selected = selectedLineStyle == style;
+                        return ChoiceChip(
+                          avatar: Icon(
+                            _iconForLineStyle(style),
+                            size: style == AnnotationLineStyle.markerDot ? 14 : 18,
+                          ),
+                          label: Text(_lineStyleLabel(style)),
+                          selected: selected,
+                          onSelected: (_) => setStateDialog(() => selectedLineStyle = style),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Apply')),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (accepted != true) return;
+
+    setState(() {
+      annotation
+        ..color = selectedColor
+        ..strokeWidthCm = selectedStroke
+        ..filled = selectedFilled
+        ..lineStyle = selectedLineStyle;
+      if (_isMarkerLineStyle(selectedLineStyle)) {
+        _annotationMarkerStyle = selectedLineStyle;
+      }
+    });
+
+    _pushAnnotationHistoryIfChanged(before, _cloneAnnotations(annotations));
   }
 
   Future<_AnnotationTextDialogResult?> _promptForAnnotationText({String initialText = '', double? initialSize}) async {
@@ -3544,7 +3844,16 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
           );
         }
       } else if (_activeAnnotationTool == AnnotationTool.line) {
-        if (dist > 0.8) {
+        if (_isMarkerLineStyle(_annotationLineStyle)) {
+          final markerEnd = dist > 0.8 ? end : (start + const Offset(30.0, 0.0));
+          ann = Annotation(
+            type: AnnotationType.line,
+            color: _annotationColor,
+            points: [start, markerEnd],
+            strokeWidthCm: _annotationStrokeCm,
+            lineStyle: _annotationLineStyle,
+          );
+        } else if (dist > 0.8) {
           ann = Annotation(
             type: AnnotationType.line,
             color: _annotationColor,
@@ -5268,8 +5577,15 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   if (_annotationsMenuOpen) {
                                     final clampedTap = _clampToInteractionBounds(details.localPosition, screenSize);
                                     final tapCm = _screenToCm(clampedTap, screenSize);
+                                    if (_activeAnnotationTool == AnnotationTool.move) {
+                                      final target = _findAnnotationAt(tapCm, screenSize);
+                                      if (target != null) {
+                                        _editAnnotationStyle(target, screenSize);
+                                      }
+                                      return;
+                                    }
                                     final target = _findTextAnnotationAt(tapCm, screenSize);
-                                    if (target != null) {
+                                    if (target != null && _activeAnnotationTool == AnnotationTool.text) {
                                       _editTextAnnotation(target, screenSize);
                                     }
                                   }
@@ -6267,6 +6583,23 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 child: Icon(Icons.text_fields, size: 20),
                               ),
                               _buildMenuButton(
+                                tooltip: '${_lineStyleLabel(_annotationMarkerStyle)} (double-tap for style)',
+                                onPressed: () {
+                                  setState(() {
+                                    _annotationLineStyle = _annotationMarkerStyle;
+                                    _setAnnotationTool(AnnotationTool.line);
+                                  });
+                                },
+                                onDoubleTap: () => _toggleAnnotationMarkerStyleMenu(forceOpen: true),
+                                buttonKey: _annotationMarkerStyleButtonKey,
+                                backgroundColor:
+                                    _activeAnnotationTool == AnnotationTool.line &&
+                                        _annotationMarkerStyleOptions.contains(_annotationLineStyle)
+                                    ? AppTheme.primaryBlue
+                                    : AppTheme.mediumGrey,
+                                child: Icon(_iconForLineStyle(_annotationMarkerStyle), size: 20),
+                              ),
+                              _buildMenuButton(
                                 tooltip:
                                     'Circle Sector Tool (${_labelForSectorAttachment(_sectorAttachmentType)}; double-tap to select)',
                                 onPressed: () => setState(() => _setAnnotationTool(AnnotationTool.sector)),
@@ -6295,20 +6628,6 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     BlendMode.srcIn,
                                   ),
                                 ),
-                              ),
-                              _buildMenuButton(
-                                tooltip: _labelForSectorAttachment(_sectorAttachmentType),
-                                onPressed: () {
-                                  setState(() {
-                                    final currentIndex = _sectorAttachmentOptions.indexOf(_sectorAttachmentType);
-                                    final nextIndex = (currentIndex + 1) % _sectorAttachmentOptions.length;
-                                    _sectorAttachmentType = _sectorAttachmentOptions[nextIndex];
-                                    _setAnnotationTool(AnnotationTool.sector);
-                                  });
-                                },
-                                onDoubleTap: () => _toggleSectorAttachmentMenu(forceOpen: true),
-                                backgroundColor: AppTheme.mediumGrey,
-                                child: Icon(_iconForSectorAttachment(_sectorAttachmentType), size: 20),
                               ),
                             ],
                           ),

@@ -289,6 +289,10 @@ class AnnotationCanvasPainter extends CustomPainter {
         _drawArrowHead(canvas, points[points.length - 2], points.last, paint);
       case AnnotationLineStyle.dashed:
         _drawDashedPath(canvas, path, paint);
+      case AnnotationLineStyle.markerX:
+      case AnnotationLineStyle.markerPylon:
+      case AnnotationLineStyle.markerDot:
+        canvas.drawPath(path, paint);
     }
   }
 
@@ -1290,6 +1294,57 @@ class AnnotationCanvasPainter extends CustomPainter {
         break;
       case AnnotationLineStyle.dashed:
         _drawDashedLine(canvas, start, end, paint);
+        break;
+      case AnnotationLineStyle.markerX:
+      case AnnotationLineStyle.markerPylon:
+      case AnnotationLineStyle.markerDot:
+        _drawMarkerSymbol(canvas, start, end, paint, style);
+        break;
+    }
+  }
+
+  void _drawMarkerSymbol(Canvas canvas, Offset start, Offset end, Paint paint, AnnotationLineStyle style) {
+    final vector = end - start;
+    final dist = vector.distance;
+    final center = dist > 0.001 ? end : start;
+    final baseSize = math.max(8.0, paint.strokeWidth * 3.0);
+
+    switch (style) {
+      case AnnotationLineStyle.markerX:
+        final arm = baseSize * 0.65;
+        canvas.drawLine(center + Offset(-arm, -arm), center + Offset(arm, arm), paint);
+        canvas.drawLine(center + Offset(-arm, arm), center + Offset(arm, -arm), paint);
+        break;
+      case AnnotationLineStyle.markerPylon:
+        final radius = math.max(4.0, baseSize * 0.55);
+        final pylonPaint = Paint()
+          ..shader = RadialGradient(
+            center: const Alignment(-0.3, -0.35),
+            radius: 0.95,
+            colors: [
+              Colors.white.withValues(alpha: (paint.color.a * 0.9).clamp(0.0, 1.0)),
+              paint.color.withValues(alpha: (paint.color.a * 0.9).clamp(0.0, 1.0)),
+              paint.color.withValues(alpha: (paint.color.a * 0.55).clamp(0.0, 1.0)),
+            ],
+            stops: const [0.0, 0.45, 1.0],
+          ).createShader(Rect.fromCircle(center: center, radius: radius))
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(center, radius, pylonPaint);
+        final border = Paint()
+          ..color = paint.color.withValues(alpha: (paint.color.a * 0.9).clamp(0.0, 1.0))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(1.2, paint.strokeWidth * 0.4);
+        canvas.drawCircle(center, radius, border);
+        break;
+      case AnnotationLineStyle.markerDot:
+        final dotPaint = Paint()
+          ..color = paint.color.withValues(alpha: (paint.color.a * 0.95).clamp(0.0, 1.0))
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(center, 2.5, dotPaint);
+        break;
+      case AnnotationLineStyle.straight:
+      case AnnotationLineStyle.arrow:
+      case AnnotationLineStyle.dashed:
         break;
     }
   }

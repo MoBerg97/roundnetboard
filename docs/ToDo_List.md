@@ -201,6 +201,7 @@ timeline:
 
 ### HOTFIX
 
+- [ ] first frame should have a default duration of 1000ms instead of 0ms, so that the playback does not immediately jump to the second frame when starting playback, and the user can see the first frame for a moment before the animation starts. The user should be able to change the duration of the first frame.
 - [ ] the placement of elements should be in relation to the court center point and not in relation to the top left corner of the screen. This is especially important for the export of projects, as otherwise the placement of objects in the export does not match the placement of objects on the board screen or on a new device.
 - [ ] adjust the color of the font in the project create menu to be visible on dark background (currently black font on dark background, should be white font on dark background)
 - [ ] add a small icon for project type slider (training/play) in the project create menu to make it more intuitive (e.g. a small whistle icon for training and a small net icon for play)

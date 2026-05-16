@@ -724,11 +724,8 @@ class ExportService {
   }
 
   Offset _boardCenter(Size size) {
-    const double appBarHeight = kToolbarHeight;
-    const double timelineHeight = 140;
-    final usableHeight = size.height - appBarHeight - timelineHeight;
     final cx = size.width / 2;
-    final cy = appBarHeight + usableHeight / 2;
+    final cy = size.height / 2;
     return Offset(cx, cy);
   }
 

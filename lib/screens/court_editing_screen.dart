@@ -13,7 +13,9 @@ import '../widgets/board_background_painter.dart';
 import '../widgets/court_editor_painter.dart';
 import '../widgets/hover_selection_menu.dart';
 
-enum CourtEditorTool { select, net, zone, customCircle, customLine, customRectangle, text, eraser, sector }
+enum CourtEditorTool { select, net, zone, customCircle, customLine, customRectangle, marker, text, eraser, sector }
+
+enum MarkerStyle { x, pylon, dot }
 
 /// Represents a snapshot of the editor state for undo/redo functionality
 class _EditorSnapshot {
@@ -115,6 +117,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
   final GlobalKey _canvasKey = GlobalKey(debugLabel: 'court_editor_canvas');
   Color _currentColor = Colors.white;
   ZoneMode _zoneMode = ZoneMode.inner;
+  MarkerStyle _markerStyle = MarkerStyle.x;
   CourtElement? _previewElement;
   // Incremented whenever elements change to force background repaint
   int _elementsRevision = 0;
@@ -151,8 +154,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
   @override
   void initState() {
     super.initState();
-    _selectionPulseController =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat();
+    _selectionPulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat();
     _currentTool = CourtEditorTool.select;
     _elements = List.from(widget.project.customCourtElements ?? []);
     _settings = widget.project.settings ?? Settings();
@@ -238,35 +240,35 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
                                 painter: _CenterCrossPainter(boardSize: boardSize, settings: _settings),
                               ),
                             ),
-                              if (_sectorToolNeedsTargetSelection)
-                                IgnorePointer(
-                                  ignoring: true,
-                                  child: CustomPaint(
-                                    size: boardSize,
-                                    painter: _SectorZoneOutlinePainter(
-                                      settings: _settings,
-                                      boardSize: boardSize,
-                                      pulseAnimation: _selectionPulseController,
-                                      highlightedZone: _selectedSectorTargetId,
-                                      elements: _elements,
-                                    ),
+                            if (_sectorToolNeedsTargetSelection)
+                              IgnorePointer(
+                                ignoring: true,
+                                child: CustomPaint(
+                                  size: boardSize,
+                                  painter: _SectorZoneOutlinePainter(
+                                    settings: _settings,
+                                    boardSize: boardSize,
+                                    pulseAnimation: _selectionPulseController,
+                                    highlightedZone: _selectedSectorTargetId,
+                                    elements: _elements,
                                   ),
                                 ),
-                              if (_sectorTargetHighlightActive &&
-                                  _selectedSectorCenterCm != null &&
-                                  _selectedSectorRadiusCm != null)
-                                IgnorePointer(
-                                  ignoring: true,
-                                  child: CustomPaint(
-                                    size: boardSize,
-                                    painter: _SectorTargetHighlightPainter(
-                                      centerCm: _selectedSectorCenterCm!,
-                                      radiusCm: _selectedSectorRadiusCm!,
-                                      screenSize: boardSize,
-                                      settings: _settings,
-                                    ),
+                              ),
+                            if (_sectorTargetHighlightActive &&
+                                _selectedSectorCenterCm != null &&
+                                _selectedSectorRadiusCm != null)
+                              IgnorePointer(
+                                ignoring: true,
+                                child: CustomPaint(
+                                  size: boardSize,
+                                  painter: _SectorTargetHighlightPainter(
+                                    centerCm: _selectedSectorCenterCm!,
+                                    radiusCm: _selectedSectorRadiusCm!,
+                                    screenSize: boardSize,
+                                    settings: _settings,
                                   ),
                                 ),
+                              ),
                           ],
                         ),
                       ),
@@ -314,6 +316,29 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
                   _buildToolButton(CourtEditorTool.customLine, Symbols.diagonal_line, 'Line'),
                   const SizedBox(width: 4),
                   _buildToolButton(CourtEditorTool.customRectangle, Icons.crop_square, 'Rect'),
+                  const SizedBox(width: 4),
+                  Tooltip(
+                    message: 'Marker (${_markerStyle.name}) (double-tap for style)',
+                    child: GestureDetector(
+                      onDoubleTap: _showMarkerStylePicker,
+                      child: FloatingActionButton.small(
+                        heroTag: 'tool-marker',
+                        backgroundColor: _currentTool == CourtEditorTool.marker
+                            ? AppTheme.primaryBlue
+                            : AppTheme.mediumGrey,
+                        onPressed: () => setState(() => _currentTool = CourtEditorTool.marker),
+                        child: Icon(
+                          _markerStyle == MarkerStyle.x
+                              ? Icons.close
+                              : _markerStyle == MarkerStyle.pylon
+                              ? Icons.circle
+                              : Icons.fiber_manual_record,
+                          size: _markerStyle == MarkerStyle.dot ? 14 : 20,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 4),
                   _buildSectorToolButton(),
                   const SizedBox(width: 4),
@@ -1010,8 +1035,9 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
     final localPos = details.localPosition;
     if (_boardSize == Size.zero) return;
     final localPosCm = _screenToCm(localPos, _boardSize);
-    _startPos = localPosCm;
-    _currentPos = localPosCm;
+    final creationStartCm = _snapEnabled ? _applyCreationPointSnap(localPosCm, _boardSize) : localPosCm;
+    _startPos = creationStartCm;
+    _currentPos = creationStartCm;
     _previewElement = null;
 
     if (_currentTool == CourtEditorTool.select) {
@@ -1042,7 +1068,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
       return;
     } else {
       // Show live preview for all creation tools (circle, zone, line, rectangle, net)
-      _previewElement = _createElementFromTool(_currentTool, localPosCm, localPosCm, preview: true);
+      _previewElement = _createElementFromTool(_currentTool, creationStartCm, creationStartCm, preview: true);
     }
   }
 
@@ -1108,7 +1134,14 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
         );
       } else {
         // Show live preview for all creation tools while dragging
-        _previewElement = _createElementFromTool(_currentTool, _startPos ?? localPosCm, localPosCm, preview: true);
+        final rawPreview = _createElementFromTool(_currentTool, _startPos ?? localPosCm, localPosCm, preview: true);
+        if (_snapEnabled && rawPreview != null) {
+          final snapped = _applySnap(rawPreview.position, rawPreview.endPosition, rawPreview);
+          rawPreview
+            ..position = snapped.key
+            ..endPosition = snapped.value;
+        }
+        _previewElement = rawPreview;
       }
     });
   }
@@ -1187,6 +1220,12 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
     // Create new element based on tool
     final element = _createElementFromTool(tool, start, end);
     if (element != null) {
+      if (_snapEnabled) {
+        final snapped = _applySnap(element.position, element.endPosition, element);
+        element
+          ..position = snapped.key
+          ..endPosition = snapped.value;
+      }
       // Save pre-change snapshot before committing element
       _saveToHistory();
       setState(() => _elements.add(element));
@@ -1201,6 +1240,17 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
   void _onDoubleTapDown(TapDownDetails details) {
     final localPos = details.localPosition;
     final localPosCm = _screenToCm(localPos, _boardSize);
+    if (_currentTool == CourtEditorTool.select) {
+      final element = _findElementAt(localPosCm);
+      if (element != null) {
+        if (element.type == CourtElementType.text) {
+          unawaited(_editTextElement(element));
+        } else {
+          unawaited(_editElementStyle(element));
+        }
+        return;
+      }
+    }
     final textElement = _findTextElementAt(localPosCm);
     if (textElement != null) {
       unawaited(_editTextElement(textElement));
@@ -1215,6 +1265,205 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
       }
     }
     return null;
+  }
+
+  String _markerStyleToken(MarkerStyle style) {
+    switch (style) {
+      case MarkerStyle.x:
+        return 'x';
+      case MarkerStyle.pylon:
+        return 'pylon';
+      case MarkerStyle.dot:
+        return 'dot';
+    }
+  }
+
+  MarkerStyle _markerStyleFromToken(String? token) {
+    switch (token) {
+      case 'pylon':
+        return MarkerStyle.pylon;
+      case 'dot':
+        return MarkerStyle.dot;
+      case 'x':
+      default:
+        return MarkerStyle.x;
+    }
+  }
+
+  bool _isMarkerElement(CourtElement element) {
+    return element.type == CourtElementType.customLine && (element.text ?? '').startsWith('marker:');
+  }
+
+  MarkerStyle _markerStyleFromElement(CourtElement element) {
+    final raw = element.text;
+    if (raw == null || !raw.startsWith('marker:')) return MarkerStyle.x;
+    return _markerStyleFromToken(raw.substring('marker:'.length));
+  }
+
+  void _applyMarkerStyleToElement(CourtElement element, MarkerStyle style) {
+    element.text = 'marker:${_markerStyleToken(style)}';
+  }
+
+  Future<void> _showMarkerStylePicker() async {
+    final selected = await showDialog<MarkerStyle>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Marker Style'),
+        content: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: MarkerStyle.values.map((style) {
+            final isSelected = style == _markerStyle;
+            return GestureDetector(
+              onTap: () => Navigator.pop(context, style),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: isSelected ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+                child: Icon(
+                  style == MarkerStyle.x
+                      ? Icons.close
+                      : style == MarkerStyle.pylon
+                      ? Icons.circle
+                      : Icons.fiber_manual_record,
+                  size: style == MarkerStyle.dot ? 12 : 18,
+                  color: Colors.white,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+
+    if (selected == null) return;
+    setState(() => _markerStyle = selected);
+  }
+
+  CourtElement? _findElementAt(Offset localPosCm) {
+    for (final element in _elements.reversed) {
+      if (_isPointNearElement(localPosCm, element)) {
+        return element;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _editElementStyle(CourtElement element) async {
+    final before = _elements.map((e) => e.copy()).toList();
+    Color selectedColor = element.color;
+    double alpha = selectedColor.a.clamp(0.0, 1.0);
+    double stroke = element.strokeWidth;
+    MarkerStyle selectedMarker = _markerStyleFromElement(element);
+    final bool marker = _isMarkerElement(element);
+
+    final apply = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          backgroundColor: AppTheme.darkGrey,
+          title: const Text('Element Style', style: TextStyle(color: Colors.white)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: AppTheme.editorColors.map((color) {
+                    final bool isSelected = selectedColor.withValues(alpha: 1.0).toARGB32() == color.toARGB32();
+                    return GestureDetector(
+                      onTap: () => setStateDialog(() {
+                        selectedColor = color.withValues(alpha: alpha);
+                      }),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: isSelected ? Colors.white : Colors.transparent, width: 2),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                const Text('Transparency', style: TextStyle(color: Colors.white70)),
+                Slider(
+                  value: alpha,
+                  min: 0.1,
+                  max: 1.0,
+                  divisions: 18,
+                  onChanged: (v) => setStateDialog(() {
+                    alpha = v;
+                    selectedColor = selectedColor.withValues(alpha: alpha);
+                  }),
+                ),
+                const SizedBox(height: 8),
+                const Text('Stroke', style: TextStyle(color: Colors.white70)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  children: _elementStrokeOptions.map((w) {
+                    return ChoiceChip(
+                      label: Text(w.toStringAsFixed(0)),
+                      selected: (stroke - w).abs() < 0.001,
+                      onSelected: (_) => setStateDialog(() => stroke = w),
+                    );
+                  }).toList(),
+                ),
+                if (marker) ...[
+                  const SizedBox(height: 12),
+                  const Text('Marker Style', style: TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    children: MarkerStyle.values.map((style) {
+                      final bool isSelected = selectedMarker == style;
+                      return ChoiceChip(
+                        avatar: Icon(
+                          style == MarkerStyle.x
+                              ? Icons.close
+                              : style == MarkerStyle.pylon
+                              ? Icons.circle
+                              : Icons.fiber_manual_record,
+                          size: style == MarkerStyle.dot ? 12 : 18,
+                        ),
+                        label: Text(style.name),
+                        selected: isSelected,
+                        onSelected: (_) => setStateDialog(() => selectedMarker = style),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Apply')),
+          ],
+        ),
+      ),
+    );
+
+    if (apply != true) return;
+    _saveToHistory();
+    if (!mounted) return;
+    setState(() {
+      element
+        ..color = selectedColor
+        ..strokeWidth = stroke;
+      if (marker) {
+        _applyMarkerStyleToElement(element, selectedMarker);
+        _markerStyle = selectedMarker;
+      }
+      _elementsRevision++;
+    });
+    final after = _elements.map((e) => e.copy()).toList();
+    if (before.length == after.length) {
+      // no-op guard intentionally light, history manager handles duplicates reasonably
+    }
   }
 
   Future<void> _handleTextPlacement(Offset positionCm) async {
@@ -1415,6 +1664,61 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
     return MapEntry(pos, end);
   }
 
+  Offset _applyCreationPointSnap(Offset pointCm, Size size) {
+    final thresholdCm = _snapThresholdCm(size);
+    final candidates = _snapPointsFromOtherElementsForCreation();
+
+    double bestDist = thresholdCm;
+    Offset? best;
+    for (final target in candidates) {
+      final d = (target - pointCm).distance;
+      if (d < bestDist) {
+        bestDist = d;
+        best = target;
+      }
+    }
+
+    return best ?? pointCm;
+  }
+
+  double _snapThresholdCm(Size size) {
+    final pxPerCm = _settings.cmToLogical(1.0, size).abs();
+    if (pxPerCm <= 0) return 20.0;
+    return 20.0 / pxPerCm;
+  }
+
+  List<Offset> _snapPointsFromOtherElementsForCreation() {
+    final points = <Offset>[];
+
+    for (final e in _elements) {
+      points.add(e.position);
+
+      if (e.radius != null &&
+          (e.type == CourtElementType.innerCircle ||
+              e.type == CourtElementType.outerCircle ||
+              e.type == CourtElementType.customCircle)) {
+        points.addAll(_circleBoundarySnapPoints(e.position, e.radius!));
+      }
+
+      if (e.endPosition != null) {
+        final end = e.endPosition!;
+        points
+          ..add(end)
+          ..add((e.position + end) / 2);
+
+        if (e.type == CourtElementType.customRectangle) {
+          final tl = Offset(math.min(e.position.dx, end.dx), math.min(e.position.dy, end.dy));
+          final tr = Offset(math.max(e.position.dx, end.dx), math.min(e.position.dy, end.dy));
+          final bl = Offset(math.min(e.position.dx, end.dx), math.max(e.position.dy, end.dy));
+          final br = Offset(math.max(e.position.dx, end.dx), math.max(e.position.dy, end.dy));
+          points.addAll([tl, tr, bl, br]);
+        }
+      }
+    }
+
+    return points;
+  }
+
   List<Offset> _anchorPointsForDragged(CourtElement element, Offset pos, Offset? end) {
     final anchors = <Offset>[pos];
 
@@ -1588,6 +1892,16 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
           endPosition: end,
           color: _currentColor,
           strokeWidth: _elementStrokeWidth,
+        );
+      case CourtEditorTool.marker:
+        final markerEnd = (end - start).distance > 0.8 ? end : (start + const Offset(30, 0));
+        return CourtElement(
+          type: CourtElementType.customLine,
+          position: start,
+          endPosition: markerEnd,
+          color: _currentColor,
+          strokeWidth: _elementStrokeWidth,
+          text: 'marker:${_markerStyleToken(_markerStyle)}',
         );
       case CourtEditorTool.text:
         final resolvedText = textContent ?? (preview ? 'Text' : '');
@@ -1931,10 +2245,12 @@ class _SectorZoneOutlinePainter extends CustomPainter {
 
       final targetId = _zoneIdForElement(element);
       final isHighlighted = highlightedZone == targetId;
-      final zoneCenter = center + Offset(
-        settings.cmToLogical(element.position.dx, boardSize),
-        settings.cmToLogical(element.position.dy, boardSize),
-      );
+      final zoneCenter =
+          center +
+          Offset(
+            settings.cmToLogical(element.position.dx, boardSize),
+            settings.cmToLogical(element.position.dy, boardSize),
+          );
       final radiusPx = settings.cmToLogical(element.radius!, boardSize).abs();
       final overlayWidthPx = settings.cmToLogical(10.0, boardSize).abs();
       _drawZoneOverlay(canvas, zoneCenter, radiusPx, overlayWidthPx, isHighlighted, pulseRadiusBoost, pulseOpacity);

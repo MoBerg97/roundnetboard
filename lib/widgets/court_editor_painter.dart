@@ -108,7 +108,12 @@ class CourtEditorPainter extends CustomPainter {
       case CourtElementType.customLine:
         if (element.endPosition != null) {
           final scaledEnd = _toScreenPosition(element.endPosition!, center);
-          canvas.drawLine(scaledPos, scaledEnd, paint);
+          if ((element.text ?? '').startsWith('marker:')) {
+            final marker = (element.text ?? '').substring('marker:'.length);
+            _drawMarker(canvas, scaledPos, scaledEnd, paint, marker, isPreview: isPreview);
+          } else {
+            canvas.drawLine(scaledPos, scaledEnd, paint);
+          }
         }
         break;
       case CourtElementType.customRectangle:
@@ -203,6 +208,46 @@ class CourtEditorPainter extends CustomPainter {
 
     // Outer stroke highlight
     canvas.drawCircle(center, radius + 5, strokePaint);
+  }
+
+  void _drawMarker(Canvas canvas, Offset start, Offset end, Paint paint, String markerType, {required bool isPreview}) {
+    final center = (end - start).distance > 0.001 ? end : start;
+    final base = math.max(8.0, paint.strokeWidth * 3.0);
+
+    if (markerType == 'dot') {
+      final fill = Paint()
+        ..color = paint.color.withValues(alpha: isPreview ? 0.6 : 0.95)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(center, 2.5, fill);
+      return;
+    }
+
+    if (markerType == 'pylon') {
+      final radius = math.max(4.0, base * 0.55);
+      final pylonPaint = Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.35, -0.35),
+          radius: 0.95,
+          colors: [
+            Colors.white.withValues(alpha: isPreview ? 0.45 : 0.82),
+            paint.color.withValues(alpha: isPreview ? 0.42 : 0.88),
+            paint.color.withValues(alpha: isPreview ? 0.22 : 0.56),
+          ],
+          stops: const [0.0, 0.45, 1.0],
+        ).createShader(Rect.fromCircle(center: center, radius: radius))
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(center, radius, pylonPaint);
+      final border = Paint()
+        ..color = paint.color.withValues(alpha: isPreview ? 0.5 : 0.9)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(1.2, paint.strokeWidth * 0.4);
+      canvas.drawCircle(center, radius, border);
+      return;
+    }
+
+    final arm = base * 0.65;
+    canvas.drawLine(center + Offset(-arm, -arm), center + Offset(arm, arm), paint);
+    canvas.drawLine(center + Offset(-arm, arm), center + Offset(arm, -arm), paint);
   }
 
   @override
