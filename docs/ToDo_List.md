@@ -201,19 +201,24 @@ timeline:
 
 ### HOTFIX
 
+- [ ] the placement of elements should be in relation to the court center point and not in relation to the top left corner of the screen. This is especially important for the export of projects, as otherwise the placement of objects in the export does not match the placement of objects on the board screen or on a new device.
+- [ ] adjust the color of the font in the project create menu to be visible on dark background (currently black font on dark background, should be white font on dark background)
+- [ ] add a small icon for project type slider (training/play) in the project create menu to make it more intuitive (e.g. a small whistle icon for training and a small net icon for play)
+- [ ] court elements should snap on creation dragging already to corners and center points of other court elements when created within 20px of such a point, not only when being dragged after creation with the drag tool.
+- [ ] annotations should snap on creation dragging already to corners and center points of other annotations when created within 20px of such a point, not only when being dragged after creation with the drag tool.
 - [ ] animation playback automatically closes any open menus on the board screen when playback starts
 - [ ] background color of the board screen should always match the court color in court editor and should be changeable via settings menu on board screen
-- [ ] court editor should show the same court frame as the board screen. Court size in court editor should match court size in board screen (same hieght and width of container showing the court). The middle point of the court should always be in the center of the court container.
+- [ ] court editor should show the same court frame as the board screen. Court size in court editor should match court size in board screen (same height and width of container showing the court). The middle point of the court should always be in the center of the court container.
 - [ ] standard zoom stage should be 1.0 times serve zone radius around center of court instead of 1.5 times
 - [ ] make zoom stages larger and frame specific (saved on frames) and changeable in the board screen as a snapping slider with 5 stages
-  - [ ] 1. zoom stage: show only 0.5 times serve zone radius around center of court
-  - [ ] 2. zoom stage: show 1.0 times serve zone radius around center of court
-  - [ ] 3. zoom stage: show 1.5 times serve zone radius around center of court (current default)
-  - [ ] 4. zoom stage: show whole court towards outer boundary at 850cm radius around center of court
+  - [ ] 1. zoom stage: show only 0.5 times serve zone radius around center of court (for focus on net area)
+  - [ ] 2. zoom stage: show 1.0 times serve zone radius around center of court (for focus on stuff inside the Serve Zone)
+  - [ ] 3. zoom stage: show 1.5 times serve zone radius around center of court (current default, for focus on most played areas of the court)
+  - [ ] 4. zoom stage: show whole court towards outer boundary at 850cm radius around center of court (for focus on special tactics involving the whole court)
   - [ ] zoom is copied along when a new frame is created
   - [ ] during animation playback, zoom changes dynamically to show all objects on court at once, unless user has manually changed zoom during playback, then the user zoom is kept until playback is stopped.
 - [x] account for virtual navigation bar on some android phones such as Redmi Note 13 Pro 5G by using a safe area
-- [ ] test if safe area implementation works on the problematic devices (Redmi Note 13 Pro 5G) and does not break anything on other devices (iOS devices with notch, etc)
+- [ ] POSTPONED: test if safe area implementation works on the problematic devices (Redmi Note 13 Pro 5G) and does not break anything on other devices (iOS devices with notch, etc)
 - [x] when playback is through, meaning the playback reached the end while playing, the timeline should only go back to the editing controls after the stop button is tapped, not automatically after playback reached the end
 - [x] enlarge the hit box for catching the path control points on mobile devices
 - [x] the buttons should not overflow on small screen devices, either scale them down or make them scrollable horizontally
@@ -223,7 +228,7 @@ timeline:
 
 ### Other fixes
 
-- [x] after the animaiton reached the end, the scrubber is not accessible anymore (touching it leaves playback view) and the edit timeline instantly shows up. instead only the stop button should make the screen switch back to editing mode.
+- [x] after the animation reached the end, the scrubber is not accessible anymore (touching it leaves playback view) and the edit timeline instantly shows up. instead only the stop button should make the screen switch back to editing mode.
 - [ ] the undo and redo history should also track annotation edits (creation, deletion, etc).
 - [ ] the numerated suffix does not supply increasing numbers in brackets. Instead each copy gets another (1) suffix resulting in e.g. framename (1) (1) (1)
 - [x] the annotations are not copied and displayed in a new frame when this is added.
