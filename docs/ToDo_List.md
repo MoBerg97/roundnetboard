@@ -32,9 +32,10 @@ the menu bar is horizontally scrollable when screen width is too small to show a
 
 ### design ideas
 
+- [ ] add a smooth color transition during playback when an object changes its color from one frame to the next, instead of an instant color change.
 - [ ] separate the annotation tools in two rows. One for the tools that create annotations (circle, lines, rectangles, circle sections) and one row for the tools that modify existing annotations (move, delete, duplicate, fore/background, line width, color).
 - [x] selected objects (players and balls) should be highlighted on court (e.g. circular sonar waves around object)
-- [ ] objects are only highlighted when their respective menu is open, not when dragged or long pressed. Tapping on an object opens its menu and highlights it, tapping elsewhere closes menu and removes highlight.
+- [ ] objects are only highlighted when their respectwwadive menu is open, not when dragged or long pressed. Tapping on an object opens its menu and highlights it, tapping elsewhere closes menu and removes highlight.
 - [ ] hit marker in animation playback should fade out smoothly instead of disappearing instantly
 - [ ] change the hit marker on the board screen to another icon (e.g. circle with bounce arrow inside)
 - [ ] default color of ball should be white with black outline
@@ -85,18 +86,23 @@ Quick tips to add to helper screen:
 
 ## Features
 
-### project screen
+### home aka project screen
 
 - [x] users are not able to share or export projects in web version currently.
 - [x] add two exemplary projects that are preloaded when the app is first installed, showcasing all features of the app (one play scenario, one training scenario)
-- [ ] add missing project settings/features of the exemplary projects (e.g. annotation visibility)
+- [ ] add missing project settings/features of the preinstalled exemplary projects (e.g. annotation visibility)
 - [ ] future: add a "community trainings" area with category filters (e.g. serve receive, defense, drills), starting with importable json packs before cloud hosting exists.
+- [ ] add collapsable folders for projects to keep the project overview organized when many projects are created. Projects can be dragged and dropped into folders and also between folders. Folders can be renamed and deleted (deleting a folder deletes all projects inside the folder, there is no separate delete option for empty folders). Folders can be color coded by the user to easier distinguish them.
+- [ ] add a search function to find projects by name in the project overview. add the tag system mentioned in the next point to also be included in the search function, so that projects can be found by their tags as well.
+- [ ] show the projects type (training /play) in the project overview, that can be filtered for by the user.
+- [ ] add tags to the porjects that can be edited by the user and are shown in the project overview. tags can be used to filter projects in the project overview.
+- [ ] show small thumbnail preview of the project in the project overview, showing the court and the objects on it in a small thumbnail image of the first frame. The user can choose a different frame to be the thumbnail preview in the project settings. The thumbnail preview should be generated automatically when a project is created and updated whenever the user changes the court or objects in the frame that is set as the thumbnail preview frame. The thumbnail picker should be a side scrollabel list of all frames in the project as a pop-up, that can be opened by tapping on the thumbnail preview in the project overview. The user can then select one of the frames to be the new thumbnail preview frame.
 
 ### intuitive actions
 
 - [x] hide all current complex project settings (anything size on board related) in the board screen under "advanced settings"
-- [ ] when a user drags an object and stays holding that object for more than 1sec on about the same location (within 50px), a magnifying window (1.5x) showing the object and its surrounding 10% of displaymin = min(screenwidth,screenheight) is shown hovering 20% of displaymin above the location that user is holding.
-- [ ] the magnifying window is deactivated as soon as the user changed the position of the object over 50px in the last .5 seconds
+- [ ] future: when a user drags an object and stays holding that object for more than 1sec on about the same location (within 50px), a magnifying window (1.5x) showing the object and its surrounding 10% of displaymin = min(screenwidth,screenheight) is shown hovering 20% of displaymin above the location that user is holding.
+  - [ ] the magnifying window is deactivated as soon as the user changed the position of the object over 50px in the last .5 seconds
 - [x] court elements snap to corners and center points of other court elements when being dragged within 20px of such a point.
 - [ ] automaticaaly snap annotations upon creation to annotation objects (e.g. line endpoints snap to circle circumference when created within 20px of it)
 - [ ] add optional "magnet markers" for object positions: faint ghost markers of frame-start positions that dragged players/balls can snap back to within ~20px.
@@ -107,7 +113,7 @@ Quick tips to add to helper screen:
 ### court
 
 - [ ] the court should be zoomable with two states, first state is as it currently is, showing at least 1.2 times servezone_radius around the center of the court. second zoom stage should be the whole court towards the outer boundary at 850cm radius around the center of court.
-- [x] #n make objects on court relate in size to court (player and ball circle radius, paths in width adjusted for size not in pixels but in relation to court size (cm))
+- [ ] make objects on court relate in size to court (player and ball circle radius, paths in width adjusted for size not in pixels but in relation to court size (cm))
 - [ ] default starting position of player and ball should be editable in the global (home screen accesible) settings menu and then new projects start with objects in this position.
 - [x] when a new project is created, the user can decide if he wants the play scenario (with all zones on default radii and 4 players in their default start position and one ball) or training scenario (with all zones deactivated and 1 player red and one player blue and one ball)
 - [x] #n default width of circle elements when added to court in court editor should be 30cm radius.
@@ -119,20 +125,20 @@ Quick tips to add to helper screen:
 - [x] there should be a foldable menu for annotations that provides frame specific annotations.
 - [x] add a line annotation tool, that also is editable in color, user can manually edit the end points of the line.
 - [x] annotations should be frame specific and also should be copyed along all other objects when a new frame is inserted.
-- [ ] temporary annotations can be added in animation playback mode, that are not frame specific and are deleted when the user stops playback. annotations should only be permament (saved per frame) when added in the annotation mode in the editing board screen.
+- [x] temporary annotations can be added in animation playback mode, that are not frame specific and are deleted when the user stops playback. annotations should only be permament (saved per frame) when added in the annotation mode in the editing board screen.
 - [x] add a text annotation tool, that allows to add text labels on the court. (fixed font color, size adjustable via pop-up menu, draggable position, editable text content (double tap to edit text))
 - [x] default width for circles when only tapping once should be 30cm radius.
 - [x] right click or long tap on annotation tools should open a small menu to select default color and default size for this annotation tool (line width/stroke size in 3 steps, indicated by small preview icons, for circle and rectangles: filled or outline only, for text: font size in 3 steps)
-- [ ] add a pop-up menu for the line tool to select between straight line, arrowed line and dashed line.
-- [ ] annotations that are added in paused mode in the animation playback are only temporarely visible during this playback until the current playback is left (going back to the editing screen or back to project overview)
+- [x] add a pop-up menu for the line tool to select between straight line, arrowed line and dashed line.
+- [x] annotations that are added in paused mode in the animation playback are only temporarely visible during this playback until the current playback is left (going back to the editing screen or back to project overview)
 - [x] add a trash can icon to erase all annotations of the current frame
 - [x] circle sector annotation tool (like a pie chart slice) to highlight certain areas on the court. the sector is defined for the last selected circle element. first touch position defines the start of the sector angle and dragging the finger around the circle defines the end angle of the sector. the sector is filled with the selected color. Circle sector annotation are filled shapes only, no outline only option.
   - [x] sector start angle follows the initial touch (no rightward offset)
-  - [ ] add a pop-up menu for the circle sector tool to select to which object or court element it should be attached (center point can be ball, player or zone court element)
-  - [ ] for ball or player attachment, the sector is not moving with the object during animation playback, it is only attached to the object in the frame it is created in at the end position of the object in this frame. the sector radius is fixed to 260cm for ball or player attachment.
-  - [ ] for zone attachment, the sector radius is equal to the zone radius.
-  - [ ] the sector does not snap onto the zero coordinate point of the court, but to the center point of the respective zone court element or player or ball object at that frames end position.
-- [ ] automatically snap annotation objects to court element corners and center points when being dragged within 20px of such a point.
+  - [x] add a pop-up menu for the circle sector tool to select to which object or court element it should be attached (center point can be ball, player or zone court element)
+  - [x] for ball or player attachment, the sector is not moving with the object during animation playback, it is only attached to the object in the frame it is created in at the end position of the object in this frame. the sector radius is fixed to 260cm for ball or player attachment.
+  - [x] for zone attachment, the sector radius is equal to the zone radius.
+  - [x] the sector does not snap onto the zero coordinate point of the court, but to the center point of the respective zone court element or player or ball object at that frames end position.
+- [x] automatically snap annotation objects to court element corners and center points when being dragged within 20px of such a point.
 - [x] Circle sectors should apply to one specific court zone element or ball object. Therefore, when the user taps on the circle sector tool, all possible zone court elements and the ball objects are highlighted with pulsing glow.
       As soon as the user then taps on of the zone elements outline, this zone is selected to have a sector be drawn for, for all consecutive drag and drop actions as long as the circle sector tools stays active. For those circle sectors created after selecting the according court zone element, the court zone elements center point and radius is taken as the variables for the circle sector.
       If the user instead selects a ball by tapping on its area, this ball is selected to have a sector be drawn for, for all consecutive drag and drop actions as long as the circle sector tools stays active. For those circle sectors created after selecting the according ball element, the balls center point is chosen as the variable for the circle sector with a standard radius of 260cm.
@@ -155,12 +161,19 @@ Quick tips to add to helper screen:
 - [ ] for gif export, add loop settings (once / infinite / custom loop count).
 - [x] users can share projects as a json file and import shared json files
 
+## Objects
+
+- [ ] add "ghost" objects (players or balls) by double tap into drag of an existing object, that are a transparent copy of the existing object that only exist in the current frame and the subsequent frames until the user taps this ghost object in any subsequent frame to choose to merge it back into the original object (removing the ghost status and making it a permanent object again) or to delete it. This allows for quick temporary variations of player and ball positions in different frames without having to create multiple permanent objects for this.
+  - [ ] multiple ghost objects of the same original object should be distinguishable by slightly changing the hue of each ghost object. If a frame has no existing ghost object in the current frame, the new ghost object gets the same color as the original object but with 50% opacity. If a frame already has one ghost object of the original object, the new ghost object gets a hue shift of +20 degrees in the HSV color space and 50% opacity. If a frame already has two ghost objects of the original object, the new ghost object gets a hue shift of -20 degrees in the HSV color space and 50% opacity. If a frame already has three or more ghost objects of the original object, the new ghost object gets a random hue shift between -20 and +20 degrees in the HSV color space and 50% opacity.
+  - [ ] paths of ghost objects in animation playback should be shown as dotted lines, toggled on by tapping either the original object or the ghost object, and toggled off by tapping the ghost object again.
+  - [ ] when a ghost object is merged back into the original object, the position of the ghost object is automatically set to the position of the original object in that frame. The ghost object should then be removed from subsequent frames.
+
 ### players
 
 - [x] the color of player objects should be editable.
 - [x] the user should be able to additionally add a single character (letter or number) shown on the player object always (project specific).
 - [x] the user should be able to delete players and add players. The color of the added player object should match the color of the last tapped player object.
-- [ ] support frame-specific player color changes with two scopes: "only this frame" and "from this frame to end".
+- [x] support frame-specific player color changes with two scopes: "only this frame" and "from this frame to end".
 - [ ] add an "advanced colors" picker (custom hue + recent colors + saved palette) behind a secondary button to avoid clutter.
 - [ ] player objects can have frame specific body postures (resembled by changing greaphical representation) and introducing a rotational component of player objects
   - [ ] set (L/R): arm reaching out in front of player on of the side
@@ -178,28 +191,34 @@ Quick tips to add to helper screen:
 
 timeline:
 
-- [ ] playback scrubber should be time related, taking frame duration into account. Currently the playback scrubber moves with equal speed through all frames, regardless of their duration setting.
+- [ ] playback scrubber should be time related, taking frame duration into account. Currently the playback scrubber moves with equal speed through all frames, regardless of their duration setting. The time relation can be shown by extending the current frame thumbnail width in the timeline according to the duration of the frame, so that frames with longer duration have a wider thumbnail in the timeline and frames with shorter duration have a smaller thumbnail in the timeline. Thumbnail width should be 1px for each 10ms of frame.
 - [x] the delete current frame button should only appear when a frame is double tapped if it is the currently selected frame and then disappears again if double tapped or any place else is tapped again.
 - [ ] add playback loop toggle with 3 modes: no loop, loop full animation, loop selected frame range.
-- [ ] allow setting loop in/out frame markers by long press on timeline thumbnails.
+  - [ ] allow setting loop in/out frame markers by long press on timeline thumbnails.
+- [ ] add a custom frame duration setting in the frame edit menu, with a default of 1000ms and the option to set it to "automatic" which sets the duration of the frame to the time until the next frame starts in animation playback.
 
 ## Fixes
 
 ### HOTFIX
 
+- [ ] the placement of elements should be in relation to the court center point and not in relation to the top left corner of the screen. This is especially important for the export of projects, as otherwise the placement of objects in the export does not match the placement of objects on the board screen or on a new device.
+- [ ] adjust the color of the font in the project create menu to be visible on dark background (currently black font on dark background, should be white font on dark background)
+- [ ] add a small icon for project type slider (training/play) in the project create menu to make it more intuitive (e.g. a small whistle icon for training and a small net icon for play)
+- [ ] court elements should snap on creation dragging already to corners and center points of other court elements when created within 20px of such a point, not only when being dragged after creation with the drag tool.
+- [ ] annotations should snap on creation dragging already to corners and center points of other annotations when created within 20px of such a point, not only when being dragged after creation with the drag tool.
 - [ ] animation playback automatically closes any open menus on the board screen when playback starts
 - [ ] background color of the board screen should always match the court color in court editor and should be changeable via settings menu on board screen
-- [ ] court editor should show the same court frame as the board screen. Court size in court editor should match court size in board screen (same hieght and width of container showing the court). The middle point of the court should always be in the center of the court container.
+- [ ] court editor should show the same court frame as the board screen. Court size in court editor should match court size in board screen (same height and width of container showing the court). The middle point of the court should always be in the center of the court container.
 - [ ] standard zoom stage should be 1.0 times serve zone radius around center of court instead of 1.5 times
 - [ ] make zoom stages larger and frame specific (saved on frames) and changeable in the board screen as a snapping slider with 5 stages
-  - [ ] 1. zoom stage: show only 0.5 times serve zone radius around center of court
-  - [ ] 2. zoom stage: show 1.0 times serve zone radius around center of court
-  - [ ] 3. zoom stage: show 1.5 times serve zone radius around center of court (current default)
-  - [ ] 4. zoom stage: show whole court towards outer boundary at 850cm radius around center of court
+  - [ ] 1. zoom stage: show only 0.5 times serve zone radius around center of court (for focus on net area)
+  - [ ] 2. zoom stage: show 1.0 times serve zone radius around center of court (for focus on stuff inside the Serve Zone)
+  - [ ] 3. zoom stage: show 1.5 times serve zone radius around center of court (current default, for focus on most played areas of the court)
+  - [ ] 4. zoom stage: show whole court towards outer boundary at 850cm radius around center of court (for focus on special tactics involving the whole court)
   - [ ] zoom is copied along when a new frame is created
   - [ ] during animation playback, zoom changes dynamically to show all objects on court at once, unless user has manually changed zoom during playback, then the user zoom is kept until playback is stopped.
 - [x] account for virtual navigation bar on some android phones such as Redmi Note 13 Pro 5G by using a safe area
-- [ ] test if safe area implementation works on the problematic devices (Redmi Note 13 Pro 5G) and does not break anything on other devices (iOS devices with notch, etc)
+- [ ] POSTPONED: test if safe area implementation works on the problematic devices (Redmi Note 13 Pro 5G) and does not break anything on other devices (iOS devices with notch, etc)
 - [x] when playback is through, meaning the playback reached the end while playing, the timeline should only go back to the editing controls after the stop button is tapped, not automatically after playback reached the end
 - [x] enlarge the hit box for catching the path control points on mobile devices
 - [x] the buttons should not overflow on small screen devices, either scale them down or make them scrollable horizontally
@@ -209,7 +228,7 @@ timeline:
 
 ### Other fixes
 
-- [x] after the animaiton reached the end, the scrubber is not accessible anymore (touching it leaves playback view) and the edit timeline instantly shows up. instead only the stop button should make the screen switch back to editing mode.
+- [x] after the animation reached the end, the scrubber is not accessible anymore (touching it leaves playback view) and the edit timeline instantly shows up. instead only the stop button should make the screen switch back to editing mode.
 - [ ] the undo and redo history should also track annotation edits (creation, deletion, etc).
 - [ ] the numerated suffix does not supply increasing numbers in brackets. Instead each copy gets another (1) suffix resulting in e.g. framename (1) (1) (1)
 - [x] the annotations are not copied and displayed in a new frame when this is added.

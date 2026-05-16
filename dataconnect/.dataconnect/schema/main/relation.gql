@@ -114,7 +114,7 @@ extend type Animation {
   """
   A generated field that is used for caching results in SDKs.
   """
-  _id: ID! @fdc_generated(from: "Animation.id", purpose: GLOBAL_ID)
+  _id: ID! @fdc_generated(from: "Animation.id", purpose: ENTITY_ID)
 }
 extend type AnimationFrame {
   """
@@ -190,7 +190,7 @@ extend type AnimationFrame {
   """
   A generated field that is used for caching results in SDKs.
   """
-  _id: ID! @fdc_generated(from: "AnimationFrame.id", purpose: GLOBAL_ID)
+  _id: ID! @fdc_generated(from: "AnimationFrame.id", purpose: ENTITY_ID)
 }
 extend type Board {
   """
@@ -351,7 +351,7 @@ extend type Board {
   """
   A generated field that is used for caching results in SDKs.
   """
-  _id: ID! @fdc_generated(from: "Board.id", purpose: GLOBAL_ID)
+  _id: ID! @fdc_generated(from: "Board.id", purpose: ENTITY_ID)
 }
 extend type BoardElement {
   """
@@ -559,7 +559,7 @@ extend type BoardElement {
   """
   A generated field that is used for caching results in SDKs.
   """
-  _id: ID! @fdc_generated(from: "BoardElement.id", purpose: GLOBAL_ID)
+  _id: ID! @fdc_generated(from: "BoardElement.id", purpose: ENTITY_ID)
 }
 extend type User {
   """
@@ -669,5 +669,5 @@ extend type User {
   """
   A generated field that is used for caching results in SDKs.
   """
-  _id: ID! @fdc_generated(from: "User.id", purpose: GLOBAL_ID)
+  _id: ID! @fdc_generated(from: "User.id", purpose: ENTITY_ID)
 }

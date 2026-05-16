@@ -31,6 +31,7 @@ dependencies:
   web: ^1.1.1
   image: ^4.2.0
   archive: ^3.6.1
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:

@@ -4,6 +4,7 @@ import '../models/frame.dart';
 import '../models/settings.dart';
 import '../models/player.dart';
 import '../models/ball.dart';
+import '../models/annotation.dart';
 import 'path_engine.dart';
 
 abstract class ProjectAction {
@@ -269,6 +270,36 @@ class ChangePlayerColorAllFramesAction extends ProjectAction {
   }
 }
 
+/// Change player color from a frame to the end (undoable)
+class ChangePlayerColorFromFrameAction extends ProjectAction {
+  final String id; // Player ID
+  final Color from;
+  final Color to;
+
+  ChangePlayerColorFromFrameAction({required super.frameIndex, required this.id, required this.from, required this.to})
+    : super(description: 'Change player color from frame');
+
+  @override
+  void apply(AnimationProject project) {
+    for (int i = frameIndex; i < project.frames.length; i++) {
+      final player = project.frames[i].getPlayerById(id);
+      if (player != null) {
+        player.color = to;
+      }
+    }
+  }
+
+  @override
+  void revert(AnimationProject project) {
+    for (int i = frameIndex; i < project.frames.length; i++) {
+      final player = project.frames[i].getPlayerById(id);
+      if (player != null) {
+        player.color = from;
+      }
+    }
+  }
+}
+
 /// Change player label across all frames (undoable)
 class ChangePlayerLabelAllFramesAction extends ProjectAction {
   final String id; // Player ID
@@ -357,6 +388,36 @@ class ChangeBallColorAllFramesAction extends ProjectAction {
   }
 }
 
+/// Change ball color from a frame to the end (undoable)
+class ChangeBallColorFromFrameAction extends ProjectAction {
+  final String id; // Ball ID
+  final Color from;
+  final Color to;
+
+  ChangeBallColorFromFrameAction({required super.frameIndex, required this.id, required this.from, required this.to})
+    : super(description: 'Change ball color from frame');
+
+  @override
+  void apply(AnimationProject project) {
+    for (int i = frameIndex; i < project.frames.length; i++) {
+      final ball = project.frames[i].getBallById(id);
+      if (ball != null) {
+        ball.color = to;
+      }
+    }
+  }
+
+  @override
+  void revert(AnimationProject project) {
+    for (int i = frameIndex; i < project.frames.length; i++) {
+      final ball = project.frames[i].getBallById(id);
+      if (ball != null) {
+        ball.color = from;
+      }
+    }
+  }
+}
+
 /// Edit path control points (add, move, or remove control points on entity paths)
 class EditPathControlPointsAction extends ProjectAction {
   final String entityId; // Player or Ball ID
@@ -418,6 +479,29 @@ class EditPathControlPointsAction extends ProjectAction {
       // Invalidate path cache so the visual path updates
       PathEngine.invalidateCacheFor(frameIndex, entityId);
     }
+  }
+}
+
+/// Replace a frame's annotation list (undoable)
+class SetFrameAnnotationsAction extends ProjectAction {
+  final List<Annotation> fromAnnotations;
+  final List<Annotation> toAnnotations;
+
+  SetFrameAnnotationsAction({required super.frameIndex, required this.fromAnnotations, required this.toAnnotations})
+    : super(description: 'Edit annotations');
+
+  List<Annotation> _cloneList(List<Annotation> source) => source.map((a) => a.copy()).toList();
+
+  @override
+  void apply(AnimationProject project) {
+    if (frameIndex < 0 || frameIndex >= project.frames.length) return;
+    project.frames[frameIndex].annotations = _cloneList(toAnnotations);
+  }
+
+  @override
+  void revert(AnimationProject project) {
+    if (frameIndex < 0 || frameIndex >= project.frames.length) return;
+    project.frames[frameIndex].annotations = _cloneList(fromAnnotations);
   }
 }
 

@@ -13,9 +13,7 @@ class AnnotationAdapter extends TypeAdapter<Annotation> {
   @override
   Annotation read(BinaryReader reader) {
     final numOfFields = reader.readByte();
-    final fields = <int, dynamic>{
-      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
-    };
+    final fields = <int, dynamic>{for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read()};
     return Annotation(
       type: fields[3] as AnnotationType,
       points: (fields[5] as List).cast<Offset>(),
@@ -27,13 +25,20 @@ class AnnotationAdapter extends TypeAdapter<Annotation> {
       id: fields[11] as String?,
       text: fields[12] as String?,
       fontSize: fields[13] as double?,
+      lineStyle: (fields[14] as int?) != null
+          ? ((fields[14] as int) >= 0 && (fields[14] as int) < AnnotationLineStyle.values.length
+                ? AnnotationLineStyle.values[fields[14] as int]
+                : AnnotationLineStyle.straight)
+          : AnnotationLineStyle.straight,
+      sectorAttachmentType: fields[15] as String?,
+      sectorAttachmentId: fields[16] as String?,
     )..colorValue = fields[4] as int;
   }
 
   @override
   void write(BinaryWriter writer, Annotation obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(14)
       ..writeByte(3)
       ..write(obj.type)
       ..writeByte(4)
@@ -55,7 +60,13 @@ class AnnotationAdapter extends TypeAdapter<Annotation> {
       ..writeByte(12)
       ..write(obj.text)
       ..writeByte(13)
-      ..write(obj.fontSize);
+      ..write(obj.fontSize)
+      ..writeByte(14)
+      ..write(obj.lineStyleIndex)
+      ..writeByte(15)
+      ..write(obj.sectorAttachmentType)
+      ..writeByte(16)
+      ..write(obj.sectorAttachmentId);
   }
 
   @override
@@ -64,9 +75,7 @@ class AnnotationAdapter extends TypeAdapter<Annotation> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is AnnotationAdapter &&
-          runtimeType == other.runtimeType &&
-          typeId == other.typeId;
+      other is AnnotationAdapter && runtimeType == other.runtimeType && typeId == other.typeId;
 }
 
 class AnnotationTypeAdapter extends TypeAdapter<AnnotationType> {
@@ -86,6 +95,8 @@ class AnnotationTypeAdapter extends TypeAdapter<AnnotationType> {
         return AnnotationType.sector;
       case 4:
         return AnnotationType.text;
+      case 5:
+        return AnnotationType.curvedLine;
       default:
         return AnnotationType.line;
     }
@@ -109,6 +120,9 @@ class AnnotationTypeAdapter extends TypeAdapter<AnnotationType> {
       case AnnotationType.text:
         writer.writeByte(4);
         break;
+      case AnnotationType.curvedLine:
+        writer.writeByte(5);
+        break;
     }
   }
 
@@ -118,7 +132,5 @@ class AnnotationTypeAdapter extends TypeAdapter<AnnotationType> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is AnnotationTypeAdapter &&
-          runtimeType == other.runtimeType &&
-          typeId == other.typeId;
+      other is AnnotationTypeAdapter && runtimeType == other.runtimeType && typeId == other.typeId;
 }

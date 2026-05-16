@@ -95,6 +95,11 @@ class Settings extends HiveObject {
   @HiveField(12, defaultValue: 1000.0)
   double ballSectorRadiusCm;
 
+  /// Render annotations in a hand-drawn style (squiggly lines, hatched fills, handwritten text)
+  /// Default: false (clean style)
+  @HiveField(13, defaultValue: false)
+  bool handDrawnAnnotations;
+
   Settings({
     this.playbackSpeed = 1.0,
     this.outerCircleRadiusCm = 260.0,
@@ -108,6 +113,7 @@ class Settings extends HiveObject {
     this.annotationsAboveObjects = false,
     this.serveZoneFactor = 1.3,
     this.ballSectorRadiusCm = 1000.0,
+    this.handDrawnAnnotations = false,
     int? courtBackgroundColorValue,
   }) : courtBackgroundColorValue = courtBackgroundColorValue ?? AppTheme.courtGreen.toARGB32();
 
@@ -151,6 +157,7 @@ class Settings extends HiveObject {
     serveZoneFactor: serveZoneFactor,
     courtBackgroundColorValue: courtBackgroundColorValue,
     ballSectorRadiusCm: ballSectorRadiusCm,
+    handDrawnAnnotations: handDrawnAnnotations,
   );
 
   @override
@@ -170,7 +177,8 @@ class Settings extends HiveObject {
           annotationsAboveObjects == other.annotationsAboveObjects &&
           serveZoneFactor == other.serveZoneFactor &&
           courtBackgroundColorValue == other.courtBackgroundColorValue &&
-          ballSectorRadiusCm == other.ballSectorRadiusCm;
+          ballSectorRadiusCm == other.ballSectorRadiusCm &&
+          handDrawnAnnotations == other.handDrawnAnnotations;
 
   @override
   int get hashCode =>
@@ -186,7 +194,8 @@ class Settings extends HiveObject {
       annotationsAboveObjects.hashCode ^
       serveZoneFactor.hashCode ^
       courtBackgroundColorValue.hashCode ^
-      ballSectorRadiusCm.hashCode;
+      ballSectorRadiusCm.hashCode ^
+      handDrawnAnnotations.hashCode;
 }
 
 extension SettingsMap on Settings {
@@ -204,6 +213,7 @@ extension SettingsMap on Settings {
     'serveZoneFactor': serveZoneFactor,
     'courtBackgroundColorValue': courtBackgroundColorValue,
     'ballSectorRadiusCm': ballSectorRadiusCm,
+    'handDrawnAnnotations': handDrawnAnnotations,
   };
 
   static Settings fromMap(Map<String, dynamic> m) => Settings(
@@ -220,5 +230,6 @@ extension SettingsMap on Settings {
     serveZoneFactor: (m['serveZoneFactor'] ?? 1.3).toDouble(),
     courtBackgroundColorValue: (m['courtBackgroundColorValue'] ?? AppTheme.courtGreen.toARGB32()) as int,
     ballSectorRadiusCm: (m['ballSectorRadiusCm'] ?? 1000.0).toDouble(),
+    handDrawnAnnotations: (m['handDrawnAnnotations'] ?? false) as bool,
   );
 }
