@@ -214,16 +214,16 @@ timeline:
 
 ### HOTFIX
 
-- [ ] first frame should have a default duration of 1000ms instead of 0ms, so that the playback does not immediately jump to the second frame when starting playback, and the user can see the first frame for a moment before the animation starts. The user should be able to change the duration of the first frame.
+- [x] first frame should have a default duration of 1000ms instead of 0ms, so that the playback does not immediately jump to the second frame when starting playback, and the user can see the first frame for a moment before the animation starts. The user should be able to change the duration of the first frame.
 - [ ] the placement of elements should be in relation to the court center point and not in relation to the top left corner of the screen. This is especially important for the export of projects, as otherwise the placement of objects in the export does not match the placement of objects on the board screen or on a new device.
-- [ ] adjust the color of the font in the project create menu to be visible on dark background (currently black font on dark background, should be white font on dark background)
-- [ ] add a small icon for project type slider (training/play) in the project create menu to make it more intuitive (e.g. a small whistle icon for training and a small net icon for play)
-- [ ] court elements should snap on creation dragging already to corners and center points of other court elements when created within 20px of such a point, not only when being dragged after creation with the drag tool.
-- [ ] annotations should snap on creation dragging already to corners and center points of other annotations when created within 20px of such a point, not only when being dragged after creation with the drag tool.
-- [ ] animation playback automatically closes any open menus on the board screen when playback starts
-- [ ] background color of the board screen should always match the court color in court editor and should be changeable via settings menu on board screen
+- [x] adjust the color of the font in the project create menu to be visible on dark background (currently black font on dark background, should be white font on dark background)
+- [x] add a small icon for project type slider (training/play) in the project create menu to make it more intuitive (e.g. a small whistle icon for training and a small net icon for play)
+- [x] court elements should snap on creation dragging already to corners and center points of other court elements when created within 20px of such a point, not only when being dragged after creation with the drag tool.
+- [x] annotations should snap on creation dragging already to corners and center points of other annotations when created within 20px of such a point, not only when being dragged after creation with the drag tool.
+- [x] animation playback automatically closes any open menus on the board screen when playback starts
+- [x] background color of the board screen should always match the court color in court editor and should be changeable via settings menu on board screen
 - [ ] court editor should show the same court frame as the board screen. Court size in court editor should match court size in board screen (same height and width of container showing the court). The middle point of the court should always be in the center of the court container.
-- [ ] standard zoom stage should be 1.0 times serve zone radius around center of court instead of 1.5 times
+- [x] standard zoom stage should be 1.0 times serve zone radius around center of court instead of 1.5 times
 - [ ] make zoom stages larger and frame specific (saved on frames) and changeable in the board screen as a snapping slider with 5 stages
   - [ ] 1. zoom stage: show only 0.5 times serve zone radius around center of court (for focus on net area)
   - [ ] 2. zoom stage: show 1.0 times serve zone radius around center of court (for focus on stuff inside the Serve Zone)

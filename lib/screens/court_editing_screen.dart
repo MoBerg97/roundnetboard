@@ -172,35 +172,31 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Court'),
         actions: [IconButton(icon: const Icon(Icons.check), tooltip: 'Save', onPressed: _saveAndClose)],
       ),
-      body: Column(
-        children: [
-          // Court Display
-          Expanded(
-            child: Container(
-              color: _settings.courtBackgroundColor,
-              padding: const EdgeInsets.all(12),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final boardSize = constraints.biggest;
-                  _boardSize = boardSize;
-                  Settings.setScreenSize(boardSize);
-                  return Center(
-                    child: GestureDetector(
+      body: SafeArea(
+        bottom: true,
+        child: Column(
+          children: [
+            // Court Display
+            Expanded(
+              child: Container(
+                color: _settings.courtBackgroundColor,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final boardSize = constraints.biggest;
+                    _boardSize = boardSize;
+                    Settings.setScreenSize(boardSize);
+                    return GestureDetector(
                       key: _canvasKey,
                       onDoubleTapDown: _onDoubleTapDown,
                       onPanDown: _onPanDown,
                       onPanUpdate: _onPanUpdate,
                       onPanEnd: _onPanEnd,
-                      child: SizedBox(
-                        width: boardSize.width,
-                        height: boardSize.height,
+                      child: SizedBox.expand(
                         child: Stack(
                           children: [
                             // Match BoardScreen look and coordinate system.
@@ -272,120 +268,120 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
                           ],
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
-          ),
-          // Toolbar
-          Container(
-            color: AppTheme.darkGrey,
-            padding: const EdgeInsets.all(8),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  // Select / move
-                  _buildToolButton(CourtEditorTool.select, Icons.pan_tool_alt, 'Select'),
-                  const SizedBox(width: 4),
-                  _buildToolButton(
-                    CourtEditorTool.net,
-                    _buildNetIcon(
-                      _contrastIconColor(
-                        _currentTool == CourtEditorTool.net ? AppTheme.primaryBlue : AppTheme.mediumGrey,
-                        _currentColor,
+            // Toolbar
+            Container(
+              color: AppTheme.darkGrey,
+              padding: const EdgeInsets.all(8),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    // Select / move
+                    _buildToolButton(CourtEditorTool.select, Icons.pan_tool_alt, 'Select'),
+                    const SizedBox(width: 4),
+                    _buildToolButton(
+                      CourtEditorTool.net,
+                      _buildNetIcon(
+                        _contrastIconColor(
+                          _currentTool == CourtEditorTool.net ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+                          _currentColor,
+                        ),
                       ),
+                      'Net',
                     ),
-                    'Net',
-                  ),
-                  const SizedBox(width: 4),
-                  _buildZoneToggleButton(),
-                  const SizedBox(width: 4),
-                  _buildToolButton(
-                    CourtEditorTool.customCircle,
-                    _buildMediumCircleIcon(
-                      _contrastIconColor(
-                        _currentTool == CourtEditorTool.customCircle ? AppTheme.primaryBlue : AppTheme.mediumGrey,
-                        _currentColor,
+                    const SizedBox(width: 4),
+                    _buildZoneToggleButton(),
+                    const SizedBox(width: 4),
+                    _buildToolButton(
+                      CourtEditorTool.customCircle,
+                      _buildMediumCircleIcon(
+                        _contrastIconColor(
+                          _currentTool == CourtEditorTool.customCircle ? AppTheme.primaryBlue : AppTheme.mediumGrey,
+                          _currentColor,
+                        ),
                       ),
+                      'Circle',
                     ),
-                    'Circle',
-                  ),
-                  const SizedBox(width: 4),
-                  _buildToolButton(CourtEditorTool.customLine, Symbols.diagonal_line, 'Line'),
-                  const SizedBox(width: 4),
-                  _buildToolButton(CourtEditorTool.customRectangle, Icons.crop_square, 'Rect'),
-                  const SizedBox(width: 4),
-                  Tooltip(
-                    message: 'Marker (${_markerStyle.name}) (double-tap for style)',
-                    child: GestureDetector(
-                      onDoubleTap: _showMarkerStylePicker,
-                      child: FloatingActionButton.small(
-                        heroTag: 'tool-marker',
-                        backgroundColor: _currentTool == CourtEditorTool.marker
-                            ? AppTheme.primaryBlue
-                            : AppTheme.mediumGrey,
-                        onPressed: () => setState(() => _currentTool = CourtEditorTool.marker),
-                        child: Icon(
-                          _markerStyle == MarkerStyle.x
-                              ? Icons.close
-                              : _markerStyle == MarkerStyle.pylon
-                              ? Icons.circle
-                              : Icons.fiber_manual_record,
-                          size: _markerStyle == MarkerStyle.dot ? 14 : 20,
-                          color: Colors.white,
+                    const SizedBox(width: 4),
+                    _buildToolButton(CourtEditorTool.customLine, Symbols.diagonal_line, 'Line'),
+                    const SizedBox(width: 4),
+                    _buildToolButton(CourtEditorTool.customRectangle, Icons.crop_square, 'Rect'),
+                    const SizedBox(width: 4),
+                    Tooltip(
+                      message: 'Marker (${_markerStyle.name}) (double-tap for style)',
+                      child: GestureDetector(
+                        onDoubleTap: _showMarkerStylePicker,
+                        child: FloatingActionButton.small(
+                          heroTag: 'tool-marker',
+                          backgroundColor: _currentTool == CourtEditorTool.marker
+                              ? AppTheme.primaryBlue
+                              : AppTheme.mediumGrey,
+                          onPressed: () => setState(() => _currentTool = CourtEditorTool.marker),
+                          child: Icon(
+                            _markerStyle == MarkerStyle.x
+                                ? Icons.close
+                                : _markerStyle == MarkerStyle.pylon
+                                ? Icons.circle
+                                : Icons.fiber_manual_record,
+                            size: _markerStyle == MarkerStyle.dot ? 14 : 20,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  _buildSectorToolButton(),
-                  const SizedBox(width: 4),
-                  _buildTextToolButton(),
-                  const SizedBox(width: 4),
-                  _buildEraserButton(),
-                  const SizedBox(width: 8),
-                  _buildStrokeWidthButton(),
-                  const SizedBox(width: 8),
-                  _buildColorPickerButton(),
-                  const SizedBox(width: 8),
-                  _buildSnapToggleButton(),
-                  const SizedBox(width: 8),
-                  // Undo button
-                  _buildToolbarActionButton(
-                    icon: Icons.undo,
-                    tooltip: 'Undo',
-                    onPressed: _undoStack.isEmpty ? null : _undo,
-                  ),
-                  const SizedBox(width: 4),
-                  // Redo button
-                  _buildToolbarActionButton(
-                    icon: Icons.redo,
-                    tooltip: 'Redo',
-                    onPressed: _redoStack.isEmpty ? null : _redo,
-                  ),
-                  const SizedBox(width: 4),
-                  // Duplicate selected
-                  _buildToolbarActionButton(
-                    icon: Icons.content_copy,
-                    tooltip: 'Duplicate selected element',
-                    onPressed: _selectedElement == null ? null : _duplicateSelected,
-                  ),
-                  const SizedBox(width: 8),
-                  // Clear all button
-                  _buildToolbarActionButton(
-                    icon: Icons.delete_sweep,
-                    tooltip: 'Clear All',
-                    onPressed: _clearAll,
-                    backgroundColor: AppTheme.errorRed,
-                    preferredIconColor: Colors.white,
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    _buildSectorToolButton(),
+                    const SizedBox(width: 4),
+                    _buildTextToolButton(),
+                    const SizedBox(width: 4),
+                    _buildEraserButton(),
+                    const SizedBox(width: 8),
+                    _buildStrokeWidthButton(),
+                    const SizedBox(width: 8),
+                    _buildColorPickerButton(),
+                    const SizedBox(width: 8),
+                    _buildSnapToggleButton(),
+                    const SizedBox(width: 8),
+                    // Undo button
+                    _buildToolbarActionButton(
+                      icon: Icons.undo,
+                      tooltip: 'Undo',
+                      onPressed: _undoStack.isEmpty ? null : _undo,
+                    ),
+                    const SizedBox(width: 4),
+                    // Redo button
+                    _buildToolbarActionButton(
+                      icon: Icons.redo,
+                      tooltip: 'Redo',
+                      onPressed: _redoStack.isEmpty ? null : _redo,
+                    ),
+                    const SizedBox(width: 4),
+                    // Duplicate selected
+                    _buildToolbarActionButton(
+                      icon: Icons.content_copy,
+                      tooltip: 'Duplicate selected element',
+                      onPressed: _selectedElement == null ? null : _duplicateSelected,
+                    ),
+                    const SizedBox(width: 8),
+                    // Clear all button
+                    _buildToolbarActionButton(
+                      icon: Icons.delete_sweep,
+                      tooltip: 'Clear All',
+                      onPressed: _clearAll,
+                      backgroundColor: AppTheme.errorRed,
+                      preferredIconColor: Colors.white,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1825,11 +1821,12 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
     }
 
     if (best == null) return false;
+    final selected = best;
 
     setState(() {
-      _selectedSectorTargetId = _sectorTargetIdForElement(best!);
-      _selectedSectorCenterCm = best!.position;
-      _selectedSectorRadiusCm = best!.radius;
+      _selectedSectorTargetId = _sectorTargetIdForElement(selected);
+      _selectedSectorCenterCm = selected.position;
+      _selectedSectorRadiusCm = selected.radius;
       _sectorTargetHighlightActive = true;
       _sectorToolNeedsTargetSelection = false;
       _sectorDragStartAngle = null;

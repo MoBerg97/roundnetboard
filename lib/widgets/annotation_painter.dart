@@ -948,6 +948,14 @@ class AnnotationCanvasPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     _paintStyledLineMaybeHandDrawn(canvas, startScreen, endScreen, paint, dragPreviewLineStyle, 12345);
 
+    final isMarkerPreview =
+        dragPreviewLineStyle == AnnotationLineStyle.markerX ||
+        dragPreviewLineStyle == AnnotationLineStyle.markerPylon ||
+        dragPreviewLineStyle == AnnotationLineStyle.markerDot;
+    if (isMarkerPreview) {
+      return;
+    }
+
     // Draw endpoint markers
     final endpointPaint = Paint()
       ..color = const Color.fromARGB(220, 255, 200, 100)

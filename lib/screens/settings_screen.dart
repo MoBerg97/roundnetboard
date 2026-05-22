@@ -40,7 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _settings.referenceRadiusCm = 260.0;
       _settings.objectScaleMultiplier = 1.5;
       _settings.annotationsAboveObjects = false;
-      _settings.serveZoneFactor = 1.3;
+      _settings.serveZoneFactor = 1.0;
       _settings.courtBackgroundColorValue = AppTheme.courtGreen.toARGB32();
       _settings.ballSectorRadiusCm = 1000.0;
       _settings.handDrawnAnnotations = false;

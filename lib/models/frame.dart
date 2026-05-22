@@ -49,7 +49,7 @@ class Frame extends HiveObject {
   Frame({
     List<Player>? players,
     List<Ball>? balls,
-    this.duration = 0.5,
+    this.duration = 1.0,
     List<Annotation>? annotations,
   })  : players = players ?? [],
         balls = balls ?? [],

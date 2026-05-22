@@ -93,7 +93,7 @@ class DefaultFrames {
       balls: [
         Ball(position: Offset.zero, color: AppTheme.ballColor, id: 'B1'),
       ],
-      duration: 0.5,
+      duration: 1.0,
       annotations: [],
     );
   }
@@ -109,7 +109,7 @@ class DefaultFrames {
       balls: [
         Ball(position: Offset.zero, color: AppTheme.ballColor), // UUID auto-generated
       ],
-      duration: 0.5,
+      duration: 1.0,
       annotations: [],
     );
   }

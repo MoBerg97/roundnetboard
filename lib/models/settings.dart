@@ -80,8 +80,8 @@ class Settings extends HiveObject {
 
   /// Court serve zone scaling factor for coordinate conversion
   /// Options: 1.0 (tight), 1.3 (balanced), 1.6 (wide)
-  /// Default: 1.3 for most use cases
-  @HiveField(9, defaultValue: 1.3)
+  /// Default: 1.0 (standard zoom stage)
+  @HiveField(9, defaultValue: 1.0)
   double serveZoneFactor;
 
   /// Court background color (stored as ARGB int)
@@ -111,7 +111,7 @@ class Settings extends HiveObject {
     this.showPathControlPoints = false,
     this.objectScaleMultiplier = 1.5,
     this.annotationsAboveObjects = false,
-    this.serveZoneFactor = 1.3,
+    this.serveZoneFactor = 1.0,
     this.ballSectorRadiusCm = 1000.0,
     this.handDrawnAnnotations = false,
     int? courtBackgroundColorValue,
@@ -227,7 +227,7 @@ extension SettingsMap on Settings {
     showPathControlPoints: (m['showPathControlPoints'] ?? false) as bool,
     objectScaleMultiplier: (m['objectScaleMultiplier'] ?? 1.5).toDouble(),
     annotationsAboveObjects: (m['annotationsAboveObjects'] ?? false) as bool,
-    serveZoneFactor: (m['serveZoneFactor'] ?? 1.3).toDouble(),
+    serveZoneFactor: (m['serveZoneFactor'] ?? 1.0).toDouble(),
     courtBackgroundColorValue: (m['courtBackgroundColorValue'] ?? AppTheme.courtGreen.toARGB32()) as int,
     ballSectorRadiusCm: (m['ballSectorRadiusCm'] ?? 1000.0).toDouble(),
     handDrawnAnnotations: (m['handDrawnAnnotations'] ?? false) as bool,
