@@ -151,6 +151,19 @@ Quick tips to add to helper screen:
 - [ ] the maximum footwork distance is 850cm and the minimum is 0cm.
 - [ ] if turned on, the footwork statistics will also be depicted in the animation playback with showing the footwork of a certain frame during the playback of this frame.
 - [x] during animation playback, the user can toggle full path revision of a player or the ball by tapping the player or ball and this shows the path that this object already moved (full line) and the upcoming path of this object (dashed line). toggles off when the object is tapped again.
+- [ ] user can retrieve a heatmap of a project (shows the density of player positions on the court throughout the animation) as an additional screen. Create a hexagonal heatmap with a radius of 30cm for each hexagon, showing the density of player positions on the court throughout the animation. The heatmap should be color coded with a gradient from blue (low density) to red (high density) and should be overlaid transparently on top of the court. Add toggles for heatmap of player position heatmap, player movement paths, ball positions heatmap and ball movement paths in the heatmap screen.
+
+# Vid-Tracking Screen
+
+- [ ] add a screen where the user is able to upload a video of a play and track the positions of the players and the ball on the court along the playback of a video.
+  - [ ] the user is able to change from the vid-tracking screen to the board screen with all tracked positions of players and ball as an animation on the court, that can then be edited and shared like any other project.
+  - [ ] the user can choose to add tags to certain positions of the video (set, hit, defence touch, serve, receive and other tags) that save the position of the players and ball at the moment of the tag. This allows for spatial statistics of the tagged positions (e.g. filter positions by tag in the heatmap screen, export raw data of all positions with tags, etc).
+  - [ ] when exporting stats, the position data is exported in x and y format, and additionally in a radial format with radial distance to the center of the court and angle to the center line of the court, to allow for easier analysis of positions in relation to the court.
+  - [ ] add more analysis features regarding principles
+    -[ ] sum of defenders distance to net = 2x distance of ball to net at the moment of the set
+    - [ ] % cover of the hit range covered by the defenders at the moment of the hit
+    - [ ] footwork distance of defenders from set to hit
+    - [ ] etc
 
 ### sharing
 
@@ -176,8 +189,8 @@ Quick tips to add to helper screen:
 - [x] support frame-specific player color changes with two scopes: "only this frame" and "from this frame to end".
 - [ ] add an "advanced colors" picker (custom hue + recent colors + saved palette) behind a secondary button to avoid clutter.
 - [ ] player objects can have frame specific body postures (resembled by changing greaphical representation) and introducing a rotational component of player objects
-  - [ ] set (L/R): arm reaching out in front of player on of the side
-  - [ ] hit (L/R): arm is with 90degree elbow bend on is going out of one of the sided of the player
+  - [ ] set (L/R): arm reaching out in front of player on one of the sides
+  - [ ] hit (L/R): arm is with 90degree elbow bend on is going out of one of the sides of the player
     - [ ] animation of swinging arm right before the end of the frames duration and only starting when ball is within proximity of the player during a tick
   - [ ] half defense (L/R): (funnel) one arm reaching out a side of the playerwith 120 degree elbow bend
   - [ ] full defense (L/R): both arms reach out the sides of a player with 120 degree elbow bends.

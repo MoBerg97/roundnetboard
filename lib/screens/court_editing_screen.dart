@@ -1354,6 +1354,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
     double stroke = element.strokeWidth;
     MarkerStyle selectedMarker = _markerStyleFromElement(element);
     final bool marker = _isMarkerElement(element);
+    bool deleteRequested = false;
 
     final apply = await showDialog<bool>(
       context: context,
@@ -1440,6 +1441,13 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
             ),
           ),
           actions: [
+            TextButton(
+              onPressed: () {
+                deleteRequested = true;
+                Navigator.pop(context, true);
+              },
+              child: const Text('Delete'),
+            ),
             TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
             FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Apply')),
           ],
@@ -1448,6 +1456,17 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
     );
 
     if (apply != true) return;
+
+    if (deleteRequested) {
+      _saveToHistory();
+      if (!mounted) return;
+      setState(() {
+        _elements.remove(element);
+        _elementsRevision++;
+      });
+      return;
+    }
+
     _saveToHistory();
     if (!mounted) return;
     setState(() {

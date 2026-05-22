@@ -123,6 +123,10 @@ class AnnotationCanvasPainter extends CustomPainter {
     return _shouldDrawTempShadow ? emphasized : normal;
   }
 
+  Color _alphaScaled(Color color, double factor) {
+    return color.withValues(alpha: (color.a * factor).clamp(0.0, 1.0));
+  }
+
   bool get _useHandDrawnStyle => handDrawnStyle;
 
   int _annotationSeed(Annotation annotation) {
@@ -284,15 +288,23 @@ class AnnotationCanvasPainter extends CustomPainter {
     switch (style) {
       case AnnotationLineStyle.straight:
         canvas.drawPath(path, paint);
+        break;
       case AnnotationLineStyle.arrow:
         canvas.drawPath(path, paint);
         _drawArrowHead(canvas, points[points.length - 2], points.last, paint);
+        break;
+      case AnnotationLineStyle.arrowStart:
+        canvas.drawPath(path, paint);
+        _drawArrowHead(canvas, points[1], points.first, paint);
+        break;
       case AnnotationLineStyle.dashed:
         _drawDashedPath(canvas, path, paint);
+        break;
       case AnnotationLineStyle.markerX:
       case AnnotationLineStyle.markerPylon:
       case AnnotationLineStyle.markerDot:
-        canvas.drawPath(path, paint);
+        _drawMarkerSymbol(canvas, points[points.length - 2], points.last, paint, style);
+        break;
     }
   }
 
@@ -451,7 +463,7 @@ class AnnotationCanvasPainter extends CustomPainter {
     canvas.clipRect(bounds.inflate(bleedPadding));
 
     final paint = Paint()
-      ..color = color.withValues(alpha: alpha.clamp(0.0, 1.0))
+      ..color = _alphaScaled(color, alpha.clamp(0.0, 1.0))
       ..style = PaintingStyle.stroke
       ..strokeWidth = hatchStrokeWidth
       ..strokeCap = StrokeCap.round
@@ -676,13 +688,13 @@ class AnnotationCanvasPainter extends CustomPainter {
         );
       } else {
         final fill = Paint()
-          ..color = annotation.color.withValues(alpha: 0.5)
+          ..color = _alphaScaled(annotation.color, 0.5)
           ..style = PaintingStyle.fill;
         canvas.drawRect(rect, fill);
       }
     }
     final outline = Paint()
-      ..color = annotation.color.withValues(alpha: 0.9)
+      ..color = _alphaScaled(annotation.color, 0.9)
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm, 1.2)
       ..style = PaintingStyle.stroke;
     if (_useHandDrawnStyle) {
@@ -728,13 +740,13 @@ class AnnotationCanvasPainter extends CustomPainter {
         );
       } else {
         final fill = Paint()
-          ..color = annotation.color.withValues(alpha: _tempAlpha(0.28, 0.5))
+          ..color = _alphaScaled(annotation.color, _tempAlpha(0.28, 0.5))
           ..style = PaintingStyle.fill;
         canvas.drawRect(rect, fill);
       }
     }
     final paint = Paint()
-      ..color = annotation.color.withValues(alpha: _tempAlpha(0.56, 0.78))
+      ..color = _alphaScaled(annotation.color, _tempAlpha(0.56, 0.78))
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm)
       ..style = PaintingStyle.stroke;
     if (_useHandDrawnStyle) {
@@ -778,12 +790,12 @@ class AnnotationCanvasPainter extends CustomPainter {
     final rect = Rect.fromPoints(tl, br);
     if (annotation.filled) {
       final fill = Paint()
-        ..color = annotation.color.withValues(alpha: 0.1)
+        ..color = _alphaScaled(annotation.color, 0.1)
         ..style = PaintingStyle.fill;
       canvas.drawRect(rect, fill);
     }
     final fade = Paint()
-      ..color = annotation.color.withValues(alpha: 0.2)
+      ..color = _alphaScaled(annotation.color, 0.2)
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm)
       ..style = PaintingStyle.stroke;
     canvas.drawRect(rect, fade);
@@ -819,7 +831,7 @@ class AnnotationCanvasPainter extends CustomPainter {
       );
     });
     final paint = Paint()
-      ..color = annotation.color.withValues(alpha: _tempAlpha(0.6, 0.82))
+      ..color = _alphaScaled(annotation.color, _tempAlpha(0.6, 0.82))
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm, 1.05)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
@@ -839,7 +851,7 @@ class AnnotationCanvasPainter extends CustomPainter {
     final points = _curvedLineScreenPoints(annotation);
     if (points.length < 2) return;
     final paint = Paint()
-      ..color = annotation.color.withValues(alpha: 0.8)
+      ..color = _alphaScaled(annotation.color, 0.8)
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm, 1.65)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
@@ -865,7 +877,7 @@ class AnnotationCanvasPainter extends CustomPainter {
     });
 
     final paint = Paint()
-      ..color = annotation.color.withValues(alpha: _tempAlpha(0.6, 0.82))
+      ..color = _alphaScaled(annotation.color, _tempAlpha(0.6, 0.82))
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm, 1.05)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
@@ -880,7 +892,7 @@ class AnnotationCanvasPainter extends CustomPainter {
     if (points.length < 2) return;
 
     final fadePaint = Paint()
-      ..color = annotation.color.withValues(alpha: 0.2)
+      ..color = _alphaScaled(annotation.color, 0.2)
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm, 1.65)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
@@ -1039,13 +1051,13 @@ class AnnotationCanvasPainter extends CustomPainter {
         );
       } else {
         final fill = Paint()
-          ..color = annotation.color.withValues(alpha: _tempAlpha(0.28, 0.5))
+          ..color = _alphaScaled(annotation.color, _tempAlpha(0.28, 0.5))
           ..style = PaintingStyle.fill;
         canvas.drawCircle(centerScreen, radiusScreen, fill);
       }
     }
     final paint = Paint()
-      ..color = annotation.color.withValues(alpha: _tempAlpha(0.56, 0.78))
+      ..color = _alphaScaled(annotation.color, _tempAlpha(0.56, 0.78))
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm)
       ..style = PaintingStyle.stroke;
     _paintCircleOutlineMaybeHandDrawn(canvas, centerScreen, radiusScreen, paint, seed + 1);
@@ -1104,7 +1116,7 @@ class AnnotationCanvasPainter extends CustomPainter {
     final endScreen = _cmToScreen(end);
 
     final paint = Paint()
-      ..color = annotation.color.withValues(alpha: 0.8)
+      ..color = _alphaScaled(annotation.color, 0.8)
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm, 1.65)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
@@ -1149,13 +1161,13 @@ class AnnotationCanvasPainter extends CustomPainter {
         );
       } else {
         final fill = Paint()
-          ..color = annotation.color.withValues(alpha: 0.5)
+          ..color = _alphaScaled(annotation.color, 0.5)
           ..style = PaintingStyle.fill;
         canvas.drawCircle(centerScreen, radiusScreen, fill);
       }
     }
     final outline = Paint()
-      ..color = annotation.color.withValues(alpha: 0.9)
+      ..color = _alphaScaled(annotation.color, 0.9)
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm, 1.2)
       ..style = PaintingStyle.stroke;
     _paintCircleOutlineMaybeHandDrawn(canvas, centerScreen, radiusScreen, outline, seed + 11);
@@ -1165,7 +1177,7 @@ class AnnotationCanvasPainter extends CustomPainter {
   static const String _textFontFamily = 'Roboto';
 
   TextStyle _textStyleFor(Annotation annotation, {required double alpha}) {
-    final color = annotation.color.withValues(alpha: alpha);
+    final color = _alphaScaled(annotation.color, alpha);
     final fontSize = annotation.fontSize ?? _defaultTextSize;
     if (_useHandDrawnStyle) {
       return GoogleFonts.walterTurncoat(color: color, fontSize: fontSize, fontWeight: FontWeight.w600);
@@ -1254,7 +1266,7 @@ class AnnotationCanvasPainter extends CustomPainter {
 
     // Draw faded line
     final fadePaint = Paint()
-      ..color = annotation.color.withValues(alpha: 0.2)
+      ..color = _alphaScaled(annotation.color, 0.2)
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm, 1.65)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
@@ -1291,6 +1303,10 @@ class AnnotationCanvasPainter extends CustomPainter {
       case AnnotationLineStyle.arrow:
         canvas.drawLine(start, end, paint);
         _drawArrowHead(canvas, start, end, paint);
+        break;
+      case AnnotationLineStyle.arrowStart:
+        canvas.drawLine(start, end, paint);
+        _drawArrowHead(canvas, end, start, paint);
         break;
       case AnnotationLineStyle.dashed:
         _drawDashedLine(canvas, start, end, paint);
@@ -1340,10 +1356,12 @@ class AnnotationCanvasPainter extends CustomPainter {
         final dotPaint = Paint()
           ..color = paint.color.withValues(alpha: (paint.color.a * 0.95).clamp(0.0, 1.0))
           ..style = PaintingStyle.fill;
-        canvas.drawCircle(center, 2.5, dotPaint);
+        final dotRadius = math.max(4.0, baseSize * 0.45);
+        canvas.drawCircle(center, dotRadius, dotPaint);
         break;
       case AnnotationLineStyle.straight:
       case AnnotationLineStyle.arrow:
+      case AnnotationLineStyle.arrowStart:
       case AnnotationLineStyle.dashed:
         break;
     }
@@ -1394,14 +1412,14 @@ class AnnotationCanvasPainter extends CustomPainter {
 
     if (annotation.filled) {
       final fill = Paint()
-        ..color = annotation.color.withValues(alpha: 0.1)
+        ..color = _alphaScaled(annotation.color, 0.1)
         ..style = PaintingStyle.fill;
       canvas.drawCircle(centerScreen, radiusScreen, fill);
     }
 
     // Draw faded circle
     final fadePaint = Paint()
-      ..color = annotation.color.withValues(alpha: 0.2)
+      ..color = _alphaScaled(annotation.color, 0.2)
       ..strokeWidth = _strokeWidthPxFor(annotation.strokeWidthCm)
       ..style = PaintingStyle.stroke;
     _paintCircleOutlineMaybeHandDrawn(
@@ -1459,7 +1477,7 @@ class AnnotationCanvasPainter extends CustomPainter {
       );
     } else {
       final fill = Paint()
-        ..color = annotation.color.withValues(alpha: 0.5)
+        ..color = _alphaScaled(annotation.color, 0.5)
         ..style = PaintingStyle.fill;
       canvas.drawArc(rect, annotation.startAngle!, sweep, true, fill);
     }
@@ -1503,7 +1521,7 @@ class AnnotationCanvasPainter extends CustomPainter {
       );
     } else {
       final fill = Paint()
-        ..color = annotation.color.withValues(alpha: _tempAlpha(0.3, 0.56))
+        ..color = _alphaScaled(annotation.color, _tempAlpha(0.3, 0.56))
         ..style = PaintingStyle.fill;
       canvas.drawArc(rect, annotation.startAngle!, sweep, true, fill);
     }
@@ -1523,7 +1541,7 @@ class AnnotationCanvasPainter extends CustomPainter {
 
     // Faded sector
     final fadePaint = Paint()
-      ..color = annotation.color.withValues(alpha: 0.1)
+      ..color = _alphaScaled(annotation.color, 0.1)
       ..style = PaintingStyle.fill;
 
     final rect = Rect.fromCircle(center: centerScreen, radius: radiusScreen);

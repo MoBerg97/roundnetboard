@@ -58,7 +58,7 @@ class BoardScreen extends StatefulWidget {
 // ANNOTATION TOOLS ENUM
 // ────────────────────────────────────────────────────────────────────────────
 // Available drawing tools for annotations on the board
-enum AnnotationTool { none, move, line, freehand, circle, rectangle, sector, text }
+enum AnnotationTool { none, move, line, freehand, marker, circle, rectangle, sector, text }
 
 enum BoardMenu { none, objects, annotations }
 
@@ -105,6 +105,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   double _playbackSpeed = 1.0; // Playback speed multiplier (0.1x to 2.0x)
   int _playbackFrameIndex = 0; // Current frame index during playback
   late AnimationController _selectionPulseController; // Shared pulse for sonar highlights
+  late AnimationController _snapPulseController;
+  Offset? _lastSnapPointCm;
 
   // ──────────────────────────────────────────────────────────────────────────
   // BALL MODIFIER STATE
@@ -137,21 +139,27 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   final List<double> _annotationStrokeOptionsCm = const [5.0, 10.0, 15.0];
   double _annotationStrokeCm = AppConstants.annotationStrokeWidthCm;
   AnnotationLineStyle _annotationLineStyle = AnnotationLineStyle.straight;
+  AnnotationLineStyle _freehandLineStyle = AnnotationLineStyle.straight;
   AnnotationLineStyle _annotationMarkerStyle = AnnotationLineStyle.markerX;
   OverlayEntry? _annotationStrokeMenuEntry;
   OverlayEntry? _annotationLineStyleMenuEntry;
+  OverlayEntry? _freehandLineStyleMenuEntry;
   OverlayEntry? _annotationMarkerStyleMenuEntry;
   int _annotationStrokeHoverIndex = -1;
   int _annotationLineStyleHoverIndex = -1;
+  int _freehandLineStyleHoverIndex = -1;
   int _annotationMarkerStyleHoverIndex = -1;
   final GlobalKey _annotationStrokeButtonKey = GlobalKey(debugLabel: 'annotation_stroke_button');
   final GlobalKey _annotationLineStyleButtonKey = GlobalKey(debugLabel: 'annotation_line_style_button');
+  final GlobalKey _freehandLineStyleButtonKey = GlobalKey(debugLabel: 'annotation_freehand_line_style_button');
   final GlobalKey _annotationStrokeMenuKey = GlobalKey(debugLabel: 'annotation_stroke_menu');
   final GlobalKey _annotationLineStyleMenuKey = GlobalKey(debugLabel: 'annotation_line_style_menu');
+  final GlobalKey _freehandLineStyleMenuKey = GlobalKey(debugLabel: 'annotation_freehand_line_style_menu');
   final GlobalKey _annotationMarkerStyleButtonKey = GlobalKey(debugLabel: 'annotation_marker_style_button');
   final GlobalKey _annotationMarkerStyleMenuKey = GlobalKey(debugLabel: 'annotation_marker_style_menu');
   final ValueNotifier<int> _annotationStrokeHoverNotifier = ValueNotifier<int>(-1);
   final ValueNotifier<int> _annotationLineStyleHoverNotifier = ValueNotifier<int>(-1);
+  final ValueNotifier<int> _freehandLineStyleHoverNotifier = ValueNotifier<int>(-1);
   final ValueNotifier<int> _annotationMarkerStyleHoverNotifier = ValueNotifier<int>(-1);
   bool _annotationSnappingEnabled = true;
   bool _circleFilled = false;
@@ -304,6 +312,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
     _ticker = createTicker(_onTick);
     _selectionPulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat();
+    _snapPulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
     _history = HistoryManager(widget.project);
     _timelineController = ScrollController();
 
@@ -333,10 +342,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   void dispose() {
     _ticker.dispose();
     _selectionPulseController.dispose();
+    _snapPulseController.dispose();
     _timelineController.dispose();
     _removeAnnotationEraserMenu();
     _removeAnnotationMarkerStyleMenu();
     _removeAnnotationLineStyleMenu();
+    _removeFreehandLineStyleMenu();
     _removeAnnotationStrokeMenu();
     _removeAnnotationTextSizeMenu();
     _removeSectorAttachmentMenu();
@@ -419,6 +430,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   static const List<AnnotationLineStyle> _annotationLineStyleOptions = [
     AnnotationLineStyle.straight,
     AnnotationLineStyle.arrow,
+    AnnotationLineStyle.arrowStart,
     AnnotationLineStyle.dashed,
   ];
 
@@ -442,6 +454,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         return Icons.horizontal_rule;
       case AnnotationLineStyle.arrow:
         return Icons.trending_flat;
+      case AnnotationLineStyle.arrowStart:
+        return Icons.keyboard_backspace;
       case AnnotationLineStyle.dashed:
         return Icons.more_horiz;
       case AnnotationLineStyle.markerX:
@@ -458,7 +472,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       case AnnotationLineStyle.straight:
         return 'Straight line';
       case AnnotationLineStyle.arrow:
-        return 'Arrow line';
+        return 'Arrow (to end)';
+      case AnnotationLineStyle.arrowStart:
+        return 'Arrow (to start)';
       case AnnotationLineStyle.dashed:
         return 'Dashed line';
       case AnnotationLineStyle.markerX:
@@ -667,7 +683,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               onSelect: (i) {
                 setState(() {
                   _annotationLineStyle = _annotationLineStyleOptions[i];
-                  if (_activeAnnotationTool != AnnotationTool.freehand) {
+                  if (_activeAnnotationTool != AnnotationTool.line) {
                     _setAnnotationTool(AnnotationTool.line);
                   }
                 });
@@ -708,6 +724,102 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _annotationLineStyleMenuEntry = null;
     _annotationLineStyleHoverIndex = -1;
     _annotationLineStyleHoverNotifier.value = -1;
+  }
+
+  void _toggleFreehandLineStyleMenu({Offset? globalPos, bool forceOpen = false}) {
+    if (_freehandLineStyleMenuEntry != null) {
+      _removeFreehandLineStyleMenu();
+      if (!forceOpen) return;
+    }
+
+    final overlay = Overlay.of(context);
+    final box = _freehandLineStyleButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final buttonOrigin = box.localToGlobal(Offset.zero);
+    final buttonSize = box.size;
+    final anchor = globalPos ?? (buttonOrigin + Offset(buttonSize.width / 2, buttonSize.height / 2));
+    final menuHeight = HoverSelectionMenu.totalHeightForCount(_annotationLineStyleOptions.length);
+    final menuWidth = HoverSelectionMenu.menuWidth;
+    final screenSize = MediaQuery.of(context).size;
+    final placeAbove = anchor.dy > (screenSize.height / 2);
+    final unclampedLeft = anchor.dx - (menuWidth / 2);
+    final unclampedTop = placeAbove ? buttonOrigin.dy - menuHeight - 12 : buttonOrigin.dy + buttonSize.height + 12;
+    final left = unclampedLeft.clamp(8.0, screenSize.width - menuWidth - 8.0);
+    final top = unclampedTop.clamp(8.0, screenSize.height - menuHeight - 8.0);
+
+    _freehandLineStyleHoverIndex = _annotationLineStyleOptions.indexOf(_freehandLineStyle);
+    if (_freehandLineStyleHoverIndex < 0) {
+      _freehandLineStyleHoverIndex = 0;
+    }
+    _freehandLineStyleHoverNotifier.value = _freehandLineStyleHoverIndex;
+
+    _freehandLineStyleMenuEntry = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          IgnorePointer(),
+          Positioned(
+            left: left,
+            top: top,
+            child: HoverSelectionMenu(
+              options: _annotationLineStyleOptions
+                  .map(
+                    (style) => HoverMenuOption(
+                      builder: (isHover) => Center(
+                        child: Icon(
+                          _iconForLineStyle(style),
+                          color: isHover ? AppTheme.primaryBlue : Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              initialHover: _freehandLineStyleHoverIndex,
+              hoverNotifier: _freehandLineStyleHoverNotifier,
+              onHover: (i) => setState(() => _freehandLineStyleHoverIndex = i),
+              onSelect: (i) {
+                setState(() {
+                  _freehandLineStyle = _annotationLineStyleOptions[i];
+                  _setAnnotationTool(AnnotationTool.freehand);
+                });
+                _removeFreehandLineStyleMenu();
+              },
+              onDismiss: _removeFreehandLineStyleMenu,
+              menuKey: _freehandLineStyleMenuKey,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(_freehandLineStyleMenuEntry!);
+    _updateFreehandLineStyleMenuHover(anchor);
+  }
+
+  void _updateFreehandLineStyleMenuHover(Offset globalPos) {
+    final box = _freehandLineStyleMenuKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(globalPos);
+    final width = HoverSelectionMenu.menuWidth;
+    final height = HoverSelectionMenu.totalHeightForCount(_annotationLineStyleOptions.length);
+    if (local.dx < 0 || local.dx > width || local.dy < 0 || local.dy > height) {
+      _freehandLineStyleHoverNotifier.value = -1;
+      setState(() => _freehandLineStyleHoverIndex = -1);
+      return;
+    }
+    final idx = (local.dy / HoverSelectionMenu.itemExtent).floor().clamp(0, _annotationLineStyleOptions.length - 1);
+    if (idx != _freehandLineStyleHoverIndex) {
+      _freehandLineStyleHoverNotifier.value = idx;
+      setState(() => _freehandLineStyleHoverIndex = idx);
+    }
+  }
+
+  void _removeFreehandLineStyleMenu() {
+    _freehandLineStyleMenuEntry?.remove();
+    _freehandLineStyleMenuEntry = null;
+    _freehandLineStyleHoverIndex = -1;
+    _freehandLineStyleHoverNotifier.value = -1;
   }
 
   void _toggleAnnotationMarkerStyleMenu({Offset? globalPos, bool forceOpen = false}) {
@@ -762,7 +874,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               onSelect: (i) {
                 setState(() {
                   _annotationMarkerStyle = _annotationMarkerStyleOptions[i];
-                  _setAnnotationTool(AnnotationTool.line);
+                  _setAnnotationTool(AnnotationTool.marker);
                 });
                 _removeAnnotationMarkerStyleMenu();
               },
@@ -1942,6 +2054,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     _removeAnnotationEraserMenu();
     _removeAnnotationMarkerStyleMenu();
     _removeAnnotationLineStyleMenu();
+    _removeFreehandLineStyleMenu();
     _removeAnnotationStrokeMenu();
     _removeAnnotationTextSizeMenu();
     _removeSectorAttachmentMenu();
@@ -2187,35 +2300,65 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   // todo make color picker background lightgrey
   void _showColorPicker() {
+    Color selectedColor = _annotationColor;
+    double alpha = selectedColor.a.clamp(0.0, 1.0);
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Color'),
-        content: Container(
-          width: 280,
-          height: 200,
-          color: AppTheme.lightGrey,
-          child: GridView.count(
-            crossAxisCount: 4,
-            children: AppTheme.editorColors
-                .map(
-                  (color) => GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                      setState(() => _annotationColor = color);
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: _annotationColor == color ? Border.all(color: AppTheme.lightGrey, width: 2) : null,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: const Text('Select Color'),
+          content: SizedBox(
+            width: 300,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: AppTheme.editorColors.map((color) {
+                    final baseSelected = selectedColor.withValues(alpha: 1.0).toARGB32() == color.toARGB32();
+                    return GestureDetector(
+                      onTap: () => setStateDialog(() {
+                        selectedColor = color.withValues(alpha: alpha);
+                      }),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: baseSelected ? AppTheme.darkGrey : Colors.transparent, width: 2),
+                        ),
                       ),
-                    ),
-                  ),
-                )
-                .toList(),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                Text('Transparency ${(alpha * 100).round()}%', style: Theme.of(context).textTheme.labelMedium),
+                Slider(
+                  value: alpha,
+                  min: 0.1,
+                  max: 1.0,
+                  divisions: 18,
+                  onChanged: (value) => setStateDialog(() {
+                    alpha = value;
+                    selectedColor = selectedColor.withValues(alpha: alpha);
+                  }),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                setState(() => _annotationColor = selectedColor);
+                Navigator.pop(context);
+              },
+              child: const Text('Apply'),
+            ),
+          ],
         ),
       ),
     );
@@ -2788,14 +2931,18 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     double selectedStroke = annotation.strokeWidthCm;
     AnnotationLineStyle selectedLineStyle = annotation.lineStyle;
     bool selectedFilled = annotation.filled;
+    bool deleteRequested = false;
 
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setStateDialog) {
+          final isMarkerAnnotation = annotation.type == AnnotationType.line && _isMarkerLineStyle(annotation.lineStyle);
           final supportsFill = annotation.type == AnnotationType.circle || annotation.type == AnnotationType.rectangle;
           final supportsLineStyle =
-              annotation.type == AnnotationType.line || annotation.type == AnnotationType.curvedLine;
+              (annotation.type == AnnotationType.line || annotation.type == AnnotationType.curvedLine) &&
+              !isMarkerAnnotation;
+          final supportsMarkerStyle = isMarkerAnnotation;
           return AlertDialog(
             backgroundColor: AppTheme.darkGrey,
             title: const Text('Annotation Style', style: TextStyle(color: Colors.white)),
@@ -2865,12 +3012,33 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                   ],
                   if (supportsLineStyle) ...[
                     const SizedBox(height: 10),
-                    const Text('Line / Marker Style', style: TextStyle(color: Colors.white70)),
+                    const Text('Line Style', style: TextStyle(color: Colors.white70)),
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 8,
                       runSpacing: 6,
-                      children: [..._annotationLineStyleOptions, ..._annotationMarkerStyleOptions].map((style) {
+                      children: _annotationLineStyleOptions.map((style) {
+                        final selected = selectedLineStyle == style;
+                        return ChoiceChip(
+                          avatar: Icon(
+                            _iconForLineStyle(style),
+                            size: style == AnnotationLineStyle.markerDot ? 14 : 18,
+                          ),
+                          label: Text(_lineStyleLabel(style)),
+                          selected: selected,
+                          onSelected: (_) => setStateDialog(() => selectedLineStyle = style),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                  if (supportsMarkerStyle) ...[
+                    const SizedBox(height: 10),
+                    const Text('Marker Style', style: TextStyle(color: Colors.white70)),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: _annotationMarkerStyleOptions.map((style) {
                         final selected = selectedLineStyle == style;
                         return ChoiceChip(
                           avatar: Icon(
@@ -2888,6 +3056,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               ),
             ),
             actions: [
+              TextButton(
+                onPressed: () {
+                  deleteRequested = true;
+                  Navigator.pop(context, true);
+                },
+                child: const Text('Delete'),
+              ),
               TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
               FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Apply')),
             ],
@@ -2897,6 +3072,14 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     );
 
     if (accepted != true) return;
+
+    if (deleteRequested) {
+      setState(() {
+        annotations.remove(annotation);
+      });
+      _pushAnnotationHistoryIfChanged(before, _cloneAnnotations(annotations));
+      return;
+    }
 
     setState(() {
       annotation
@@ -3268,7 +3451,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 color: _annotationColor,
                 points: previewPoints,
                 strokeWidthCm: _annotationStrokeCm,
-                lineStyle: _annotationLineStyle,
+                lineStyle: _freehandLineStyle,
               ),
             );
           }
@@ -3559,6 +3742,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
     double bestDist = thresholdCm;
     Offset bestDelta = Offset.zero;
+    Offset? bestTarget;
 
     for (final anchor in anchors) {
       for (final target in candidates) {
@@ -3566,11 +3750,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
         if (d < bestDist) {
           bestDist = d;
           bestDelta = target - anchor;
+          bestTarget = target;
         }
       }
     }
 
     if (bestDist < thresholdCm) {
+      _triggerSnapPulse(bestTarget!);
       return newPos + bestDelta;
     }
 
@@ -3578,7 +3764,10 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   bool _shouldSnapDuringCreation(AnnotationTool tool) {
-    return tool == AnnotationTool.line || tool == AnnotationTool.circle || tool == AnnotationTool.rectangle;
+    return tool == AnnotationTool.line ||
+        tool == AnnotationTool.marker ||
+        tool == AnnotationTool.circle ||
+        tool == AnnotationTool.rectangle;
   }
 
   double _snapThresholdCm(Size size) {
@@ -3604,7 +3793,18 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       }
     }
 
-    return best ?? pointCm;
+    if (best != null) {
+      _triggerSnapPulse(best);
+      return best;
+    }
+    return pointCm;
+  }
+
+  void _triggerSnapPulse(Offset cmPoint) {
+    // Only fire a new burst when the snap target actually changes
+    if (_lastSnapPointCm != null && (_lastSnapPointCm! - cmPoint).distance < 2.0) return;
+    _lastSnapPointCm = cmPoint;
+    _snapPulseController.forward(from: 0.0);
   }
 
   /// Get anchor points from the dragged annotation (center, endpoints, corners)
@@ -3840,20 +4040,11 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             color: _annotationColor,
             points: smoothPoints,
             strokeWidthCm: _annotationStrokeCm,
-            lineStyle: _annotationLineStyle,
+            lineStyle: _freehandLineStyle,
           );
         }
       } else if (_activeAnnotationTool == AnnotationTool.line) {
-        if (_isMarkerLineStyle(_annotationLineStyle)) {
-          final markerEnd = dist > 0.8 ? end : (start + const Offset(30.0, 0.0));
-          ann = Annotation(
-            type: AnnotationType.line,
-            color: _annotationColor,
-            points: [start, markerEnd],
-            strokeWidthCm: _annotationStrokeCm,
-            lineStyle: _annotationLineStyle,
-          );
-        } else if (dist > 0.8) {
+        if (dist > 0.8) {
           ann = Annotation(
             type: AnnotationType.line,
             color: _annotationColor,
@@ -3862,6 +4053,15 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
             lineStyle: _annotationLineStyle,
           );
         }
+      } else if (_activeAnnotationTool == AnnotationTool.marker) {
+        // All marker styles are single-point symbols placed at drag end.
+        ann = Annotation(
+          type: AnnotationType.line,
+          color: _annotationColor,
+          points: [end, end],
+          strokeWidthCm: _annotationStrokeCm,
+          lineStyle: _annotationMarkerStyle,
+        );
       } else if (dist > 10) {
         if (_activeAnnotationTool == AnnotationTool.circle) {
           ann = Annotation(
@@ -5481,12 +5681,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   erasingAnnotations: _erasingAnnotations.isNotEmpty ? _erasingAnnotations : null,
                                   dragPreviewLine:
                                       _annotationsMenuOpen &&
-                                          _activeAnnotationTool == AnnotationTool.line &&
+                                          (_activeAnnotationTool == AnnotationTool.line ||
+                                              _activeAnnotationTool == AnnotationTool.marker) &&
                                           _pendingAnnotationPoints.isNotEmpty &&
                                           _currentDragPos != null
-                                      ? [_pendingAnnotationPoints.first, _currentDragPos!]
+                                      ? _activeAnnotationTool == AnnotationTool.marker
+                                            ? [_currentDragPos!, _currentDragPos!]
+                                            : [_pendingAnnotationPoints.first, _currentDragPos!]
                                       : null,
-                                  dragPreviewLineStyle: _annotationLineStyle,
+                                  dragPreviewLineStyle: _activeAnnotationTool == AnnotationTool.marker
+                                      ? _annotationMarkerStyle
+                                      : _annotationLineStyle,
                                   handDrawnStyle: _settings.handDrawnAnnotations,
                                   showCurvedControlHandles: false,
                                   selectedAnnotation: _selectedAnnotation,
@@ -5517,6 +5722,19 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 painter: _CenterCrossPainter(screenSize: screenSize, settings: _settings),
                               ),
                             ),
+                            if (_lastSnapPointCm != null)
+                              IgnorePointer(
+                                ignoring: true,
+                                child: CustomPaint(
+                                  size: screenSize,
+                                  painter: _SnapBurstPainter(
+                                    centerCm: _lastSnapPointCm!,
+                                    progress: _snapPulseController,
+                                    settings: _settings,
+                                    screenSize: screenSize,
+                                  ),
+                                ),
+                              ),
                             // Draw sector zone outlines with pulsing glow during target selection
                             if (_sectorToolNeedsTargetSelection)
                               IgnorePointer(
@@ -5683,12 +5901,17 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   erasingAnnotations: _erasingAnnotations.isNotEmpty ? _erasingAnnotations : null,
                                   dragPreviewLine:
                                       _annotationsMenuOpen &&
-                                          _activeAnnotationTool == AnnotationTool.line &&
+                                          (_activeAnnotationTool == AnnotationTool.line ||
+                                              _activeAnnotationTool == AnnotationTool.marker) &&
                                           _pendingAnnotationPoints.isNotEmpty &&
                                           _currentDragPos != null
-                                      ? [_pendingAnnotationPoints.first, _currentDragPos!]
+                                      ? _activeAnnotationTool == AnnotationTool.marker
+                                            ? [_currentDragPos!, _currentDragPos!]
+                                            : [_pendingAnnotationPoints.first, _currentDragPos!]
                                       : null,
-                                  dragPreviewLineStyle: _annotationLineStyle,
+                                  dragPreviewLineStyle: _activeAnnotationTool == AnnotationTool.marker
+                                      ? _annotationMarkerStyle
+                                      : _annotationLineStyle,
                                   handDrawnStyle: _settings.handDrawnAnnotations,
                                   showCurvedControlHandles: false,
                                   selectedAnnotation: _selectedAnnotation,
@@ -6534,7 +6757,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               _buildMenuButton(
                                 tooltip: 'Freehand Tool (double-tap for line style)',
                                 onPressed: () => setState(() => _setAnnotationTool(AnnotationTool.freehand)),
-                                onDoubleTap: () => _toggleAnnotationLineStyleMenu(forceOpen: true),
+                                onDoubleTap: () => _toggleFreehandLineStyleMenu(forceOpen: true),
+                                buttonKey: _freehandLineStyleButtonKey,
                                 backgroundColor: _activeAnnotationTool == AnnotationTool.freehand
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
@@ -6586,15 +6810,12 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 tooltip: '${_lineStyleLabel(_annotationMarkerStyle)} (double-tap for style)',
                                 onPressed: () {
                                   setState(() {
-                                    _annotationLineStyle = _annotationMarkerStyle;
-                                    _setAnnotationTool(AnnotationTool.line);
+                                    _setAnnotationTool(AnnotationTool.marker);
                                   });
                                 },
                                 onDoubleTap: () => _toggleAnnotationMarkerStyleMenu(forceOpen: true),
                                 buttonKey: _annotationMarkerStyleButtonKey,
-                                backgroundColor:
-                                    _activeAnnotationTool == AnnotationTool.line &&
-                                        _annotationMarkerStyleOptions.contains(_annotationLineStyle)
+                                backgroundColor: _activeAnnotationTool == AnnotationTool.marker
                                     ? AppTheme.primaryBlue
                                     : AppTheme.mediumGrey,
                                 child: Icon(_iconForLineStyle(_annotationMarkerStyle), size: 20),
@@ -6970,6 +7191,57 @@ class _CenterCrossPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _CenterCrossPainter oldDelegate) =>
       oldDelegate.screenSize != screenSize || oldDelegate.settings != settings;
+}
+
+class _SnapBurstPainter extends CustomPainter {
+  _SnapBurstPainter({required this.centerCm, required this.progress, required this.settings, required this.screenSize})
+    : super(repaint: progress);
+
+  final Offset centerCm;
+  final Animation<double> progress;
+  final Settings settings;
+  final Size screenSize;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = Curves.easeOutCubic.transform(progress.value.clamp(0.0, 1.0));
+    if (t <= 0.0) return;
+
+    final boardCenter = Offset(screenSize.width / 2, screenSize.height / 2);
+    final center =
+        boardCenter +
+        Offset(settings.cmToLogical(centerCm.dx, screenSize), settings.cmToLogical(centerCm.dy, screenSize));
+    const rays = 8;
+    // Scale burst radius to court size: 50cm on mobile (shorter side < 700px), 25cm on desktop
+    final isMobile = screenSize.shortestSide < 700;
+    final radiusCm = isMobile ? 50.0 : 25.0;
+    final baseRadiusPx = settings.cmToLogical(radiusCm, screenSize).abs().clamp(30.0, 250.0);
+    final rayLength = baseRadiusPx * t;
+    final rayStart = rayLength * 0.22;
+    final alpha = (1.0 - t).clamp(0.0, 1.0);
+
+    final paint = Paint()
+      ..color = AppTheme.primaryBlue.withValues(alpha: 0.82 * alpha)
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    for (int i = 0; i < rays; i++) {
+      final angle = (2 * math.pi * i) / rays;
+      final dir = Offset(math.cos(angle), math.sin(angle));
+      final from = center + dir * rayStart;
+      final to = center + dir * rayLength;
+      canvas.drawLine(from, to, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SnapBurstPainter oldDelegate) {
+    return oldDelegate.centerCm != centerCm ||
+        oldDelegate.settings != settings ||
+        oldDelegate.screenSize != screenSize ||
+        oldDelegate.progress.value != progress.value;
+  }
 }
 
 /// Painter for tracked entity paths during paused playback
