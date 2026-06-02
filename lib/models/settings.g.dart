@@ -25,7 +25,7 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       showPathControlPoints: fields[7] as bool,
       objectScaleMultiplier: fields[8] as double,
       annotationsAboveObjects: fields[10] == null ? false : fields[10] as bool,
-      serveZoneFactor: fields[9] == null ? 1.3 : fields[9] as double,
+      serveZoneFactor: fields[9] == null ? 1.0 : fields[9] as double,
       courtBackgroundColorValue: fields[11] as int?,
       ballSectorRadiusCm: fields[12] == null ? 1000.0 : fields[12] as double,
       handDrawnAnnotations: fields[13] == null ? false : fields[13] as bool,

@@ -224,13 +224,13 @@ timeline:
 - [x] background color of the board screen should always match the court color in court editor and should be changeable via settings menu on board screen
 - [ ] court editor should show the same court frame as the board screen. Court size in court editor should match court size in board screen (same height and width of container showing the court). The middle point of the court should always be in the center of the court container.
 - [x] standard zoom stage should be 1.0 times serve zone radius around center of court instead of 1.5 times
-- [ ] make zoom stages larger and frame specific (saved on frames) and changeable in the board screen as a snapping slider with 5 stages
-  - [ ] 1. zoom stage: show only 0.5 times serve zone radius around center of court (for focus on net area)
-  - [ ] 2. zoom stage: show 1.0 times serve zone radius around center of court (for focus on stuff inside the Serve Zone)
-  - [ ] 3. zoom stage: show 1.5 times serve zone radius around center of court (current default, for focus on most played areas of the court)
-  - [ ] 4. zoom stage: show whole court towards outer boundary at 850cm radius around center of court (for focus on special tactics involving the whole court)
-  - [ ] zoom is copied along when a new frame is created
-  - [ ] during animation playback, zoom changes dynamically to show all objects on court at once, unless user has manually changed zoom during playback, then the user zoom is kept until playback is stopped.
+- [x] make zoom stages larger and frame specific (saved on frames) and changeable in the board screen as a snapping slider with 5 stages
+- [x] 1. zoom stage: show only 0.5 times serve zone radius around center of court (for focus on net area)
+- [x] 2. zoom stage: show 1.0 times serve zone radius around center of court (for focus on stuff inside the Serve Zone)
+- [x] 3. zoom stage: show 1.5 times serve zone radius around center of court (current default, for focus on most played areas of the court)
+- [x] 4. zoom stage: show whole court towards outer boundary at 850cm radius around center of court (for focus on special tactics involving the whole court)
+- [x] zoom is copied along when a new frame is created
+- [x] during animation playback, zoom changes dynamically to show all objects on court at once, unless user has manually changed zoom during playback, then the user zoom is kept until playback is stopped.
 - [x] account for virtual navigation bar on some android phones such as Redmi Note 13 Pro 5G by using a safe area
 - [ ] POSTPONED: test if safe area implementation works on the problematic devices (Redmi Note 13 Pro 5G) and does not break anything on other devices (iOS devices with notch, etc)
 - [x] when playback is through, meaning the playback reached the end while playing, the timeline should only go back to the editing controls after the stop button is tapped, not automatically after playback reached the end

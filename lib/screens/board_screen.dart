@@ -104,6 +104,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   double _playbackT = 0.0; // Interpolation value (0.0 to 1.0) between frames
   double _playbackSpeed = 1.0; // Playback speed multiplier (0.1x to 2.0x)
   int _playbackFrameIndex = 0; // Current frame index during playback
+  bool _playbackZoomLockedByUser = false;
+  double? _playbackManualZoomFactor;
+  double _activeRenderZoomFactor = 1.0;
   late AnimationController _selectionPulseController; // Shared pulse for sonar highlights
   late AnimationController _snapPulseController;
   Offset? _lastSnapPointCm;
@@ -250,9 +253,95 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   static const double _annotationMenuHeight = 108.0;
   static const double _timelineHeight = 140.0;
   static const double _menuButtonSize = 40.0;
+  static const List<double> _zoomStageFactors = <double>[0.5, 1.0, 1.5, 2.2, 3.269230769230769];
 
   bool get _objectsMenuOpen => _activeMenu == BoardMenu.objects;
   bool get _annotationsMenuOpen => _activeMenu == BoardMenu.annotations;
+
+  double _normalizeZoomFactor(double factor) {
+    if (!factor.isFinite || factor <= 0) return 1.0;
+    final min = _zoomStageFactors.first;
+    final max = _zoomStageFactors.last;
+    return factor.clamp(min, max);
+  }
+
+  double _frameZoomFactor(Frame frame) => _normalizeZoomFactor(frame.zoomStageFactor);
+
+  int _nearestZoomStageIndex(double factor) {
+    var bestIndex = 0;
+    var bestDelta = double.infinity;
+    for (var i = 0; i < _zoomStageFactors.length; i++) {
+      final delta = (_zoomStageFactors[i] - factor).abs();
+      if (delta < bestDelta) {
+        bestDelta = delta;
+        bestIndex = i;
+      }
+    }
+    return bestIndex;
+  }
+
+  double _zoomFactorForStage(int stageIndex) {
+    final clamped = stageIndex.clamp(0, _zoomStageFactors.length - 1);
+    return _zoomStageFactors[clamped];
+  }
+
+  double _cmToLogical(double cm, Size size, {double? zoomFactor}) {
+    return _settings.cmToLogical(cm, size, serveZoneFactorOverride: zoomFactor ?? _activeRenderZoomFactor);
+  }
+
+  double _autoPlaybackZoomFactor(Frame frame, Size viewportSize) {
+    final playerRadius = AppConstants.playerRadiusCm * _settings.objectScaleMultiplier * 1.2;
+    final ballRadius = AppConstants.ballRadiusCm * 1.2;
+    double maxDistanceCm = 0.0;
+
+    for (final p in frame.players) {
+      maxDistanceCm = math.max(maxDistanceCm, p.position.distance + playerRadius);
+    }
+    for (final b in frame.balls) {
+      maxDistanceCm = math.max(maxDistanceCm, b.position.distance + ballRadius);
+    }
+    for (final element in (widget.project.customCourtElements ?? const <CourtElement>[])) {
+      final radius = element.radius ?? 0.0;
+      maxDistanceCm = math.max(maxDistanceCm, element.position.distance + radius);
+    }
+
+    final baseRadius = _settings.outerCircleRadiusCm == 0 ? 1.0 : _settings.outerCircleRadiusCm;
+    final margin = viewportSize.shortestSide < 520 ? 1.18 : 1.12;
+    final requiredFactor = _normalizeZoomFactor((maxDistanceCm * margin) / baseRadius);
+    for (final factor in _zoomStageFactors) {
+      if (factor >= requiredFactor) return factor;
+    }
+    return _zoomStageFactors.last;
+  }
+
+  double _resolveRenderZoomFactor(Frame frameToShow, bool inPlaybackView, Size viewportSize) {
+    if (inPlaybackView) {
+      if (_playbackZoomLockedByUser && _playbackManualZoomFactor != null) {
+        return _normalizeZoomFactor(_playbackManualZoomFactor!);
+      }
+      return _autoPlaybackZoomFactor(frameToShow, viewportSize);
+    }
+    return _frameZoomFactor(frameToShow);
+  }
+
+  void _setZoomStageFromSlider(double sliderValue, {required bool inPlaybackView}) {
+    final stage = sliderValue.round().clamp(0, _zoomStageFactors.length - 1);
+    final factor = _zoomFactorForStage(stage);
+    if (inPlaybackView) {
+      setState(() {
+        _playbackZoomLockedByUser = true;
+        _playbackManualZoomFactor = factor;
+      });
+      return;
+    }
+
+    setState(() {
+      currentFrame.zoomStageFactor = factor;
+      final idx = widget.project.frames.indexOf(currentFrame);
+      if (idx >= 0) widget.project.frames[idx] = currentFrame;
+    });
+    _saveProject();
+  }
 
   double _interactionTopInset() {
     if (_annotationsMenuOpen) return _annotationMenuHeight;
@@ -413,7 +502,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// - Court reference radius (default 260cm outer circle)
   Offset _toScreenPosition(Offset cmPos, Size size) {
     final center = _boardCenter(size);
-    return center + Offset(_settings.cmToLogical(cmPos.dx, size), _settings.cmToLogical(cmPos.dy, size));
+    return center + Offset(_cmToLogical(cmPos.dx, size), _cmToLogical(cmPos.dy, size));
   }
 
   bool _isPhone(BuildContext context) {
@@ -1488,7 +1577,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   Offset _screenToCm(Offset screenPos, Size size) {
     final center = _boardCenter(size);
     final logical = screenPos - center;
-    final scalePerCm = _settings.cmToLogical(1.0, size);
+    final scalePerCm = _cmToLogical(1.0, size);
     if (scalePerCm == 0) return Offset.zero;
     return Offset(logical.dx / scalePerCm, logical.dy / scalePerCm);
   }
@@ -1558,6 +1647,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _isPlaying = true;
       _endedAtLastFrame = false;
       _scrubberMovedManually = false;
+      _playbackZoomLockedByUser = false;
+      _playbackManualZoomFactor = null;
       _playbackFrameIndex = 0;
       _playbackT = 0.0;
       _activeMenu = BoardMenu.none;
@@ -1577,6 +1668,8 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       _isPaused = false;
       _endedAtLastFrame = false;
       _scrubberMovedManually = false;
+      _playbackZoomLockedByUser = false;
+      _playbackManualZoomFactor = null;
       _playbackFrameIndex = 0;
       _playbackT = 0.0;
     });
@@ -2722,7 +2815,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   /// Select a sector target (ball or zone) from a tap/drag position.
   /// Returns true if a target was selected.
   bool _trySelectSectorTarget(Offset cmPos, Size size) {
-    final pxPerCm = _settings.cmToLogical(1.0, size).abs();
+    final pxPerCm = _cmToLogical(1.0, size).abs();
     final cmPerPx = pxPerCm == 0 ? 0.0 : (1.0 / pxPerCm);
     final zoneOutlineMarginCm = 5.0 * cmPerPx;
     final zoneOutlineToleranceCm = 50.0 + zoneOutlineMarginCm;
@@ -2899,7 +2992,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final rect = _textBoundsPx(ann, size);
       if (rect == null) continue;
       final pointPx = _toScreenPosition(pointCm, size);
-      if (rect.inflate(_settings.cmToLogical(20, size).abs()).contains(pointPx)) {
+      if (rect.inflate(_cmToLogical(20, size).abs()).contains(pointPx)) {
         return ann;
       }
     }
@@ -3266,7 +3359,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final rect = _textBoundsPx(ann, size);
       if (rect == null) return false;
       final pointPx = _toScreenPosition(point, size);
-      final tolerancePx = _settings.cmToLogical(toleranceCm, size).abs();
+      final tolerancePx = _cmToLogical(toleranceCm, size).abs();
       return rect.inflate(tolerancePx).contains(pointPx);
     }
     return false;
@@ -3589,7 +3682,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final rect = _textBoundsPx(ann, size);
       if (rect == null) return false;
       final eraserCenterPx = _toScreenPosition(eraserCenterCm, size);
-      final eraserRadiusPx = _settings.cmToLogical(eraserRadiusCm, size).abs();
+      final eraserRadiusPx = _cmToLogical(eraserRadiusCm, size).abs();
       return rect.inflate(eraserRadiusPx).contains(eraserCenterPx);
     }
     return false;
@@ -3771,7 +3864,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }
 
   double _snapThresholdCm(Size size) {
-    final pxPerCm = _settings.cmToLogical(1.0, size).abs();
+    final pxPerCm = _cmToLogical(1.0, size).abs();
     if (pxPerCm <= 0) return 20.0;
     return 20.0 / pxPerCm;
   }
@@ -4350,7 +4443,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (prev == null) return false;
 
     const double bufferCm = 37.5; // Decreased from 50cm (20px → 15px snapping threshold)
-    final bufferPx = _settings.cmToLogical(bufferCm, size).abs();
+    final bufferPx = _cmToLogical(bufferCm, size).abs();
 
     String? bestLabel;
     Offset? bestPointCm;
@@ -4483,7 +4576,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     if (points == null || points.isEmpty || index >= points.length) return;
     final startLogical = _dragStartLogical["PATH-$label-$index"] ?? points[index];
     final startScreen = _dragStartScreen["PATH-$label-$index"] ?? localPos;
-    final scalePerCm = _settings.cmToLogical(1.0, size);
+    final scalePerCm = _cmToLogical(1.0, size);
     if (scalePerCm == 0) return;
 
     setState(() {
@@ -4964,7 +5057,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                 final box = (_boardKey.currentContext?.findRenderObject() ?? context.findRenderObject()) as RenderBox;
                 final localPos = box.globalToLocal(details.globalPosition);
                 final deltaScreen = localPos - (_dragStartScreen["$label-$i"] ?? localPos);
-                final scalePerCm = _settings.cmToLogical(1.0, size);
+                final scalePerCm = _cmToLogical(1.0, size);
                 points[i] = (_dragStartLogical["$label-$i"] ?? points[i]) + deltaScreen / scalePerCm;
               });
             },
@@ -5080,7 +5173,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   Widget _buildPlayer(Offset posCm, double rotation, Color color, String playerId, Size size, {String? label}) {
     final screenPos = _toScreenPosition(posCm, size);
     final playerScale = _settings.objectScaleMultiplier;
-    final basePlayerRadius = _settings.cmToLogical(AppConstants.playerRadiusCm, size);
+    final basePlayerRadius = _cmToLogical(AppConstants.playerRadiusCm, size);
     final playerRadiusPx = (basePlayerRadius * playerScale).clamp(14.0 * playerScale, 64.0 * playerScale);
     final playerDiameterPx = playerRadiusPx * 2;
     final borderWidth = math.max(2.0, playerRadiusPx * 0.12);
@@ -5131,7 +5224,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               final localPos = box.globalToLocal(details.globalPosition);
               final clampedPos = _clampToInteractionBounds(localPos, size);
               final deltaScreen = clampedPos - (_dragStartScreen[playerId] ?? clampedPos);
-              final scalePerCm = _settings.cmToLogical(1.0, size);
+              final scalePerCm = _cmToLogical(1.0, size);
               _updateFramePosition(playerId, (_dragStartLogical[playerId] ?? posCm) + deltaScreen / scalePerCm);
             });
           },
@@ -5231,7 +5324,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
   }) {
     final screenPos = _toScreenPosition(posCm, size);
     final ballScale = _settings.objectScaleMultiplier;
-    final baseBallRadius = _settings.cmToLogical(AppConstants.ballRadiusCm, size);
+    final baseBallRadius = _cmToLogical(AppConstants.ballRadiusCm, size);
     final ballRadiusPx = (baseBallRadius * ballScale).clamp(9.0 * ballScale, 48.0 * ballScale);
     final ballDiameterPx = ballRadiusPx * 2;
     final borderWidth = math.max(2.0, ballRadiusPx * 0.14);
@@ -5292,7 +5385,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
               final localPos = box.globalToLocal(details.globalPosition);
               final clampedPos = _clampToInteractionBounds(localPos, size);
               final deltaScreen = clampedPos - (_dragStartScreen[ballId ?? "BALL"] ?? clampedPos);
-              final scalePerCm = _settings.cmToLogical(1.0, size);
+              final scalePerCm = _cmToLogical(1.0, size);
               _updateFramePosition(
                 ballId ?? "BALL",
                 (_dragStartLogical[ballId ?? "BALL"] ?? posCm) + deltaScreen / scalePerCm,
@@ -5526,6 +5619,9 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     final inPlaybackView = _isPlaying || _endedAtLastFrame;
     // During playback or when scrubbing in ended state, show interpolated frame
     final frameToShow = (inPlaybackView && _animatedFrame != null) ? _animatedFrame! : currentFrame;
+    final renderZoomFactor = _resolveRenderZoomFactor(frameToShow, inPlaybackView, screenSize);
+    _activeRenderZoomFactor = renderZoomFactor;
+    final renderSettings = _settings.copy()..serveZoneFactor = renderZoomFactor;
     final editingFrameIndex = widget.project.frames.indexOf(currentFrame);
     final renderFrameIndex = inPlaybackView
         ? _playbackDisplayFrameIndex()
@@ -5646,7 +5742,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 size: screenSize,
                                 painter: BoardBackgroundPainter(
                                   screenSize: screenSize,
-                                  settings: _settings,
+                                  settings: renderSettings,
                                   customElements: widget.project.customCourtElements,
                                   projectType: widget.project.projectType,
                                   settingsRevision: _settingsRevision,
@@ -5666,7 +5762,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   previousFrame: _getPreviousFrame(),
                                   twoFramesAgo: _getTwoFramesAgo(),
                                   screenSize: screenSize,
-                                  settings: _settings,
+                                  settings: renderSettings,
                                   pathRevision: _pathRevision,
                                 ),
                               ),
@@ -5695,7 +5791,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   handDrawnStyle: _settings.handDrawnAnnotations,
                                   showCurvedControlHandles: false,
                                   selectedAnnotation: _selectedAnnotation,
-                                  settings: _settings,
+                                  settings: renderSettings,
                                   screenSize: screenSize,
                                   strokeWidthCm: _annotationStrokeCm,
                                 ),
@@ -5710,7 +5806,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     centerCm: _eraserPosCm!,
                                     radiusCm: _annotationEraserRadiusCm,
                                     screenSize: screenSize,
-                                    settings: _settings,
+                                    settings: renderSettings,
                                   ),
                                 ),
                               ),
@@ -5719,7 +5815,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               ignoring: true,
                               child: CustomPaint(
                                 size: screenSize,
-                                painter: _CenterCrossPainter(screenSize: screenSize, settings: _settings),
+                                  painter: _CenterCrossPainter(screenSize: screenSize, settings: renderSettings),
                               ),
                             ),
                             if (_lastSnapPointCm != null)
@@ -5730,7 +5826,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   painter: _SnapBurstPainter(
                                     centerCm: _lastSnapPointCm!,
                                     progress: _snapPulseController,
-                                    settings: _settings,
+                                    settings: renderSettings,
                                     screenSize: screenSize,
                                   ),
                                 ),
@@ -5742,7 +5838,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                 child: CustomPaint(
                                   size: screenSize,
                                   painter: _SectorZoneOutlinePainter(
-                                    settings: _settings,
+                                    settings: renderSettings,
                                     boardSize: screenSize,
                                     pulseAnimation: _selectionPulseController,
                                     highlightedZone: _selectedSectorTarget,
@@ -5766,7 +5862,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     centerCm: _selectedSectorCenterCm!,
                                     radiusCm: _selectedSectorRadiusCm!,
                                     screenSize: screenSize,
-                                    settings: _settings,
+                                    settings: renderSettings,
                                   ),
                                 ),
                               ),
@@ -5915,7 +6011,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   handDrawnStyle: _settings.handDrawnAnnotations,
                                   showCurvedControlHandles: false,
                                   selectedAnnotation: _selectedAnnotation,
-                                  settings: _settings,
+                                  settings: renderSettings,
                                   screenSize: screenSize,
                                   strokeWidthCm: _annotationStrokeCm,
                                 ),
@@ -6328,6 +6424,26 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               ),
                               const SizedBox(width: 8),
                               SizedBox(
+                                width: 150,
+                                child: Slider(
+                                  value: _nearestZoomStageIndex(renderZoomFactor).toDouble(),
+                                  min: 0,
+                                  max: (_zoomStageFactors.length - 1).toDouble(),
+                                  divisions: _zoomStageFactors.length - 1,
+                                  label: 'Zoom S${_nearestZoomStageIndex(renderZoomFactor) + 1}',
+                                  onChanged: (v) => _setZoomStageFromSlider(v, inPlaybackView: true),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 44,
+                                child: Text(
+                                  'S${_nearestZoomStageIndex(renderZoomFactor) + 1}',
+                                  style: const TextStyle(fontSize: 10),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              SizedBox(
                                 width: 200,
                                 child: Slider(
                                   value: _playbackSpeed,
@@ -6393,6 +6509,26 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                       padding: EdgeInsets.zero,
                                     ),
                                     child: const Icon(Icons.add, size: 20),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  SizedBox(
+                                    width: 145,
+                                    child: Slider(
+                                      value: _nearestZoomStageIndex(renderZoomFactor).toDouble(),
+                                      min: 0,
+                                      max: (_zoomStageFactors.length - 1).toDouble(),
+                                      divisions: _zoomStageFactors.length - 1,
+                                      label: 'Zoom S${_nearestZoomStageIndex(renderZoomFactor) + 1}',
+                                      onChanged: (v) => _setZoomStageFromSlider(v, inPlaybackView: false),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: 34,
+                                    child: Text(
+                                      'S${_nearestZoomStageIndex(renderZoomFactor) + 1}',
+                                      style: const TextStyle(fontSize: 10),
+                                      textAlign: TextAlign.center,
+                                    ),
                                   ),
                                   const SizedBox(width: 8),
                                   if (!(_isPlaying || _endedAtLastFrame))

@@ -21,13 +21,14 @@ class FrameAdapter extends TypeAdapter<Frame> {
       balls: (fields[1] as List?)?.cast<Ball>(),
       duration: fields[2] as double,
       annotations: (fields[3] as List?)?.cast<Annotation>(),
+      zoomStageFactor: fields[4] == null ? 1.0 : fields[4] as double,
     );
   }
 
   @override
   void write(BinaryWriter writer, Frame obj) {
     writer
-      ..writeByte(4)
+        ..writeByte(5)
       ..writeByte(0)
       ..write(obj.players)
       ..writeByte(1)
@@ -35,7 +36,9 @@ class FrameAdapter extends TypeAdapter<Frame> {
       ..writeByte(2)
       ..write(obj.duration)
       ..writeByte(3)
-      ..write(obj.annotations);
+        ..write(obj.annotations)
+        ..writeByte(4)
+        ..write(obj.zoomStageFactor);
   }
 
   @override

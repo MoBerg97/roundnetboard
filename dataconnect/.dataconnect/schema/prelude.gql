@@ -2469,6 +2469,7 @@ When a `_Data` input type is used as a variable in an operation, this directive 
 
 To allow clients to batch insert movies but restrict them to only providing the `title`, `genre`, and `releaseYear` fields.
 To prevent risk of overwhelming the database, you can restrict the maximum number of items a client can submit in a single batch request using `maxCount`:
+
 ```graphql
 mutation BatchInsertMovies(
   $data: [Movie_Data!]! @allow(fields: "title genre releaseYear", maxCount: 10)
@@ -2484,11 +2485,10 @@ directive @allow(
   """
   fields: String!
   """
-   Optional limit on the maximum size or complexity of the variable.
-   - For lists: limits the number of items.
-   - For nested structures: limits the total number of entities processed.
-   - For filters: limits the number of conditions to evaluate.
-   Prevents payload-based abuse and resource exhaustion.
+  Optional limit on the maximum size or complexity of the variable. For lists,
+  this limits the number of items. For nested structures, it limits the total
+  number of entities processed. For filters, it limits the number of conditions
+  to evaluate. This prevents payload-based attacks and resource exhaustion.
   """
   maxCount: Int! = 100
 ) on VARIABLE_DEFINITION

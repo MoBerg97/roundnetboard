@@ -120,13 +120,13 @@ class Settings extends HiveObject {
   // Converts cm to logical units (pixels)
   // Adaptive fit: use 1.2× serve zone on narrow (mobile-like) widths for larger default zoom, 1.4× otherwise (Windows-friendly)
   // This makes the court larger on mobile phones by default, with zoom level adjustable in future updates
-  double cmToLogical(double cm, Size screenSize) {
+  double cmToLogical(double cm, Size screenSize, {double? serveZoneFactorOverride}) {
     const double padding = 50;
     final halfMinScreen = (screenSize.shortestSide / 2) - padding;
 
     // Use the user-configured serve zone factor for scaling
     final double serveZoneRadius = outerCircleRadiusCm;
-    final double targetReference = serveZoneRadius * serveZoneFactor;
+    final double targetReference = serveZoneRadius * (serveZoneFactorOverride ?? serveZoneFactor);
     final double safeReference = targetReference == 0 ? 1.0 : targetReference;
     return cm * (halfMinScreen / safeReference);
   }

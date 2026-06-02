@@ -43,6 +43,11 @@ class Frame extends HiveObject {
   @HiveField(3)
   List<Annotation> annotations;
 
+  // Per-frame zoom stage factor used for board rendering.
+  // 1.0 means standard serve-zone view, larger values zoom out, smaller values zoom in.
+  @HiveField(4, defaultValue: 1.0)
+  double zoomStageFactor;
+
   // ════════════════════════════════════════════════════════════════════════════
   // CONSTRUCTOR & INITIALIZATION
   // ════════════════════════════════════════════════════════════════════════════
@@ -51,36 +56,43 @@ class Frame extends HiveObject {
     List<Ball>? balls,
     this.duration = 1.0,
     List<Annotation>? annotations,
-  })  : players = players ?? [],
-        balls = balls ?? [],
-        annotations = annotations ?? [];
+    this.zoomStageFactor = 1.0,
+  }) : players = players ?? [],
+       balls = balls ?? [],
+       annotations = annotations ?? [];
 
   // --------------------------
   // Copy frame (deep copy)
   // --------------------------
   Frame copy() => Frame(
-        players: players.map((p) => p.copy()).toList(),
-        balls: balls.map((b) => b.copy()).toList(),
-        duration: duration,
-        annotations: annotations.map((a) => a.copy()).toList(),
-      );
+    players: players.map((p) => p.copy()).toList(),
+    balls: balls.map((b) => b.copy()).toList(),
+    duration: duration,
+    annotations: annotations.map((a) => a.copy()).toList(),
+    zoomStageFactor: zoomStageFactor,
+  );
 
   // ════════════════════════════════════════════════════════════════════════════
   // SPECIALIZED COPY OPERATIONS
   // ════════════════════════════════════════════════════════════════════════════
   // Support conditional copying for specific animation workflows
   Frame copyWithoutHitSetMarkers() => Frame(
-        players: players.map((p) => p.copy()).toList(),
-        balls: balls.map((b) => Ball(
-          position: b.position,
-          pathPoints: List.from(b.pathPoints),
-          color: b.color,
-          id: b.id,
-          // hitT and isSet are NOT copied (reset to null/false)
-        )).toList(),
-        duration: duration,
-        annotations: annotations.map((a) => a.copy()).toList(),
-      );
+    players: players.map((p) => p.copy()).toList(),
+    balls: balls
+        .map(
+          (b) => Ball(
+            position: b.position,
+            pathPoints: List.from(b.pathPoints),
+            color: b.color,
+            id: b.id,
+            // hitT and isSet are NOT copied (reset to null/false)
+          ),
+        )
+        .toList(),
+    duration: duration,
+    annotations: annotations.map((a) => a.copy()).toList(),
+    zoomStageFactor: zoomStageFactor,
+  );
 
   // ════════════════════════════════════════════════════════════════════════════
   // CONDITIONAL CONTROL POINT INITIALIZATION
@@ -101,13 +113,13 @@ class Frame extends HiveObject {
     for (int i = 0; i < newFrame.players.length && i < previousFrame.players.length; i++) {
       final currPlayer = newFrame.players[i];
       final prevPlayer = previousFrame.players[i];
-      
+
       if ((currPlayer.position - prevPlayer.position).distance > 50) {
         currPlayer.pathPoints = [
           Offset(
             (prevPlayer.position.dx + currPlayer.position.dx) / 2,
             (prevPlayer.position.dy + currPlayer.position.dy) / 2,
-          )
+          ),
         ];
       }
     }
@@ -116,13 +128,10 @@ class Frame extends HiveObject {
     for (int i = 0; i < newFrame.balls.length && i < previousFrame.balls.length; i++) {
       final currBall = newFrame.balls[i];
       final prevBall = previousFrame.balls[i];
-      
+
       if ((currBall.position - prevBall.position).distance > 50) {
         currBall.pathPoints = [
-          Offset(
-            (prevBall.position.dx + currBall.position.dx) / 2,
-            (prevBall.position.dy + currBall.position.dy) / 2,
-          )
+          Offset((prevBall.position.dx + currBall.position.dx) / 2, (prevBall.position.dy + currBall.position.dy) / 2),
         ];
       }
     }
@@ -265,22 +274,18 @@ extension FrameMap on Frame {
   // ════════════════════════════════════════════════════════════════════════════
   // JSON-compatible map conversion for export/import and database persistence
   Map<String, dynamic> toMap() => {
-        'players': players.map((p) => PlayerMap(p).toMap()).toList(),
-        'balls': balls.map((b) => BallMap(b).toMap()).toList(),
-        'duration': duration,
-        'annotations': annotations.map((a) => a.toMap()).toList(),
-      };
+    'players': players.map((p) => PlayerMap(p).toMap()).toList(),
+    'balls': balls.map((b) => BallMap(b).toMap()).toList(),
+    'duration': duration,
+    'annotations': annotations.map((a) => a.toMap()).toList(),
+  };
 
   static Frame fromMap(Map<String, dynamic> m) => Frame(
-        players: (m['players'] as List? ?? [])
-            .map((e) => PlayerMap.fromMap(Map<String, dynamic>.from(e)))
-            .toList(),
-        balls: (m['balls'] as List? ?? [])
-            .map((e) => BallMap.fromMap(Map<String, dynamic>.from(e)))
-            .toList(),
-        duration: (m['duration'] ?? 0.5).toDouble(),
-        annotations: (m['annotations'] as List? ?? [])
-            .map((e) => AnnotationMap.fromMap(Map<String, dynamic>.from(e)))
-            .toList(),
-      );
+    players: (m['players'] as List? ?? []).map((e) => PlayerMap.fromMap(Map<String, dynamic>.from(e))).toList(),
+    balls: (m['balls'] as List? ?? []).map((e) => BallMap.fromMap(Map<String, dynamic>.from(e))).toList(),
+    duration: (m['duration'] ?? 0.5).toDouble(),
+    annotations: (m['annotations'] as List? ?? [])
+        .map((e) => AnnotationMap.fromMap(Map<String, dynamic>.from(e)))
+        .toList(),
+  );
 }
