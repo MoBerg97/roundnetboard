@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../config/app_theme.dart';
@@ -315,7 +314,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
                         'Circle',
                       ),
                       const SizedBox(width: 4),
-                      _buildToolButton(CourtEditorTool.customLine, Symbols.diagonal_line, 'Line'),
+                      _buildToolButton(CourtEditorTool.customLine, Icons.show_chart, 'Line'),
                       const SizedBox(width: 4),
                       _buildToolButton(CourtEditorTool.customRectangle, Icons.crop_square, 'Rect'),
                       const SizedBox(width: 4),
@@ -485,7 +484,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
           heroTag: 'tool-eraser',
           backgroundColor: isActive ? AppTheme.primaryBlue : AppTheme.mediumGrey,
           onPressed: () => setState(() => _currentTool = CourtEditorTool.eraser),
-          child: const Icon(Symbols.ink_eraser, color: Colors.white),
+          child: const Icon(Icons.cleaning_services, color: Colors.white),
         ),
       ),
     );
@@ -503,7 +502,7 @@ class _CourtEditingScreenState extends State<CourtEditingScreen> with SingleTick
           onPressed: () {
             // Stroke width button - only triggers double-tap menu
           },
-          child: const Icon(Symbols.line_weight, color: Colors.white),
+          child: const Icon(Icons.line_weight, color: Colors.white),
         ),
       ),
     );

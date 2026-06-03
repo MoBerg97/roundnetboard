@@ -6,7 +6,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:provider/provider.dart';
 import 'package:feature_discovery/feature_discovery.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'config/app_theme.dart';
 import 'models/offset_adapter.dart';
@@ -26,66 +29,158 @@ import 'utils/version_check.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  runApp(const AppBootstrapper());
+}
 
-  // -------------------------
-  // 🚨 Initialize Firebase & Crashlytics
-  // -------------------------
+class AppBootstrapper extends StatefulWidget {
+  const AppBootstrapper({super.key});
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  @override
+  State<AppBootstrapper> createState() => _AppBootstrapperState();
+}
 
-  if (!kIsWeb) {
-    // Pass all uncaught errors from the framework to Crashlytics
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
+class _AppBootstrapperState extends State<AppBootstrapper> {
+  late final Future<bool> _bootstrapFuture;
 
-    // Capture async errors
-    PlatformDispatcher.instance.onError = (error, stack) {
-      FirebaseCrashlytics.instance.recordError(error, stack);
-      return true;
-    };
+  @override
+  void initState() {
+    super.initState();
+    _bootstrapFuture = _bootstrap();
   }
 
-  // -------------------------
-  // 🗄 Initialize Hive
-  // -------------------------
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _bootstrapFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return MaterialApp(
+            title: 'Roundnet Tactical Board',
+            theme: AppTheme.lightTheme(),
+            home: const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
 
-  await Hive.initFlutter();
+        if (snapshot.hasError) {
+          return MaterialApp(
+            title: 'Roundnet Tactical Board',
+            theme: AppTheme.lightTheme(),
+            home: Scaffold(
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text('Startup failed: ${snapshot.error}'),
+                ),
+              ),
+            ),
+          );
+        }
 
-  // Register adapters (order/typeIds must match what you used above)
-  Hive.registerAdapter(OffsetAdapter()); // typeId = 0 (manual)
-  Hive.registerAdapter(FrameAdapter()); // typeId = 1 (generated)
-  Hive.registerAdapter(AnnotationAdapter()); // typeId = 2 (generated)
-  Hive.registerAdapter(AnimationProjectAdapter()); // typeId = 3 (generated)
-  Hive.registerAdapter(SettingsAdapter()); // typeId = 4 (generated)
-  Hive.registerAdapter(AnnotationTypeAdapter()); // typeId = 5 (generated)
-  Hive.registerAdapter(PlayerAdapter()); // typeId = 10 (generated)
-  Hive.registerAdapter(BallAdapter()); // typeId = 11 (generated)
-  Hive.registerAdapter(CourtElementAdapter()); // typeId = 12 (generated)
+        return MyApp(seenOnboarding: snapshot.data ?? false);
+      },
+    );
+  }
 
-  // Open Hive boxes
-  await Hive.openBox<AnimationProject>('projects');
-  final projectsBox = Hive.box<AnimationProject>('projects');
+  Future<bool> _bootstrap() async {
+    final firebaseInitFuture =
+        Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    final prefsFuture = SharedPreferences.getInstance();
 
-  // Migration: ensure each project has settings
-  for (int i = 0; i < projectsBox.length; i++) {
-    final p = projectsBox.getAt(i);
-    if (p != null && p.settings == null) {
-      p.settings = Settings();
-      await p.save();
+    await _initHiveStorage();
+    _registerAdaptersIfNeeded();
+
+    await Hive.openBox<AnimationProject>('projects');
+    final projectsBox = Hive.box<AnimationProject>('projects');
+
+    // Migration: ensure each project has settings.
+    for (int i = 0; i < projectsBox.length; i++) {
+      final p = projectsBox.getAt(i);
+      if (p != null && p.settings == null) {
+        p.settings = Settings();
+        await p.save();
+      }
+    }
+
+    final prefs = await prefsFuture;
+    await _loadPresetProjectsIfNeeded(projectsBox, prefs);
+
+    if (!kIsWeb) {
+      await firebaseInitFuture;
+      // Pass all uncaught errors from the framework to Crashlytics.
+      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
+      // Capture async errors.
+      PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack);
+        return true;
+      };
+    } else {
+      unawaited(
+        firebaseInitFuture.catchError((error) {
+          debugPrint('Firebase init failed on web: $error');
+        }),
+      );
+    }
+
+    return prefs.getBool('seenOnboarding') ?? false;
+  }
+
+  Future<void> _initHiveStorage() async {
+    if (kIsWeb) {
+      await Hive.initFlutter();
+      return;
+    }
+
+    // Keep local desktop storage isolated from shared Documents root to avoid
+    // cross-process lock conflicts on generic box lock file names.
+    final supportDir = await getApplicationSupportDirectory();
+    final hiveDir = Directory('${supportDir.path}${Platform.pathSeparator}hive');
+    if (!await hiveDir.exists()) {
+      await hiveDir.create(recursive: true);
+    }
+
+    await _migrateLegacyProjectsBoxIfNeeded(hiveDir.path);
+    Hive.init(hiveDir.path);
+  }
+
+  Future<void> _migrateLegacyProjectsBoxIfNeeded(String newHivePath) async {
+    final docsDir = await getApplicationDocumentsDirectory();
+    if (docsDir.path == newHivePath) return;
+
+    final legacyProjects = File('${docsDir.path}${Platform.pathSeparator}projects.hive');
+    final newProjects = File('$newHivePath${Platform.pathSeparator}projects.hive');
+
+    if (await legacyProjects.exists() && !await newProjects.exists()) {
+      await legacyProjects.copy(newProjects.path);
     }
   }
+}
 
-  // Load preset projects on first start
-  await _loadPresetProjectsIfNeeded(projectsBox);
-
-  // Check onboarding state
-  final prefs = await SharedPreferences.getInstance();
-  final seenOnboarding = prefs.getBool('seenOnboarding') ?? false;
-  runApp(MyApp(seenOnboarding: seenOnboarding));
+void _registerAdaptersIfNeeded() {
+  // Register adapters (order/typeIds must match the existing data model).
+  if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(OffsetAdapter());
+  if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(FrameAdapter());
+  if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(AnnotationAdapter());
+  if (!Hive.isAdapterRegistered(3)) {
+    Hive.registerAdapter(AnimationProjectAdapter());
+  }
+  if (!Hive.isAdapterRegistered(4)) Hive.registerAdapter(SettingsAdapter());
+  if (!Hive.isAdapterRegistered(5)) {
+    Hive.registerAdapter(AnnotationTypeAdapter());
+  }
+  if (!Hive.isAdapterRegistered(10)) Hive.registerAdapter(PlayerAdapter());
+  if (!Hive.isAdapterRegistered(11)) Hive.registerAdapter(BallAdapter());
+  if (!Hive.isAdapterRegistered(12)) {
+    Hive.registerAdapter(CourtElementAdapter());
+  }
 }
 
 /// Loads preset projects from assets if this is the first app start
-Future<void> _loadPresetProjectsIfNeeded(Box<AnimationProject> projectsBox) async {
-  final prefs = await SharedPreferences.getInstance();
+Future<void> _loadPresetProjectsIfNeeded(
+  Box<AnimationProject> projectsBox,
+  SharedPreferences prefs,
+) async {
   final presetsLoaded = prefs.getBool('presetsLoaded') ?? false;
 
   // Only load presets if box is empty and they haven't been loaded before

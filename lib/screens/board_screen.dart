@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/scheduler.dart';
 import 'dart:math' as math;
@@ -6220,7 +6219,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                                 ),
                                               ],
                                             ),
-                                            child: const Icon(Symbols.delete, size: 14, color: Colors.white),
+                                            child: const Icon(Icons.delete, size: 14, color: Colors.white),
                                           ),
                                         ),
                                       ),
@@ -7028,13 +7027,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     onDoubleTap: () => _toggleAnnotationEraserMenu(forceOpen: true),
                                     buttonKey: _annotationEraserButtonKey,
                                     backgroundColor: _eraserMode ? AppTheme.errorRed : AppTheme.mediumGrey,
-                                    child: Icon(Symbols.ink_eraser, size: 20),
+                                    child: Icon(Icons.cleaning_services, size: 20),
                                   ),
                                   _buildMenuButton(
                                     tooltip: 'Delete All Annotations',
                                     onPressed: _clearCurrentFrameAnnotations,
                                     backgroundColor: AppTheme.errorRed,
-                                    child: const Icon(Symbols.delete, size: 20),
+                                    child: const Icon(Icons.delete, size: 20),
                                   ),
                                   Builder(
                                     builder: (context) {
@@ -7063,7 +7062,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                     onDoubleTap: () => _toggleAnnotationStrokeMenu(forceOpen: true),
                                     buttonKey: _annotationStrokeButtonKey,
                                     backgroundColor: AppTheme.mediumGrey,
-                                    child: const Icon(Symbols.line_weight, size: 20),
+                                    child: const Icon(Icons.line_weight, size: 20),
                                   ),
                                   _buildMenuButton(
                                     tooltip: 'Annotation color',

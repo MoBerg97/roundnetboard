@@ -57,7 +57,12 @@ class AnimationProject extends HiveObject {
   })  : projectTypeIndex = (projectType ?? ProjectType.play).index,
         customCourtElements = customCourtElements ?? [];
 
-  ProjectType get projectType => ProjectType.values[projectTypeIndex];
+  ProjectType get projectType {
+    if (projectTypeIndex < 0 || projectTypeIndex >= ProjectType.values.length) {
+      return ProjectType.play;
+    }
+    return ProjectType.values[projectTypeIndex];
+  }
   
   set projectType(ProjectType value) {
     projectTypeIndex = value.index;

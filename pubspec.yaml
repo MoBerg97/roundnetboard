@@ -14,7 +14,6 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
-  material_symbols_icons: ^4.0.575
   flutter_svg: ^2.0.9
   hive: ^2.2.3
   hive_flutter: ^1.1.0

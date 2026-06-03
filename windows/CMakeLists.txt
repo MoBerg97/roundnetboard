@@ -1,5 +1,7 @@
 # Project-level configuration.
 cmake_minimum_required(VERSION 3.10...3.27)
+# Required for CMake 4 compatibility with some third-party subprojects.
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 project(roundnetboard LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
@@ -65,9 +67,9 @@ include(flutter/generated_plugins.cmake)
 set(BUILD_BUNDLE_DIR "$<TARGET_FILE_DIR:${BINARY_NAME}>")
 # Make the "install" step default, as it's required to run.
 set(CMAKE_VS_INCLUDE_INSTALL_TO_DEFAULT_BUILD 1)
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "..." FORCE)
-endif()
+# Always install into the local build bundle directory for Flutter desktop
+# builds to avoid elevated permissions on Program Files paths.
+set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "..." FORCE)
 
 set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
 set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
