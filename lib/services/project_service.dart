@@ -10,6 +10,7 @@ import '../models/court_element.dart';
 /// name collision handling, and project validation.
 class ProjectService {
   final Box<AnimationProject> _projectBox;
+  static final RegExp _nameSuffixPattern = RegExp(r'^(.+?)\s*\((\d+)\)$');
 
   ProjectService(this._projectBox);
 
@@ -49,14 +50,7 @@ class ProjectService {
   /// If a project with the same name exists, appends a number suffix (1), (2), etc.
   /// Returns the name of the duplicated project.
   Future<String> duplicateProject(AnimationProject project) async {
-    // Find a unique name with numbered suffix
-    String newName = project.name;
-    int suffix = 1;
-
-    while (_projectBox.values.any((p) => p.name == newName)) {
-      newName = "${project.name} ($suffix)";
-      suffix++;
-    }
+    final newName = generateUniqueName(project.name);
 
     // Create deep copy of the project
     final duplicatedFrames = project.frames.map((f) => f.copy()).toList();
@@ -132,14 +126,26 @@ class ProjectService {
 
   /// Generates a unique project name by appending a suffix if needed.
   String generateUniqueName(String baseName) {
-    String newName = baseName.trim();
-    int suffix = 1;
+    final trimmedBase = baseName.trim();
+    final baseWithoutSuffix = _stripNumericSuffix(trimmedBase);
 
-    while (projectNameExists(newName)) {
-      newName = "$baseName ($suffix)";
-      suffix++;
+    var candidate = trimmedBase;
+    if (!projectNameExists(candidate)) {
+      return candidate;
     }
 
-    return newName;
+    var suffix = 1;
+    while (projectNameExists('$baseWithoutSuffix ($suffix)')) {
+      suffix++;
+    }
+    return '$baseWithoutSuffix ($suffix)';
+  }
+
+  String _stripNumericSuffix(String name) {
+    final match = _nameSuffixPattern.firstMatch(name);
+    if (match == null) {
+      return name;
+    }
+    return match.group(1)!.trim();
   }
 }

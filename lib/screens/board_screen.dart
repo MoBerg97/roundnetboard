@@ -288,37 +288,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
     return _settings.cmToLogical(cm, size, serveZoneFactorOverride: zoomFactor ?? _activeRenderZoomFactor);
   }
 
-  double _autoPlaybackZoomFactor(Frame frame, Size viewportSize) {
-    final playerRadius = AppConstants.playerRadiusCm * _settings.objectScaleMultiplier * 1.2;
-    final ballRadius = AppConstants.ballRadiusCm * 1.2;
-    double maxDistanceCm = 0.0;
-
-    for (final p in frame.players) {
-      maxDistanceCm = math.max(maxDistanceCm, p.position.distance + playerRadius);
-    }
-    for (final b in frame.balls) {
-      maxDistanceCm = math.max(maxDistanceCm, b.position.distance + ballRadius);
-    }
-    for (final element in (widget.project.customCourtElements ?? const <CourtElement>[])) {
-      final radius = element.radius ?? 0.0;
-      maxDistanceCm = math.max(maxDistanceCm, element.position.distance + radius);
-    }
-
-    final baseRadius = _settings.outerCircleRadiusCm == 0 ? 1.0 : _settings.outerCircleRadiusCm;
-    final margin = viewportSize.shortestSide < 520 ? 1.18 : 1.12;
-    final requiredFactor = _normalizeZoomFactor((maxDistanceCm * margin) / baseRadius);
-    for (final factor in _zoomStageFactors) {
-      if (factor >= requiredFactor) return factor;
-    }
-    return _zoomStageFactors.last;
-  }
-
-  double _resolveRenderZoomFactor(Frame frameToShow, bool inPlaybackView, Size viewportSize) {
+  double _resolveRenderZoomFactor(Frame frameToShow, bool inPlaybackView) {
     if (inPlaybackView) {
       if (_playbackZoomLockedByUser && _playbackManualZoomFactor != null) {
         return _normalizeZoomFactor(_playbackManualZoomFactor!);
       }
-      return _autoPlaybackZoomFactor(frameToShow, viewportSize);
+      final playbackIndex = _playbackDisplayFrameIndex();
+      return _frameZoomFactor(widget.project.frames[playbackIndex]);
     }
     return _frameZoomFactor(frameToShow);
   }
@@ -1899,7 +1875,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       }
     }
 
-    return Frame(players: interpPlayers, balls: interpBalls, duration: fB.duration, annotations: fB.annotations);
+    return Frame(
+      players: interpPlayers,
+      balls: interpBalls,
+      duration: fB.duration,
+      annotations: fB.annotations,
+      zoomStageFactor: fB.zoomStageFactor,
+    );
   }
 
   /// Calculate ball scale during playback based on set/hit effects
@@ -2991,7 +2973,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
       final rect = _textBoundsPx(ann, size);
       if (rect == null) continue;
       final pointPx = _toScreenPosition(pointCm, size);
-      if (rect.inflate(_cmToLogical(20, size).abs()).contains(pointPx)) {
+      if (rect.inflate(_cmToLogical(8, size).abs()).contains(pointPx)) {
         return ann;
       }
     }
@@ -5612,13 +5594,13 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = _effectiveScreenSize(context);
+    _effectiveScreenSize(context);
     final isPlayback = _isPlaying && _animatedFrame != null;
     final prev = _getPreviousFrame();
     final inPlaybackView = _isPlaying || _endedAtLastFrame;
     // During playback or when scrubbing in ended state, show interpolated frame
     final frameToShow = (inPlaybackView && _animatedFrame != null) ? _animatedFrame! : currentFrame;
-    final renderZoomFactor = _resolveRenderZoomFactor(frameToShow, inPlaybackView, screenSize);
+    final renderZoomFactor = _resolveRenderZoomFactor(frameToShow, inPlaybackView);
     _activeRenderZoomFactor = renderZoomFactor;
     final renderSettings = _settings.copy()..serveZoneFactor = renderZoomFactor;
     final editingFrameIndex = widget.project.frames.indexOf(currentFrame);
@@ -5814,7 +5796,7 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                               ignoring: true,
                               child: CustomPaint(
                                 size: screenSize,
-                                  painter: _CenterCrossPainter(screenSize: screenSize, settings: renderSettings),
+                                painter: _CenterCrossPainter(screenSize: screenSize, settings: renderSettings),
                               ),
                             ),
                             if (_lastSnapPointCm != null)
@@ -5890,16 +5872,19 @@ class _BoardScreenState extends State<BoardScreen> with TickerProviderStateMixin
                                   if (_annotationsMenuOpen) {
                                     final clampedTap = _clampToInteractionBounds(details.localPosition, screenSize);
                                     final tapCm = _screenToCm(clampedTap, screenSize);
+                                    final textTarget = _findTextAnnotationAt(tapCm, screenSize);
+                                    if (textTarget != null &&
+                                        (_activeAnnotationTool == AnnotationTool.text ||
+                                            _activeAnnotationTool == AnnotationTool.move)) {
+                                      _editTextAnnotation(textTarget, screenSize);
+                                      return;
+                                    }
                                     if (_activeAnnotationTool == AnnotationTool.move) {
                                       final target = _findAnnotationAt(tapCm, screenSize);
                                       if (target != null) {
                                         _editAnnotationStyle(target, screenSize);
                                       }
                                       return;
-                                    }
-                                    final target = _findTextAnnotationAt(tapCm, screenSize);
-                                    if (target != null && _activeAnnotationTool == AnnotationTool.text) {
-                                      _editTextAnnotation(target, screenSize);
                                     }
                                   }
                                 },

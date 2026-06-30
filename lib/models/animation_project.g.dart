@@ -13,12 +13,9 @@ class AnimationProjectAdapter extends TypeAdapter<AnimationProject> {
   @override
   AnimationProject read(BinaryReader reader) {
     final numOfFields = reader.readByte();
-    final fields = <int, dynamic>{
-      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
-    };
+    final fields = <int, dynamic>{for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read()};
     final dynamic rawProjectType = fields[4];
-    final int projectTypeIndex =
-        rawProjectType is int ? rawProjectType : int.tryParse('${rawProjectType ?? ''}') ?? 0;
+    final int projectTypeIndex = rawProjectType is int ? rawProjectType : int.tryParse('${rawProjectType ?? ''}') ?? 0;
     return AnimationProject(
       name: fields[0] as String,
       frames: (fields[1] as List).cast<Frame>(),
@@ -49,7 +46,5 @@ class AnimationProjectAdapter extends TypeAdapter<AnimationProject> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is AnimationProjectAdapter &&
-          runtimeType == other.runtimeType &&
-          typeId == other.typeId;
+      other is AnimationProjectAdapter && runtimeType == other.runtimeType && typeId == other.typeId;
 }

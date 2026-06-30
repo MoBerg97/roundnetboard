@@ -214,15 +214,18 @@ timeline:
 
 ### HOTFIX
 
+- [x] if the zoom stage is adjusted, and some frames are added and afterwards the zoom stage is adjusted again, sometimes the intermediate zoom stages are triggered in playback. Make sure, that the zoom stage is only changed in playback when there is an actual change of the zoom stage from one frame to the next.
+- [x] text should be editable in size and the content itself in the text property pop-up for text annotations, currently the text is not editable after creating a text annotation, which is a problem especially when the user accidentally created a text annotation with wrong content and then cannot change it anymore. This should all be in the
+- [x] text annotation container boxes should be smaller, while not decreasing the text size inside.
 - [x] first frame should have a default duration of 1000ms instead of 0ms, so that the playback does not immediately jump to the second frame when starting playback, and the user can see the first frame for a moment before the animation starts. The user should be able to change the duration of the first frame.
-- [ ] the placement of elements should be in relation to the court center point and not in relation to the top left corner of the screen. This is especially important for the export of projects, as otherwise the placement of objects in the export does not match the placement of objects on the board screen or on a new device.
+- [x] the placement of elements should be in relation to the court center point and not in relation to the top left corner of the screen. This is especially important for the export of projects, as otherwise the placement of objects in the export does not match the placement of objects on the board screen or on a new device.
 - [x] adjust the color of the font in the project create menu to be visible on dark background (currently black font on dark background, should be white font on dark background)
 - [x] add a small icon for project type slider (training/play) in the project create menu to make it more intuitive (e.g. a small whistle icon for training and a small net icon for play)
 - [x] court elements should snap on creation dragging already to corners and center points of other court elements when created within 20px of such a point, not only when being dragged after creation with the drag tool.
 - [x] annotations should snap on creation dragging already to corners and center points of other annotations when created within 20px of such a point, not only when being dragged after creation with the drag tool.
 - [x] animation playback automatically closes any open menus on the board screen when playback starts
 - [x] background color of the board screen should always match the court color in court editor and should be changeable via settings menu on board screen
-- [ ] court editor should show the same court frame as the board screen. Court size in court editor should match court size in board screen (same height and width of container showing the court). The middle point of the court should always be in the center of the court container.
+- [x] court editor should show the same court frame as the board screen. Court size in court editor should match court size in board screen (same height and width of container showing the court). The middle point of the court should always be in the center of the court container.
 - [x] standard zoom stage should be 1.0 times serve zone radius around center of court instead of 1.5 times
 - [x] make zoom stages larger and frame specific (saved on frames) and changeable in the board screen as a snapping slider with 5 stages
 - [x] 1. zoom stage: show only 0.5 times serve zone radius around center of court (for focus on net area)
@@ -243,8 +246,8 @@ timeline:
 ### Other fixes
 
 - [x] after the animation reached the end, the scrubber is not accessible anymore (touching it leaves playback view) and the edit timeline instantly shows up. instead only the stop button should make the screen switch back to editing mode.
-- [ ] the undo and redo history should also track annotation edits (creation, deletion, etc).
-- [ ] the numerated suffix does not supply increasing numbers in brackets. Instead each copy gets another (1) suffix resulting in e.g. framename (1) (1) (1)
+- [x] the undo and redo history should also track annotation edits (creation, deletion, etc).
+- [x] the numerated suffix does not supply increasing numbers in brackets. Instead each copy gets another (1) suffix resulting in e.g. framename (1) (1) (1)
 - [x] the annotations are not copied and displayed in a new frame when this is added.
 
 ## Else

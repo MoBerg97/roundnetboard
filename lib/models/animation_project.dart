@@ -16,25 +16,30 @@ part 'animation_project.g.dart';
 /// play: 4 fixed players, standard Roundnet court
 /// training: dynamic player/ball counts, customizable court dimensions
 enum ProjectType {
-  play,     // Fixed 4 players, standard court geometry
+  play, // Fixed 4 players, standard court geometry
   training, // Dynamic players/balls, full court customization
 }
 
 @HiveType(typeId: 3) // unique id
 class AnimationProject extends HiveObject {
-  @HiveField(0) String name;
+  @HiveField(0)
+  String name;
 
   // Simple lists are fine (you'll save the whole project object when updating)
-  @HiveField(1) List<Frame> frames;
+  @HiveField(1)
+  List<Frame> frames;
 
   // Project-specific settings
-  @HiveField(3) Settings? settings;
+  @HiveField(3)
+  Settings? settings;
 
   // Project type (play or training mode)
-  @HiveField(4) int projectTypeIndex;
+  @HiveField(4)
+  int projectTypeIndex;
 
   // Custom court elements (nets, zones, lines, circles, rectangles)
-  @HiveField(5) List<CourtElement>? customCourtElements;
+  @HiveField(5)
+  List<CourtElement>? customCourtElements;
 
   // ════════════════════════════════════════════════════════════════════════════
   // CONSTRUCTOR
@@ -54,8 +59,8 @@ class AnimationProject extends HiveObject {
     required this.settings,
     ProjectType? projectType,
     List<CourtElement>? customCourtElements,
-  })  : projectTypeIndex = (projectType ?? ProjectType.play).index,
-        customCourtElements = customCourtElements ?? [];
+  }) : projectTypeIndex = (projectType ?? ProjectType.play).index,
+       customCourtElements = customCourtElements ?? [];
 
   ProjectType get projectType {
     if (projectTypeIndex < 0 || projectTypeIndex >= ProjectType.values.length) {
@@ -63,7 +68,7 @@ class AnimationProject extends HiveObject {
     }
     return ProjectType.values[projectTypeIndex];
   }
-  
+
   set projectType(ProjectType value) {
     projectTypeIndex = value.index;
   }
@@ -75,24 +80,20 @@ extension AnimationProjectMap on AnimationProject {
   // ════════════════════════════════════════════════════════════════════════════
   // JSON-compatible map for export/import and format conversion
   Map<String, dynamic> toMap() => {
-        'name': name,
-        'frames': frames.map((f) => f.toMap()).toList(),
-        'settings': (settings ?? Settings()).toMap(),
-        'projectType': projectTypeIndex,
-        'customCourtElements': (customCourtElements ?? [])
-            .map((e) => CourtElementMap(e).toMap())
-            .toList(),
-      };
+    'name': name,
+    'frames': frames.map((f) => f.toMap()).toList(),
+    'settings': (settings ?? Settings()).toMap(),
+    'projectType': projectTypeIndex,
+    'customCourtElements': (customCourtElements ?? []).map((e) => CourtElementMap(e).toMap()).toList(),
+  };
 
   static AnimationProject fromMap(Map<String, dynamic> m) => AnimationProject(
-        name: m['name'] as String,
-        frames: (m['frames'] as List)
-            .map((e) => FrameMap.fromMap(Map<String, dynamic>.from(e)))
-            .toList(),
-        settings: SettingsMap.fromMap(Map<String, dynamic>.from(m['settings'])),
-        projectType: ProjectType.values[m['projectType'] ?? 0],
-        customCourtElements: (m['customCourtElements'] as List? ?? [])
-            .map((e) => CourtElementMap.fromMap(Map<String, dynamic>.from(e)))
-            .toList(),
-      );
+    name: m['name'] as String,
+    frames: (m['frames'] as List).map((e) => FrameMap.fromMap(Map<String, dynamic>.from(e))).toList(),
+    settings: SettingsMap.fromMap(Map<String, dynamic>.from(m['settings'])),
+    projectType: ProjectType.values[m['projectType'] ?? 0],
+    customCourtElements: (m['customCourtElements'] as List? ?? [])
+        .map((e) => CourtElementMap.fromMap(Map<String, dynamic>.from(e)))
+        .toList(),
+  );
 }

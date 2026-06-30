@@ -92,6 +92,38 @@ to be a consistent snapshot.
 directive @transaction on MUTATION
 
 """
+Locks down the allowed fields for a `_Data` input variable.
+When a `_Data` input type is used as a variable in an operation, this directive is REQUIRED.
+
+###### Example: Batch Inserting Movies
+
+To allow clients to batch insert movies but restrict them to only providing the `title`, `genre`, and `releaseYear` fields.
+To prevent risk of overwhelming the database, you can restrict the maximum number of items a client can submit in a single batch request using `maxCount`:
+
+```graphql
+mutation BatchInsertMovies(
+  $data: [Movie_Data!]! @allow(fields: "title genre releaseYear", maxCount: 10)
+) @auth(level: PUBLIC) {
+  movie_insertMany(data: $data)
+}
+```
+"""
+directive @allow(
+  """
+  A space-separated string mimicking a GraphQL selection set.
+  Example: "title genre releaseYear"
+  """
+  fields: String!
+  """
+  Optional limit on the maximum size or complexity of the variable. For lists,
+  this limits the number of items. For nested structures, it limits the total
+  number of entities processed. For filters, it limits the number of conditions
+  to evaluate. This prevents payload-based attacks and resource exhaustion.
+  """
+  maxCount: Int! = 100
+) on VARIABLE_DEFINITION
+
+"""
 Redact a part of the response from the client.
 
 Redacted fields are still evaluated for side effects (including data changes and
@@ -1127,6 +1159,92 @@ type Mutation {
   Note: Data fetched this way can be handy for permission checks. See @check.
   """
   query: Query
+}
+
+"""
+Make the query reactive with customized refresh policy.
+
+###### Example: Refresh Stock Price Periodically
+
+Periodically refresh the Stock graph every minute.
+
+```graphql
+query Stock($ticker: String!) @refresh(every: { minutes: 1 }) {
+  stock(key: {ticker: $ticker}) {
+    name
+    latestPrice
+    prices { time price }
+  }
+}
+```
+
+###### Example: Realtime User Profile
+
+You can configure the `UserProfile` query to be refreshed after `UpdateUser`
+mutation.
+
+```graphql
+mutation UpdateUser($newName: String!) @auth(level: USER)
+{
+  user_update(id_expr: "auth.uid", data: { name: $newName })
+}
+
+query MyProfile @auth(level: USER)
+  @refresh(onMutationExecuted: {
+    operation: "UpdateUser",
+    condition: "mutation.auth.uid == request.auth.uid"
+  })
+{
+  user(uid_expr: "auth.uid") { id name }
+}
+```
+
+###### Example: Realtime Chat Room
+
+Refresh the last 50 messages in the chat room after each `SendMessage`.
+
+```graphql
+query ChatRoom($roomId: UUID!) @auth(level: PUBLIC)
+  @refresh(onMutationExecuted: {
+    operation: "SendMessage",
+    condition: "mutation.variables.roomId == request.variables.roomId"
+  })
+{
+  messages(where: {roomId: {eq: $roomId}}, orderBy: [{createTime: DESC}], limit: 50) {
+    author content createTime
+  }
+}
+
+mutation SendMessage($roomId: UUID!, $message: String) @auth(level: PUBLIC)
+{
+  message_insert(data: {roomId: $roomId, message: $message})
+}
+```
+
+"""
+directive @refresh(
+  """
+  Define the interval to periodically refresh the query.
+  """
+  every: Timestamp_Duration
+  """
+  Define the mutations that will trigger this query to refresh.
+  """
+  onMutationExecuted: [OnMutationExecuted_Event!]
+) repeatable on QUERY
+
+"""
+Defines the mutation events that will trigger the query to refresh.
+"""
+input OnMutationExecuted_Event {
+  """
+  The name of the mutation.
+  """
+  operation: String!
+  """
+  Additional conditions for a mutation event to trigger refresh.
+  """
+  condition: Boolean_Expr
 }
 
 """
@@ -2461,123 +2579,5 @@ scalar Vector_Embed_Model
   @fdc_example(value: "textembedding-gecko@001", description: "An older version of the textembedding-gecko model")
   @fdc_example(value: "text-embedding-004", description: "Another text embedding model")
 
-"""
-Locks down the allowed fields for a `_Data` input variable.
-When a `_Data` input type is used as a variable in an operation, this directive is REQUIRED.
-
-###### Example: Batch Inserting Movies
-
-To allow clients to batch insert movies but restrict them to only providing the `title`, `genre`, and `releaseYear` fields.
-To prevent risk of overwhelming the database, you can restrict the maximum number of items a client can submit in a single batch request using `maxCount`:
-
-```graphql
-mutation BatchInsertMovies(
-  $data: [Movie_Data!]! @allow(fields: "title genre releaseYear", maxCount: 10)
-) @auth(level: PUBLIC) {
-  movie_insertMany(data: $data)
-}
-```
-"""
-directive @allow(
-  """
-  A space-separated string mimicking a GraphQL selection set.
-  Example: "title genre releaseYear"
-  """
-  fields: String!
-  """
-  Optional limit on the maximum size or complexity of the variable. For lists,
-  this limits the number of items. For nested structures, it limits the total
-  number of entities processed. For filters, it limits the number of conditions
-  to evaluate. This prevents payload-based attacks and resource exhaustion.
-  """
-  maxCount: Int! = 100
-) on VARIABLE_DEFINITION
-
 # Intentionally left blank.
-
-"""
-Make the query reactive with customized refresh policy.
-
-###### Example: Refresh Stock Price Periodically
-
-Periodically refresh the Stock graph every minute.
-
-```graphql
-query Stock($ticker: String!) @refresh(every: { minutes: 1 }) {
-  stock(key: {ticker: $ticker}) {
-    name
-    latestPrice
-    prices { time price }
-  }
-}
-```
-
-###### Example: Realtime User Profile
-
-You can configure the `UserProfile` query to be refreshed after `UpdateUser`
-mutation.
-
-```graphql
-mutation UpdateUser($newName: String!) @auth(level: USER)
-{
-  user_update(id_expr: "auth.uid", data: { name: $newName })
-}
-
-query MyProfile @auth(level: USER)
-  @refresh(onMutationExecuted: {
-    operation: "UpdateUser",
-    condition: "mutation.auth.uid == request.auth.uid"
-  })
-{
-  user(uid_expr: "auth.uid") { id name }
-}
-```
-
-###### Example: Realtime Chat Room
-
-Refresh the last 50 messages in the chat room after each `SendMessage`.
-
-```graphql
-query ChatRoom($roomId: UUID!) @auth(level: PUBLIC)
-  @refresh(onMutationExecuted: {
-    operation: "SendMessage",
-    condition: "mutation.variables.roomId == request.variables.roomId"
-  })
-{
-  messages(where: {roomId: {eq: $roomId}}, orderBy: [{createTime: DESC}], limit: 50) {
-    author content createTime
-  }
-}
-
-mutation SendMessage($roomId: UUID!, $message: String) @auth(level: PUBLIC)
-{
-  message_insert(data: {roomId: $roomId, message: $message})
-}
-```
-
-"""
-directive @refresh(
-  """
-  Define the interval to periodically refresh the query.
-  """
-  every: Timestamp_Duration
-  """
-  Define the mutations that will trigger this query to refresh.
-  """
-  onMutationExecuted: [OnMutationExecuted_Event!]
-) repeatable on QUERY
-
-"""
-Defines the mutation events that will trigger the query to refresh.
-"""
-input OnMutationExecuted_Event {
-  """
-  The name of the mutation.
-  """
-  operation: String!
-  """
-  Additional conditions for a mutation event to trigger refresh.
-  """
-  condition: Boolean_Expr
-}
 

@@ -57,9 +57,7 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
           return MaterialApp(
             title: 'Roundnet Tactical Board',
             theme: AppTheme.lightTheme(),
-            home: const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            ),
+            home: const Scaffold(body: Center(child: CircularProgressIndicator())),
           );
         }
 
@@ -69,10 +67,7 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
             theme: AppTheme.lightTheme(),
             home: Scaffold(
               body: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text('Startup failed: ${snapshot.error}'),
-                ),
+                child: Padding(padding: const EdgeInsets.all(24), child: Text('Startup failed: ${snapshot.error}')),
               ),
             ),
           );
@@ -84,8 +79,7 @@ class _AppBootstrapperState extends State<AppBootstrapper> {
   }
 
   Future<bool> _bootstrap() async {
-    final firebaseInitFuture =
-        Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    final firebaseInitFuture = Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     final prefsFuture = SharedPreferences.getInstance();
 
     await _initHiveStorage();
@@ -177,10 +171,7 @@ void _registerAdaptersIfNeeded() {
 }
 
 /// Loads preset projects from assets if this is the first app start
-Future<void> _loadPresetProjectsIfNeeded(
-  Box<AnimationProject> projectsBox,
-  SharedPreferences prefs,
-) async {
+Future<void> _loadPresetProjectsIfNeeded(Box<AnimationProject> projectsBox, SharedPreferences prefs) async {
   final presetsLoaded = prefs.getBool('presetsLoaded') ?? false;
 
   // Only load presets if box is empty and they haven't been loaded before
